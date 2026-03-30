@@ -55,7 +55,7 @@ const AdminLogin = () => {
             </Button>
           </form>
         </div>
-        <p className="text-center text-[10px] text-muted-foreground mt-4">Demo: admin@yourapp.com / Admin@123</p>
+        
       </div>
     </div>
   );
