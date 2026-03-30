@@ -530,6 +530,126 @@ export type Database = {
         }
         Relationships: []
       }
+      payout_accounts: {
+        Row: {
+          account_holder_name: string | null
+          account_number: string | null
+          bank_country: string | null
+          business_country: string | null
+          business_structure: string | null
+          business_type: string | null
+          country: string | null
+          created_at: string
+          currency: string | null
+          email: string | null
+          iban: string | null
+          id: string
+          id_uploaded: boolean | null
+          legal_business_name: string | null
+          payment_provider: string | null
+          phone_verified: boolean | null
+          product_description: string | null
+          selfie_uploaded: boolean | null
+          setup_completed: boolean | null
+          sort_code: string | null
+          tax_agreed: boolean | null
+          tax_country: string | null
+          tax_full_name: string | null
+          tax_signature: string | null
+          trading_name: string | null
+          updated_at: string
+          user_id: string
+          verified_phone: string | null
+        }
+        Insert: {
+          account_holder_name?: string | null
+          account_number?: string | null
+          bank_country?: string | null
+          business_country?: string | null
+          business_structure?: string | null
+          business_type?: string | null
+          country?: string | null
+          created_at?: string
+          currency?: string | null
+          email?: string | null
+          iban?: string | null
+          id?: string
+          id_uploaded?: boolean | null
+          legal_business_name?: string | null
+          payment_provider?: string | null
+          phone_verified?: boolean | null
+          product_description?: string | null
+          selfie_uploaded?: boolean | null
+          setup_completed?: boolean | null
+          sort_code?: string | null
+          tax_agreed?: boolean | null
+          tax_country?: string | null
+          tax_full_name?: string | null
+          tax_signature?: string | null
+          trading_name?: string | null
+          updated_at?: string
+          user_id: string
+          verified_phone?: string | null
+        }
+        Update: {
+          account_holder_name?: string | null
+          account_number?: string | null
+          bank_country?: string | null
+          business_country?: string | null
+          business_structure?: string | null
+          business_type?: string | null
+          country?: string | null
+          created_at?: string
+          currency?: string | null
+          email?: string | null
+          iban?: string | null
+          id?: string
+          id_uploaded?: boolean | null
+          legal_business_name?: string | null
+          payment_provider?: string | null
+          phone_verified?: boolean | null
+          product_description?: string | null
+          selfie_uploaded?: boolean | null
+          setup_completed?: boolean | null
+          sort_code?: string | null
+          tax_agreed?: boolean | null
+          tax_country?: string | null
+          tax_full_name?: string | null
+          tax_signature?: string | null
+          trading_name?: string | null
+          updated_at?: string
+          user_id?: string
+          verified_phone?: string | null
+        }
+        Relationships: []
+      }
+      payout_history: {
+        Row: {
+          amount: number | null
+          created_at: string
+          description: string | null
+          id: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       platform_stats: {
         Row: {
           id: string
@@ -553,6 +673,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          agree_to_remain: boolean | null
           authorized_to_work: boolean | null
           availability_set: boolean | null
           city: string | null
@@ -566,6 +687,7 @@ export type Database = {
           full_name: string | null
           github: string | null
           id: string
+          interview_completed: boolean | null
           leetcode: string | null
           linkedin: string | null
           no_linkedin: boolean | null
@@ -576,7 +698,9 @@ export type Database = {
           portfolio: string | null
           postal_code: string | null
           resume_name: string | null
+          signature_date: string | null
           signature_name: string | null
+          signature_text: string | null
           state: string | null
           updated_at: string
           user_id: string
@@ -584,6 +708,7 @@ export type Database = {
           work_from_different_country: boolean | null
         }
         Insert: {
+          agree_to_remain?: boolean | null
           authorized_to_work?: boolean | null
           availability_set?: boolean | null
           city?: string | null
@@ -597,6 +722,7 @@ export type Database = {
           full_name?: string | null
           github?: string | null
           id?: string
+          interview_completed?: boolean | null
           leetcode?: string | null
           linkedin?: string | null
           no_linkedin?: boolean | null
@@ -607,7 +733,9 @@ export type Database = {
           portfolio?: string | null
           postal_code?: string | null
           resume_name?: string | null
+          signature_date?: string | null
           signature_name?: string | null
+          signature_text?: string | null
           state?: string | null
           updated_at?: string
           user_id: string
@@ -615,6 +743,7 @@ export type Database = {
           work_from_different_country?: boolean | null
         }
         Update: {
+          agree_to_remain?: boolean | null
           authorized_to_work?: boolean | null
           availability_set?: boolean | null
           city?: string | null
@@ -628,6 +757,7 @@ export type Database = {
           full_name?: string | null
           github?: string | null
           id?: string
+          interview_completed?: boolean | null
           leetcode?: string | null
           linkedin?: string | null
           no_linkedin?: boolean | null
@@ -638,12 +768,44 @@ export type Database = {
           portfolio?: string | null
           postal_code?: string | null
           resume_name?: string | null
+          signature_date?: string | null
           signature_name?: string | null
+          signature_text?: string | null
           state?: string | null
           updated_at?: string
           user_id?: string
           work_experience?: Json | null
           work_from_different_country?: boolean | null
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          created_at: string
+          id: string
+          referral_code: string | null
+          referred_email: string
+          referrer_id: string
+          reward_amount: number | null
+          status: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          referral_code?: string | null
+          referred_email: string
+          referrer_id: string
+          reward_amount?: number | null
+          status?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          referral_code?: string | null
+          referred_email?: string
+          referrer_id?: string
+          reward_amount?: number | null
+          status?: string | null
         }
         Relationships: []
       }
