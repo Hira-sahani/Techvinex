@@ -91,8 +91,14 @@ const ResetPassword = () => {
     <div className="min-h-screen bg-muted/30 flex flex-col items-center justify-center px-4">
       <div className="w-full max-w-md bg-card rounded-2xl shadow-xl p-10">
         <div className="flex flex-col items-center mb-10">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center mb-5">
-            <span className="text-4xl font-bold text-primary-foreground">X</span>
+          <div className="flex items-center gap-1.5 text-primary mb-5" role="img" aria-label="Jetra loading mark">
+            {[0, 0.12, 0.24, 0.36, 0.48, 0.6].map((d, i) => (
+              <span
+                key={i}
+                className="loader-dot w-2.5 h-2.5 rounded-full bg-current"
+                style={{ animationDelay: `${d}s` }}
+              />
+            ))}
           </div>
           <h1 className="text-2xl font-bold text-foreground tracking-tight">
             Reset Password
