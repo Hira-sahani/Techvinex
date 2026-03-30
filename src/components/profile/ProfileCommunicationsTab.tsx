@@ -105,7 +105,7 @@ const ProfileCommunicationsTab = () => {
 
       {editMode && (
         <Button type="button" onClick={handleSave} disabled={loading || saving || !hasChanges} className="w-full">
-          {loading ? <span className="inline-flex items-center gap-2"><span className="inline-flex items-center gap-1 text-primary-foreground" role="status" aria-label="Loading">{[0, 0.12, 0.24, 0.36, 0.48, 0.6].map((d, i) => (<span key={i} className="loader-dot w-1.5 h-1.5 rounded-full bg-current" style={{ animationDelay: `${d}s` }} />))}</span> Loading...</span> : saving ? "Saving..." : hasChanges ? "Save Changes" : "Saved"}
+          {loading ? <span className="inline-flex items-center gap-2"><span className="loader-cluster gap-1" role="status" aria-label="Loading">{[0, 0.1, 0.2, 0.3, 0.4, 0.5].map((d, i) => (<span key={i} className="loader-dot loader-dot--sm" style={{ animationDelay: `${d}s` }} />))}</span> Loading...</span> : saving ? "Saving..." : hasChanges ? "Save Changes" : "Saved"}
         </Button>
       )}
     </div>

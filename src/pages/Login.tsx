@@ -175,13 +175,14 @@ const Login = () => {
         </button>
         <div className="bg-card rounded-2xl shadow-xl p-10 mb-6">
           <div className="flex flex-col items-center mb-10">
-            <div className="flex items-center gap-1.5 mb-5" aria-hidden="true">
-              <span className="w-2.5 h-2.5 rounded-full bg-primary opacity-100" />
-              <span className="w-2.5 h-2.5 rounded-full bg-primary opacity-90" />
-              <span className="w-2.5 h-2.5 rounded-full bg-primary opacity-80" />
-              <span className="w-2.5 h-2.5 rounded-full bg-primary opacity-70" />
-              <span className="w-2.5 h-2.5 rounded-full bg-primary opacity-60" />
-              <span className="w-2.5 h-2.5 rounded-full bg-primary opacity-50" />
+            <div className="loader-cluster gap-1.5 mb-5" aria-hidden="true">
+              {[0, 0.1, 0.2, 0.3, 0.4, 0.5].map((d, i) => (
+                <span
+                  key={i}
+                  className="loader-dot loader-dot--md"
+                  style={{ animationDelay: `${d}s` }}
+                />
+              ))}
             </div>
             <h1 className="text-2xl font-bold text-foreground tracking-tight">
               Continue to Jetra
