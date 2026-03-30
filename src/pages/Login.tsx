@@ -249,7 +249,7 @@ const Login = () => {
             className="w-full rounded-lg py-5 text-sm font-semibold gradient-cta border-0 text-primary-foreground hover:opacity-90"
             onClick={handleLoginClick}
           >
-            {loading && !isSignUp ? <span className="inline-flex items-center gap-2"><span className="flex gap-1">{[0,0.12,0.24].map((d,i)=>(<span key={i} className="loader-dot w-1.5 h-1.5 rounded-full bg-primary-foreground" style={{animationDelay:`${d}s`}}/>))}</span> Please wait...</span> : "Login"}
+            {loading && !isSignUp ? <span className="inline-flex items-center gap-2"><span className="inline-flex items-center gap-1 text-primary-foreground" role="status" aria-label="Loading">{[0, 0.12, 0.24, 0.36, 0.48, 0.6].map((d, i) => (<span key={i} className="loader-dot w-1.5 h-1.5 rounded-full bg-current" style={{ animationDelay: `${d}s` }} />))}</span> Please wait...</span> : "Login"}
           </Button>
 
           {/* Sign Up Button */}
@@ -260,7 +260,7 @@ const Login = () => {
             className="w-full rounded-lg py-5 text-sm font-semibold border-border"
             onClick={handleSignUp}
           >
-            {loading && isSignUp ? <span className="inline-flex items-center gap-2"><span className="flex gap-1">{[0,0.12,0.24].map((d,i)=>(<span key={i} className="loader-dot w-1.5 h-1.5 rounded-full bg-foreground" style={{animationDelay:`${d}s`}}/>))}</span> Please wait...</span> : "Sign Up"}
+            {loading && isSignUp ? <span className="inline-flex items-center gap-2"><span className="inline-flex items-center gap-1 text-foreground" role="status" aria-label="Loading">{[0, 0.12, 0.24, 0.36, 0.48, 0.6].map((d, i) => (<span key={i} className="loader-dot w-1.5 h-1.5 rounded-full bg-current" style={{ animationDelay: `${d}s` }} />))}</span> Please wait...</span> : "Sign Up"}
           </Button>
         </div>
 

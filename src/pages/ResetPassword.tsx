@@ -132,7 +132,7 @@ const ResetPassword = () => {
             disabled={loading || !isRecovery}
             className="w-full rounded-lg py-5 text-sm font-semibold gradient-cta border-0 text-primary-foreground hover:opacity-90"
           >
-            {loading ? <span className="inline-flex items-center gap-2"><span className="jetra-loader w-4 h-4 text-primary-foreground"><span className="jetra-loader__line jetra-loader__line--first w-3 !h-[2px]" /><span className="jetra-loader__line jetra-loader__line--second w-3 !h-[2px]" /></span> Please wait...</span> : "Update Password"}
+            {loading ? <span className="inline-flex items-center gap-2"><span className="inline-flex items-center gap-1 text-primary-foreground" role="status" aria-label="Loading">{[0, 0.12, 0.24, 0.36, 0.48, 0.6].map((d, i) => (<span key={i} className="loader-dot w-1.5 h-1.5 rounded-full bg-current" style={{ animationDelay: `${d}s` }} />))}</span> Please wait...</span> : "Update Password"}
           </Button>
         </form>
 
