@@ -289,7 +289,7 @@ const Settings = () => {
                 disabled={passLoading}
                 className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {passLoading && <span className="jetra-loader w-4 h-4 text-primary-foreground"><span className="jetra-loader__line jetra-loader__line--first w-3 !h-[2px]" /><span className="jetra-loader__line jetra-loader__line--second w-3 !h-[2px]" /></span>}
+                {passLoading && <span className="inline-flex items-center gap-1 text-primary-foreground" role="status" aria-label="Loading">{[0, 0.12, 0.24, 0.36, 0.48, 0.6].map((d, i) => (<span key={i} className="loader-dot w-1.5 h-1.5 rounded-full bg-current" style={{ animationDelay: `${d}s` }} />))}</span>}
                 {t("settings.updatePassword")}
               </button>
             </div>
@@ -382,7 +382,7 @@ const Settings = () => {
                   {t("settings.cancel")}
                 </button>
                 <button onClick={handleDeleteAccount} disabled={deleteLoading} className="flex-1 py-2.5 rounded-lg bg-destructive text-destructive-foreground text-sm font-medium hover:bg-destructive/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2">
-                  {deleteLoading && <span className="jetra-loader w-4 h-4 text-destructive-foreground"><span className="jetra-loader__line jetra-loader__line--first w-3 !h-[2px]" /><span className="jetra-loader__line jetra-loader__line--second w-3 !h-[2px]" /></span>}
+                  {deleteLoading && <span className="inline-flex items-center gap-1 text-destructive-foreground" role="status" aria-label="Loading">{[0, 0.12, 0.24, 0.36, 0.48, 0.6].map((d, i) => (<span key={i} className="loader-dot w-1.5 h-1.5 rounded-full bg-current" style={{ animationDelay: `${d}s` }} />))}</span>}
                   {t("settings.delete")}
                 </button>
               </div>
