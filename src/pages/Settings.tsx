@@ -289,7 +289,7 @@ const Settings = () => {
                 disabled={passLoading}
                 className="w-full py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                {passLoading && <span className="inline-flex items-center gap-1 text-primary-foreground" role="status" aria-label="Loading">{[0, 0.12, 0.24, 0.36, 0.48, 0.6].map((d, i) => (<span key={i} className="loader-dot w-1.5 h-1.5 rounded-full bg-current" style={{ animationDelay: `${d}s` }} />))}</span>}
+                {passLoading && <div className="loader-cluster gap-1" role="status" aria-label="Loading">{[0, 0.1, 0.2, 0.3, 0.4, 0.5].map((d, i) => (<span key={i} className="loader-dot loader-dot--sm" style={{ animationDelay: `${d}s` }} />))}</div>}
                 {t("settings.updatePassword")}
               </button>
             </div>
