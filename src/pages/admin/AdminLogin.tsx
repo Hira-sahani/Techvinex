@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import JetraLoader from "@/components/JetraLoader";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,13 +27,14 @@ const AdminLogin = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="relative min-h-screen flex items-center justify-center bg-background p-4">
+      {loading && <JetraLoader />}
       <div className="w-full max-w-sm">
         <div className="text-center mb-6">
           <div className="mx-auto w-9 h-9 rounded-md bg-foreground flex items-center justify-center mb-3">
             <Shield className="w-4 h-4 text-background" />
           </div>
-          <h1 className="text-sm font-semibold text-foreground">Jetra X Admin</h1>
+          <h1 className="text-sm font-semibold text-foreground">Jetra Admin</h1>
           <p className="text-[10px] text-muted-foreground mt-0.5">Sign in to control center</p>
         </div>
         <div className="bg-card border border-border rounded-lg p-5">
@@ -51,11 +53,10 @@ const AdminLogin = () => {
               </div>
             </div>
             <Button type="submit" disabled={loading} size="sm" className="w-full h-8 text-xs mt-1">
-              {loading ? "Signing in..." : "Sign In"}
+              {loading ? "Please wait..." : "Sign In"}
             </Button>
           </form>
         </div>
-        
       </div>
     </div>
   );

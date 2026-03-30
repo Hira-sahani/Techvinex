@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import JetraLoader from "@/components/JetraLoader";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { CheckCircle, ShieldAlert } from "lucide-react";
@@ -16,14 +17,12 @@ const ResetPassword = () => {
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    // Listen for PASSWORD_RECOVERY event
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
         setIsRecovery(true);
       }
     });
 
-    // Check URL hash for recovery type
     const hash = window.location.hash;
     if (hash && hash.includes("type=recovery")) {
       setIsRecovery(true);
@@ -47,7 +46,7 @@ const ResetPassword = () => {
       toast.error(strength.errors[0]);
       return;
     }
-    // Leaked password check
+
     setLoading(true);
     const leaked = await checkLeakedPassword(password);
     if (leaked.leaked) {
@@ -55,6 +54,7 @@ const ResetPassword = () => {
       toast.error(`This password has been found in ${leaked.count.toLocaleString()} data breaches. Please choose a different one.`, { icon: <ShieldAlert className="w-5 h-5 text-destructive" /> });
       return;
     }
+
     setLoading(true);
     const { error } = await supabase.auth.updateUser({ password });
     setLoading(false);
@@ -88,14 +88,15 @@ const ResetPassword = () => {
   }
 
   return (
-    <div className="min-h-screen bg-muted/30 flex flex-col items-center justify-center px-4">
+    <div className="relative min-h-screen bg-muted/30 flex flex-col items-center justify-center px-4">
+      {loading && <JetraLoader />}
       <div className="w-full max-w-md bg-card rounded-2xl shadow-xl p-10">
         <div className="flex flex-col items-center mb-10">
-          <div className="flex items-center gap-1.5 text-primary mb-5" role="img" aria-label="Jetra loading mark">
-            {[0, 0.12, 0.24, 0.36, 0.48, 0.6].map((d, i) => (
+          <div className="loader-cluster gap-1.5 mb-5" aria-hidden="true">
+            {[0, 0.1, 0.2, 0.3, 0.4, 0.5].map((d, i) => (
               <span
                 key={i}
-                className="loader-dot w-2.5 h-2.5 rounded-full bg-current"
+                className="loader-dot loader-dot--md"
                 style={{ animationDelay: `${d}s` }}
               />
             ))}
@@ -138,7 +139,7 @@ const ResetPassword = () => {
             disabled={loading || !isRecovery}
             className="w-full rounded-lg py-5 text-sm font-semibold gradient-cta border-0 text-primary-foreground hover:opacity-90"
           >
-            {loading ? <span className="inline-flex items-center gap-2"><span className="inline-flex items-center gap-1 text-primary-foreground" role="status" aria-label="Loading">{[0, 0.12, 0.24, 0.36, 0.48, 0.6].map((d, i) => (<span key={i} className="loader-dot w-1.5 h-1.5 rounded-full bg-current" style={{ animationDelay: `${d}s` }} />))}</span> Please wait...</span> : "Update Password"}
+            {loading ? "Please wait..." : "Update Password"}
           </Button>
         </form>
 
