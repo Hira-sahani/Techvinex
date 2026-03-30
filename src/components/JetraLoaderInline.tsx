@@ -1,15 +1,11 @@
-/**
- * Inline X loader – smaller version of JetraLoader for use inside sections/buttons.
- * Shows the animated X without taking up the full screen.
- */
 const JetraLoaderInline = ({ size = "md" }: { size?: "sm" | "md" }) => {
-  const dim = size === "sm" ? "w-6 h-6" : "w-10 h-10";
-  const line = size === "sm" ? "w-4 h-[2px]" : "w-7 h-[3px]";
+  const dot = size === "sm" ? "w-1.5 h-1.5" : "w-2.5 h-2.5";
 
   return (
-    <div className={`jetra-loader ${dim}`} role="status" aria-label="Loading">
-      <span className={`jetra-loader__line jetra-loader__line--first ${line}`} />
-      <span className={`jetra-loader__line jetra-loader__line--second ${line}`} />
+    <div className="flex items-center gap-1.5" role="status" aria-label="Loading">
+      <span className={`loader-dot rounded-full bg-primary ${dot}`} style={{ animationDelay: "0s" }} />
+      <span className={`loader-dot rounded-full bg-primary ${dot}`} style={{ animationDelay: "0.15s" }} />
+      <span className={`loader-dot rounded-full bg-primary ${dot}`} style={{ animationDelay: "0.3s" }} />
     </div>
   );
 };
