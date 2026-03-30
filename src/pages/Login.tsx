@@ -260,7 +260,7 @@ const Login = () => {
             className="w-full rounded-lg py-5 text-sm font-semibold border-border"
             onClick={handleSignUp}
           >
-            {loading && isSignUp ? <span className="inline-flex items-center gap-2"><span className="jetra-loader w-4 h-4 text-foreground"><span className="jetra-loader__line jetra-loader__line--first w-3 !h-[2px]" /><span className="jetra-loader__line jetra-loader__line--second w-3 !h-[2px]" /></span> Please wait...</span> : "Sign Up"}
+            {loading && isSignUp ? <span className="inline-flex items-center gap-2"><span className="flex gap-1">{[0,0.12,0.24].map((d,i)=>(<span key={i} className="loader-dot w-1.5 h-1.5 rounded-full bg-foreground" style={{animationDelay:`${d}s`}}/>))}</span> Please wait...</span> : "Sign Up"}
           </Button>
         </div>
 
