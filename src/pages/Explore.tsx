@@ -160,27 +160,6 @@ const Explore = () => {
 
   if (isLoading) return <JetraLoader />;
 
-  if (!user) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center px-4">
-        <div className="text-center max-w-md">
-          <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-6">
-            <Target size={32} className="text-primary" />
-          </div>
-          <h1 className="text-2xl font-bold text-foreground mb-3">Explore Opportunities</h1>
-          <p className="text-muted-foreground mb-6">
-            Discover curated opportunities matched to your skills. Sign in to apply, bookmark, and get personalized recommendations.
-          </p>
-          <button
-            onClick={() => navigate("/login")}
-            className="px-8 py-3 rounded-xl gradient-cta text-primary-foreground font-semibold hover:opacity-90 transition-opacity"
-          >
-            Sign in to explore
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   const filteredJobs = allJobs
     .filter((job) =>
