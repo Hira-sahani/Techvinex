@@ -7,7 +7,7 @@ import BottomTabBar from "@/components/BottomTabBar";
 import TopStatusBar from "@/components/TopStatusBar";
 import ProfileDropdown from "@/components/ProfileDropdown";
 import NotificationBell from "@/components/NotificationBell";
-import JetraLoaderInline from "@/components/JetraLoaderInline";
+import JetraLoader from "@/components/JetraLoader";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -106,13 +106,7 @@ const CandidateDashboard = () => {
     return () => { supabase.removeChannel(channel); };
   }, [user]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <JetraLoaderInline />
-      </div>
-    );
-  }
+  if (loading) return <JetraLoader />;
 
   const activeApps = applications.filter(a => !['rejected', 'hired', 'withdrawn'].includes(a.status));
   const pendingOffers = offers.filter(o => o.status === 'pending');
