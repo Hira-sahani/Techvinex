@@ -81,21 +81,19 @@ const Earnings = () => {
     }
   };
 
-  // Load existing payout account and history on mount
   useEffect(() => {
-    const loadPayoutAccount = async () => {
+    const loadAll = async () => {
       if (!user) return;
-      const { data } = await supabase
-        .from('payout_accounts')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      if (data && data.setup_completed) {
+      const [accountRes] = await Promise.all([
+        supabase.from('payout_accounts').select('*').eq('user_id', user.id).maybeSingle(),
+        fetchPayoutHistory(),
+      ]);
+      if (accountRes.data && accountRes.data.setup_completed) {
         setSetupComplete(true);
       }
+      setPageLoading(false);
     };
-    loadPayoutAccount();
-    fetchPayoutHistory();
+    loadAll();
   }, [user]);
 
   const handleCountrySelect = (val: string) => {
