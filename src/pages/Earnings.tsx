@@ -985,7 +985,7 @@ const Earnings = () => {
         </DialogContent>
       </Dialog>
 
-      <BottomTabBar />
+      
       </div>
     </div>
   );

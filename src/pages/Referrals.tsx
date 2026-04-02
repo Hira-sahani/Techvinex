@@ -271,7 +271,7 @@ const Referrals = () => {
           )}
         </div>
       </div>
-      <BottomTabBar />
+      
       </div>
     </div>
   );

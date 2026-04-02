@@ -7,7 +7,7 @@ import JetraLoaderInline from "@/components/JetraLoaderInline";
 import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import BottomTabBar from "@/components/BottomTabBar";
+
 import { useAuth } from "@/contexts/AuthContext";
 import { useRef } from "react";
 import { useApplicationSteps } from "@/hooks/useApplicationSteps";

@@ -66,7 +66,7 @@ const Profile = () => {
           </div>
         </div>
       </div>
-      <BottomTabBar />
+      
     </div>
   );
 };

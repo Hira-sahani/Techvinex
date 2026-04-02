@@ -202,7 +202,7 @@ const CandidateDashboard = () => {
           </div>
         </div>
       </div>
-      <BottomTabBar />
+      
     </div>
   );
 };

@@ -200,7 +200,7 @@ const AppLayout = () => {
         </Routes>
       </Suspense>
       </LazyErrorBoundary>
-      {showTabs && <BottomTabBar />}
+      
     </>
   );
 };

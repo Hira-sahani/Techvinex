@@ -390,7 +390,7 @@ const Settings = () => {
           </div>
         )}
       </div>
-      <BottomTabBar />
+      
     </div>
   );
 };

@@ -131,7 +131,7 @@ const ApplyRole = () => {
             <Button onClick={() => navigate("/")} className="flex-1 rounded-full">Go Home</Button>
           </div>
         </div>
-        <BottomTabBar />
+        
       </div>
     );
   }

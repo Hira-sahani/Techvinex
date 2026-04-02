@@ -105,7 +105,7 @@ const EditProfile = () => {
           <Button onClick={handleSave} className="w-full mt-4">Save Changes</Button>
         </div>
       </div>
-      <BottomTabBar />
+      
     </div>
   );
 };

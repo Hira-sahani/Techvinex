@@ -603,7 +603,7 @@ const Explore = () => {
         </div>
       </div>
 
-      <BottomTabBar />
+      
     </div>
   );
 };
