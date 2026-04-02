@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import JetraLoader from "@/components/JetraLoader";
+
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
@@ -163,7 +163,7 @@ const Login = () => {
 
   return (
     <div className="relative min-h-screen bg-muted/30 flex flex-col items-center justify-center px-4">
-      {loading && <JetraLoader />}
+      
       <div className="w-full max-w-md">
         <button
           type="button"
