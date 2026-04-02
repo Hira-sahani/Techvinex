@@ -7,7 +7,7 @@ import BottomTabBar from "@/components/BottomTabBar";
 import TopStatusBar from "@/components/TopStatusBar";
 import ProfileDropdown from "@/components/ProfileDropdown";
 import NotificationBell from "@/components/NotificationBell";
-import JetraLoader from "@/components/JetraLoader";
+import DashboardPageSkeleton from "@/components/skeletons/DashboardPageSkeleton";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import {
