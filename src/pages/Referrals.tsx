@@ -254,11 +254,7 @@ const Referrals = () => {
         {/* Referral history */}
         <div className="rounded-xl border border-border p-5 bg-card">
           <h3 className="font-semibold text-foreground text-sm mb-4">Your Referrals</h3>
-          {loading ? (
-            <div className="flex justify-center py-6">
-              <JetraLoaderInline size="sm" />
-            </div>
-          ) : referrals.length === 0 ? (
+          {referrals.length === 0 ? (
             <div className="text-center py-6">
               <UserPlus size={28} className="mx-auto text-muted-foreground mb-2" />
               <p className="text-sm text-muted-foreground font-medium">No referrals yet</p>
