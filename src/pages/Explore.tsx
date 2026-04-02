@@ -10,7 +10,7 @@ import ProfileDropdown from "@/components/ProfileDropdown";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLang } from "@/contexts/LangContext";
 import NotificationBell from "@/components/NotificationBell";
-import ExplorePageSkeleton from "@/components/skeletons/ExplorePageSkeleton";
+import PageDotLoader from "@/components/PageDotLoader";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
