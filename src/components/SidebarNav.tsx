@@ -1,5 +1,7 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { BriefcaseBusiness, Target, LayoutDashboard, UserPlus, Wallet, User } from "lucide-react";
+import JetraLoaderInline from "@/components/JetraLoaderInline";
+import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
 const sidebarItems = [
@@ -13,6 +15,7 @@ const sidebarItems = [
 const SidebarNav = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { loading } = useAuth();
 
   return (
     <aside className="flex fixed left-0 top-0 bottom-0 w-16 flex-col items-center pt-4 pb-6 bg-background border-r border-border z-50">
@@ -21,7 +24,11 @@ const SidebarNav = () => {
         aria-label="Go to opportunities"
         className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-card text-primary shadow-card transition-colors hover:bg-secondary mb-8"
       >
-        <BriefcaseBusiness size={16} strokeWidth={2.2} aria-hidden="true" />
+        {loading ? (
+          <JetraLoaderInline size="sm" />
+        ) : (
+          <BriefcaseBusiness size={16} strokeWidth={2.2} aria-hidden="true" />
+        )}
       </button>
 
       <div className="flex flex-col items-center gap-1 flex-1">
