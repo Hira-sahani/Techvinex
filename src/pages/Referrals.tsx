@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import Navbar from "@/components/Navbar";
+import SidebarNav from "@/components/SidebarNav";
+import TopStatusBar from "@/components/TopStatusBar";
 import BottomTabBar from "@/components/BottomTabBar";
 import { UserPlus, Copy, Gift, Share2, Mail, MessageCircle, Link2, CheckCircle2, ArrowRight, Users, DollarSign, Send, Loader2 } from "lucide-react";
 import JetraLoaderInline from "@/components/JetraLoaderInline";
@@ -123,9 +124,11 @@ const Referrals = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      <Navbar />
-      <div className="pt-24 px-4 max-w-2xl mx-auto space-y-5">
+    <div className="min-h-screen bg-background">
+      <SidebarNav />
+      <div className="ml-16 pb-20">
+        <TopStatusBar currentStep={2} />
+        <div className="px-4 sm:px-6 pt-4 max-w-2xl mx-auto space-y-5">
         {/* Header */}
         <div>
           <h1 className="text-2xl font-bold text-foreground mb-1">{t("referrals.title")}</h1>
@@ -271,6 +274,7 @@ const Referrals = () => {
         </div>
       </div>
       <BottomTabBar />
+      </div>
     </div>
   );
 };

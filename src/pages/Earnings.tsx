@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import Navbar from "@/components/Navbar";
+import SidebarNav from "@/components/SidebarNav";
+import TopStatusBar from "@/components/TopStatusBar";
 import BottomTabBar from "@/components/BottomTabBar";
 import { Wallet, ArrowLeft, Settings, Download, DollarSign, Clock, ArrowRight, Shield, Camera, Upload, CheckCircle2, FileText, Phone, User } from "lucide-react";
 import { useLang } from "@/contexts/LangContext";
@@ -860,9 +861,11 @@ const Earnings = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
-      <Navbar />
-      <div className="pt-24 px-4 max-w-2xl mx-auto">
+    <div className="min-h-screen bg-background">
+      <SidebarNav />
+      <div className="ml-16 pb-20">
+        <TopStatusBar currentStep={2} />
+        <div className="px-4 sm:px-6 pt-4 max-w-2xl mx-auto">
         <h1 className="text-2xl font-bold text-foreground mb-1">{t("earnings.title")}</h1>
         <p className="text-sm text-muted-foreground mb-4">
           Your total earnings to date are <span className="font-bold text-foreground">${totalPaid.toFixed(2)}</span>{" "}
@@ -981,6 +984,7 @@ const Earnings = () => {
       </Dialog>
 
       <BottomTabBar />
+      </div>
     </div>
   );
 };
