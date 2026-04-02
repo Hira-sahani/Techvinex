@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
-import Navbar from "@/components/Navbar";
+import SidebarNav from "@/components/SidebarNav";
+import TopStatusBar from "@/components/TopStatusBar";
 import BottomTabBar from "@/components/BottomTabBar";
 import { UserPlus, Copy, Gift, Share2, Mail, MessageCircle, Link2, CheckCircle2, ArrowRight, Users, DollarSign, Send, Loader2 } from "lucide-react";
 import JetraLoaderInline from "@/components/JetraLoaderInline";
