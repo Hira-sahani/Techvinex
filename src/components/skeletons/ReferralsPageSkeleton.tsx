@@ -1,7 +1,9 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import SkeletonOverlayLoader from "./SkeletonOverlayLoader";
 
 const ReferralsPageSkeleton = () => (
   <div className="max-w-2xl mx-auto space-y-5">
+    <SkeletonOverlayLoader />
     {/* Header */}
     <div>
       <Skeleton className="h-7 w-36 mb-1.5" />

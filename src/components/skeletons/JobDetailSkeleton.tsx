@@ -1,8 +1,10 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import SkeletonOverlayLoader from "./SkeletonOverlayLoader";
 
 const JobDetailSkeleton = () => (
   <div className="min-h-screen bg-background">
     <div className="max-w-3xl mx-auto px-4 py-8">
+      <SkeletonOverlayLoader />
       {/* Back button */}
       <Skeleton className="h-8 w-24 rounded-lg mb-6" />
       

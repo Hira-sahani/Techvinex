@@ -24,6 +24,7 @@ const JobCardSkeleton = () => (
 
 const ExplorePageSkeleton = () => (
   <div className="max-w-5xl mx-auto">
+    <SkeletonOverlayLoader />
     {/* Header skeleton */}
     <div className="flex items-center justify-between mb-4">
       <div>
