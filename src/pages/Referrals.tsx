@@ -3,7 +3,7 @@ import SidebarNav from "@/components/SidebarNav";
 import TopStatusBar from "@/components/TopStatusBar";
 import BottomTabBar from "@/components/BottomTabBar";
 import { UserPlus, Copy, Gift, Share2, Mail, MessageCircle, Link2, CheckCircle2, ArrowRight, Users, DollarSign, Send, Loader2 } from "lucide-react";
-import JetraLoaderInline from "@/components/JetraLoaderInline";
+import ReferralsPageSkeleton from "@/components/skeletons/ReferralsPageSkeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
