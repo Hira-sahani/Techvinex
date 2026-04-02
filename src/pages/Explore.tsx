@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Search, SlidersHorizontal, Users, X, ChevronDown, Share2, Sparkles, Target, Bookmark, BookmarkCheck, Star, MapPin, Briefcase, Clock } from "lucide-react";
 import { useExploreJobs, useUserBookmarks, useBookmarkJob } from "@/hooks/useExploreJobs";
 import type { ExploreJob } from "@/hooks/useExploreJobs";
-import BottomTabBar from "@/components/BottomTabBar";
+
 import SidebarNav from "@/components/SidebarNav";
 import TopStatusBar from "@/components/TopStatusBar";
 import ProfileDropdown from "@/components/ProfileDropdown";
