@@ -124,40 +124,68 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: hsl(var(--background) / 0.58);
-  backdrop-filter: blur(10px) brightness(0.78);
+  background: hsl(var(--background) / 0.45);
+  backdrop-filter: blur(16px) saturate(1.4) brightness(0.82);
+  animation: loader-fade-in 0.4s ease-out;
+}
+
+@keyframes loader-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .loader-shell {
   display: flex;
-  min-width: 10.5rem;
+  min-width: 11rem;
   flex-direction: column;
   align-items: center;
-  gap: 0.9rem;
-  border-radius: 1.25rem;
-  border: 1px solid hsl(var(--border) / 0.95);
-  background: hsl(var(--card) / 0.94);
-  padding: 1.1rem 1.35rem;
-  box-shadow: var(--shadow-card-hover);
+  gap: 1rem;
+  border-radius: 1.5rem;
+  border: 1px solid hsl(var(--primary) / 0.15);
+  background: linear-gradient(
+    145deg,
+    hsl(var(--card) / 0.92),
+    hsl(var(--primary) / 0.06)
+  );
+  padding: 1.5rem 1.75rem;
+  box-shadow:
+    0 0 0 1px hsl(var(--primary) / 0.08),
+    0 8px 32px -4px hsl(var(--primary) / 0.18),
+    0 20px 50px -12px hsl(0 0% 0% / 0.12);
+  animation: loader-shell-in 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes loader-shell-in {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
 .loader-cluster {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.15rem;
 }
 
 .loader-dot {
   flex: 0 0 auto;
   border-radius: 9999px;
-  background: hsl(var(--primary));
-  box-shadow: 0 8px 18px hsl(var(--primary) / 0.18);
+  background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary) / 0.7));
+  box-shadow:
+    0 0 12px hsl(var(--primary) / 0.35),
+    0 4px 8px hsl(var(--primary) / 0.2);
   animation: loader-wave 0.9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 .loader-dot--lg {
-  width: 0.75rem;
-  height: 0.75rem;
+  width: 0.7rem;
+  height: 0.7rem;
 }
 
 .loader-dot--md {
@@ -171,10 +199,17 @@
 }
 
 .loader-caption {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 600;
-  letter-spacing: 0.04em;
-  color: hsl(var(--muted-foreground));
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground) / 0.8);
+  animation: loader-text-pulse 2s ease-in-out infinite;
+}
+
+@keyframes loader-text-pulse {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
