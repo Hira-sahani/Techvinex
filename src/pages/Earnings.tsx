@@ -65,6 +65,7 @@ const Earnings = () => {
   const [payoutHistory, setPayoutHistory] = useState<any[]>([]);
   const [totalPaid, setTotalPaid] = useState(0);
   const [totalPending, setTotalPending] = useState(0);
+  const [pageLoading, setPageLoading] = useState(true);
 
   const fetchPayoutHistory = async () => {
     if (!user) return;
