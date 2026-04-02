@@ -9,7 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
-import BottomTabBar from "@/components/BottomTabBar";
+
 import ApplyStepResume from "@/components/apply/ApplyStepResume";
 import ApplyStepWorkAuth from "@/components/apply/ApplyStepWorkAuth";
 import ApplyStepInterview from "@/components/apply/ApplyStepInterview";
