@@ -123,6 +123,19 @@ const Referrals = () => {
     }
   };
 
+  if (loading) return (
+    <div className="min-h-screen bg-background">
+      <SidebarNav />
+      <div className="ml-16 pb-20">
+        <TopStatusBar currentStep={2} />
+        <div className="px-4 sm:px-6 pt-4">
+          <ReferralsPageSkeleton />
+        </div>
+      </div>
+      <BottomTabBar />
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <SidebarNav />
