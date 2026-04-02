@@ -2,7 +2,7 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
-import JetraLoaderInline from "@/components/JetraLoaderInline";
+import JetraLoader from "@/components/JetraLoader";
 
 const EmployerProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading: authLoading } = useAuth();
@@ -22,11 +22,7 @@ const EmployerProtectedRoute = ({ children }: { children: React.ReactNode }) => 
   }, [user, authLoading]);
 
   if (authLoading || hasAccess === null) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <JetraLoaderInline />
-      </div>
-    );
+    return <JetraLoader />;
   }
 
   if (!user || !hasAccess) return <Navigate to="/employer/login" replace />;
