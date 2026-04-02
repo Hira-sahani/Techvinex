@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { Target, LayoutDashboard, UserPlus, Wallet, User } from "lucide-react";
+import JetraLoaderInline from "@/components/JetraLoaderInline";
 import { cn } from "@/lib/utils";
 
 const sidebarItems = [
@@ -16,8 +17,12 @@ const SidebarNav = () => {
 
   return (
     <aside className="flex fixed left-0 top-0 bottom-0 w-16 flex-col items-center pt-4 pb-6 bg-background border-r border-border z-50">
-      <button onClick={() => navigate("/")} className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center mb-8">
-        <span className="text-primary-foreground font-bold text-sm">X</span>
+      <button
+        onClick={() => navigate("/")}
+        aria-label="Go to opportunities"
+        className="w-8 h-8 rounded-lg border border-border bg-card flex items-center justify-center mb-8 shadow-card"
+      >
+        <JetraLoaderInline size="sm" />
       </button>
 
       <div className="flex flex-col items-center gap-1 flex-1">
