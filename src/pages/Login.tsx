@@ -175,15 +175,8 @@ const Login = () => {
         </button>
         <div className="bg-card rounded-2xl shadow-xl p-10 mb-6">
           <div className="flex flex-col items-center mb-10">
-            <div className="flex gap-1.5 mb-5" aria-hidden="true">
-              {[0, 1, 2, 3, 4, 5].map((i) => (
-                <span
-                  key={i}
-                  className="w-2.5 h-2.5 rounded-full bg-primary/40"
-                  style={{ opacity: i === 5 ? 1 : 0.5 }}
-                />
-              ))}
-            </div>
+
+
             <h1 className="text-2xl font-bold text-foreground tracking-tight">
               Continue to Jetra
             </h1>
