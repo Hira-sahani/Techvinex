@@ -3,7 +3,7 @@ import SidebarNav from "@/components/SidebarNav";
 import TopStatusBar from "@/components/TopStatusBar";
 import BottomTabBar from "@/components/BottomTabBar";
 import { UserPlus, Copy, Gift, Share2, Mail, MessageCircle, Link2, CheckCircle2, ArrowRight, Users, DollarSign, Send, Loader2 } from "lucide-react";
-import JetraLoaderInline from "@/components/JetraLoaderInline";
+import ReferralsPageSkeleton from "@/components/skeletons/ReferralsPageSkeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -123,6 +123,19 @@ const Referrals = () => {
     }
   };
 
+  if (loading) return (
+    <div className="min-h-screen bg-background">
+      <SidebarNav />
+      <div className="ml-16 pb-20">
+        <TopStatusBar currentStep={2} />
+        <div className="px-4 sm:px-6 pt-4">
+          <ReferralsPageSkeleton />
+        </div>
+      </div>
+      <BottomTabBar />
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-background">
       <SidebarNav />
@@ -241,11 +254,7 @@ const Referrals = () => {
         {/* Referral history */}
         <div className="rounded-xl border border-border p-5 bg-card">
           <h3 className="font-semibold text-foreground text-sm mb-4">Your Referrals</h3>
-          {loading ? (
-            <div className="flex justify-center py-6">
-              <JetraLoaderInline size="sm" />
-            </div>
-          ) : referrals.length === 0 ? (
+          {referrals.length === 0 ? (
             <div className="text-center py-6">
               <UserPlus size={28} className="mx-auto text-muted-foreground mb-2" />
               <p className="text-sm text-muted-foreground font-medium">No referrals yet</p>

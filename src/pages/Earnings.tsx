@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import EarningsPageSkeleton from "@/components/skeletons/EarningsPageSkeleton";
 
 const VERIFICATION_OTP = "123456";
 
@@ -65,6 +66,7 @@ const Earnings = () => {
   const [payoutHistory, setPayoutHistory] = useState<any[]>([]);
   const [totalPaid, setTotalPaid] = useState(0);
   const [totalPending, setTotalPending] = useState(0);
+  const [pageLoading, setPageLoading] = useState(true);
 
   const fetchPayoutHistory = async () => {
     if (!user) return;
@@ -80,21 +82,19 @@ const Earnings = () => {
     }
   };
 
-  // Load existing payout account and history on mount
   useEffect(() => {
-    const loadPayoutAccount = async () => {
+    const loadAll = async () => {
       if (!user) return;
-      const { data } = await supabase
-        .from('payout_accounts')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      if (data && data.setup_completed) {
+      const [accountRes] = await Promise.all([
+        supabase.from('payout_accounts').select('*').eq('user_id', user.id).maybeSingle(),
+        fetchPayoutHistory(),
+      ]);
+      if (accountRes.data && accountRes.data.setup_completed) {
         setSetupComplete(true);
       }
+      setPageLoading(false);
     };
-    loadPayoutAccount();
-    fetchPayoutHistory();
+    loadAll();
   }, [user]);
 
   const handleCountrySelect = (val: string) => {
@@ -859,6 +859,19 @@ const Earnings = () => {
         return null;
     }
   };
+
+  if (pageLoading) return (
+    <div className="min-h-screen bg-background">
+      <SidebarNav />
+      <div className="ml-16 pb-20">
+        <TopStatusBar currentStep={2} />
+        <div className="px-4 sm:px-6 pt-4">
+          <EarningsPageSkeleton />
+        </div>
+      </div>
+      <BottomTabBar />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-background">
