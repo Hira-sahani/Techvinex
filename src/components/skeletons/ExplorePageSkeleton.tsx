@@ -1,4 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import SkeletonOverlayLoader from "./SkeletonOverlayLoader";
 
 const JobCardSkeleton = () => (
   <div className="border border-border rounded-xl p-4 bg-card flex flex-col gap-3">
@@ -23,6 +24,7 @@ const JobCardSkeleton = () => (
 
 const ExplorePageSkeleton = () => (
   <div className="max-w-5xl mx-auto">
+    <SkeletonOverlayLoader />
     {/* Header skeleton */}
     <div className="flex items-center justify-between mb-4">
       <div>

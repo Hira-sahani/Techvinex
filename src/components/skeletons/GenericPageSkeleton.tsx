@@ -1,4 +1,5 @@
 import { Skeleton } from "@/components/ui/skeleton";
+import SkeletonOverlayLoader from "./SkeletonOverlayLoader";
 
 const GenericPageSkeleton = () => (
   <div className="min-h-screen bg-background">
@@ -19,6 +20,7 @@ const GenericPageSkeleton = () => (
       <Skeleton className="h-10 w-full" />
 
       <div className="px-4 sm:px-6 pt-4 max-w-4xl mx-auto">
+        <SkeletonOverlayLoader />
         {/* Header */}
         <Skeleton className="h-7 w-48 mb-2" />
         <Skeleton className="h-4 w-64 mb-6" />
