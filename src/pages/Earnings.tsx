@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import EarningsPageSkeleton from "@/components/skeletons/EarningsPageSkeleton";
+import PageDotLoader from "@/components/PageDotLoader";
 
 const VERIFICATION_OTP = "123456";
 
