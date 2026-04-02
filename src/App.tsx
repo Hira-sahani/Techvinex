@@ -102,7 +102,7 @@ const queryClient = new QueryClient();
 
 const TABS_VISIBLE_ROUTES = ["/", "/explore", "/dashboard", "/referrals", "/earnings", "/profile"];
 
-const PageLoader = () => <JetraLoader />;
+const PageLoader = () => <GenericPageSkeleton />;
 
 const AppLayout = () => {
   const location = useLocation();
