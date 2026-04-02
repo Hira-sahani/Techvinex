@@ -10,7 +10,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "next-themes";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AuthRedirectHandler from "@/components/AuthRedirectHandler";
-import BottomTabBar from "@/components/BottomTabBar";
+
 import SidebarNav from "@/components/SidebarNav";
 import EmployerProtectedRoute from "@/components/employer/EmployerProtectedRoute";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
