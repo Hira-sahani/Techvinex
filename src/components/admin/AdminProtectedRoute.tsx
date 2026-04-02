@@ -22,11 +22,7 @@ const AdminProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   }, [user, authLoading]);
 
   if (authLoading || isAdmin === null) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <JetraLoaderInline />
-      </div>
-    );
+    return <JetraLoader />;
   }
 
   if (!user || !isAdmin) return <Navigate to="/admin/login" replace />;

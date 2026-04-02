@@ -22,11 +22,7 @@ const EmployerProtectedRoute = ({ children }: { children: React.ReactNode }) => 
   }, [user, authLoading]);
 
   if (authLoading || hasAccess === null) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <JetraLoaderInline />
-      </div>
-    );
+    return <JetraLoader />;
   }
 
   if (!user || !hasAccess) return <Navigate to="/employer/login" replace />;
