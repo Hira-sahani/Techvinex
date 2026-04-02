@@ -983,6 +983,7 @@ const Earnings = () => {
       </Dialog>
 
       <BottomTabBar />
+      </div>
     </div>
   );
 };
