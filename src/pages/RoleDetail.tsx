@@ -37,7 +37,7 @@ const RoleDetail = () => {
 
   const similarRoles = rolesData.filter((r) => r.id !== id).slice(0, 6);
 
-  if (rolesLoading) return <JobDetailSkeleton />;
+  if (rolesLoading) return <PageDotLoader />;
 
   if (!role) {
     return (

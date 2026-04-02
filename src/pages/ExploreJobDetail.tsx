@@ -28,7 +28,7 @@ const ExploreJobDetail = () => {
     }
   }, [job?.id]);
 
-  if (isLoading) return <JobDetailSkeleton />;
+  if (isLoading) return <PageDotLoader />;
   if (!job) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
