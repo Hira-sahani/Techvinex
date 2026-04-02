@@ -16,7 +16,7 @@ import EmployerProtectedRoute from "@/components/employer/EmployerProtectedRoute
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 
 import OfflineBanner from "@/components/OfflineBanner";
-import GenericPageSkeleton from "@/components/skeletons/GenericPageSkeleton";
+import JetraLoader from "@/components/JetraLoader";
 
 // Error boundary to handle dynamic import failures (common in preview)
 class LazyErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
@@ -102,7 +102,7 @@ const queryClient = new QueryClient();
 
 const TABS_VISIBLE_ROUTES = ["/", "/explore", "/dashboard", "/referrals", "/earnings", "/profile"];
 
-const PageLoader = () => <GenericPageSkeleton />;
+const PageLoader = () => <JetraLoader />;
 
 const AppLayout = () => {
   const location = useLocation();

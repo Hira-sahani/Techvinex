@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import EarningsPageSkeleton from "@/components/skeletons/EarningsPageSkeleton";
+import PageDotLoader from "@/components/PageDotLoader";
 
 const VERIFICATION_OTP = "123456";
 
@@ -860,18 +860,7 @@ const Earnings = () => {
     }
   };
 
-  if (pageLoading) return (
-    <div className="min-h-screen bg-background">
-      <SidebarNav />
-      <div className="ml-16 pb-20">
-        <TopStatusBar currentStep={2} />
-        <div className="px-4 sm:px-6 pt-4">
-          <EarningsPageSkeleton />
-        </div>
-      </div>
-      <BottomTabBar />
-    </div>
-  );
+  if (pageLoading) return <PageDotLoader />;
 
   return (
     <div className="min-h-screen bg-background">

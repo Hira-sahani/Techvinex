@@ -2,7 +2,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { MapPin, Briefcase, Users, CheckCircle2, ChevronLeft, ChevronRight, LinkIcon, Sparkles } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useRoles } from "@/hooks/useRoles";
-import JobDetailSkeleton from "@/components/skeletons/JobDetailSkeleton";
+import PageDotLoader from "@/components/PageDotLoader";
 import JetraLoaderInline from "@/components/JetraLoaderInline";
 import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
@@ -37,7 +37,7 @@ const RoleDetail = () => {
 
   const similarRoles = rolesData.filter((r) => r.id !== id).slice(0, 6);
 
-  if (rolesLoading) return <JobDetailSkeleton />;
+  if (rolesLoading) return <PageDotLoader />;
 
   if (!role) {
     return (
