@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Eye, EyeOff, Building2 } from "lucide-react";
@@ -13,9 +13,8 @@ const EmployerLogin = () => {
   const { user } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!user) return;
@@ -32,23 +31,16 @@ const EmployerLogin = () => {
     return data?.some((r: any) => r.role === "employer" || r.role === "admin") ?? false;
   };
 
-  const handleLogin = async () => {
-    setError("");
-    if (!email || !password) { setError("Please enter email and password"); return; }
-
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
     setLoading(true);
-    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password });
-
-    if (authError) {
-      setError(authError.message);
-      setLoading(false);
-      return;
-    }
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) { toast.error(error.message); setLoading(false); return; }
 
     const hasAccess = await checkAccess(data.user.id);
     if (!hasAccess) {
       await supabase.auth.signOut();
-      setError("You don't have employer portal access. Contact your account manager.");
+      toast.error("Access denied. Employer privileges required.");
       setLoading(false);
       return;
     }
@@ -59,51 +51,37 @@ const EmployerLogin = () => {
   };
 
   return (
-    <div className="relative min-h-screen bg-muted/30 flex items-center justify-center px-4">
-      
-      <div className="w-full max-w-md">
-        <div className="bg-card rounded-2xl shadow-xl p-8 md:p-10">
-          <div className="flex flex-col items-center mb-8">
-            <div className="w-14 h-14 rounded-2xl gradient-cta flex items-center justify-center mb-4">
-              <Building2 className="w-7 h-7 text-primary-foreground" />
-            </div>
-            <h1 className="text-2xl font-bold text-foreground">Employer Portal</h1>
-            <p className="text-sm text-muted-foreground mt-1">Invite-only access for approved companies</p>
+    <div className="relative min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-6">
+          <div className="mx-auto w-9 h-9 rounded-md bg-primary flex items-center justify-center mb-3">
+            <Building2 className="w-4 h-4 text-primary-foreground" />
           </div>
-
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">Email</label>
-              <Input type="email" placeholder="employer@company.com" value={email}
-                onChange={(e) => { setEmail(e.target.value); setError(""); }} className="rounded-lg py-5" />
+          <h1 className="text-sm font-semibold text-foreground">Employer Portal</h1>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Invite-only access for approved companies</p>
+        </div>
+        <div className="bg-card border border-border rounded-lg p-5">
+          <form onSubmit={handleLogin} className="space-y-3">
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Email</Label>
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="employer@company.com" required className="h-8 text-xs bg-muted/30 border-transparent focus-visible:border-border" />
             </div>
-            <div>
-              <label className="text-sm font-medium text-foreground mb-1.5 block">Password</label>
+            <div className="space-y-1">
+              <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Password</Label>
               <div className="relative">
-                <Input type={showPassword ? "text" : "password"} placeholder="••••••••" value={password}
-                  onChange={(e) => { setPassword(e.target.value); setError(""); }}
-                  className="rounded-lg py-5 pr-10"
-                  onKeyDown={(e) => e.key === "Enter" && handleLogin()} />
-                <button type="button" onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                <Input type={showPw ? "text" : "password"} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required className="h-8 text-xs pr-8 bg-muted/30 border-transparent focus-visible:border-border" />
+                <button type="button" onClick={() => setShowPw(!showPw)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  {showPw ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                 </button>
               </div>
             </div>
-
-            {error && <p className="text-sm text-destructive">{error}</p>}
-
-            <Button onClick={handleLogin} disabled={loading}
-              className="w-full rounded-lg py-5 text-sm font-semibold gradient-cta border-0 text-primary-foreground hover:opacity-90">
+            <Button type="submit" disabled={loading} size="sm" className="w-full h-8 text-xs mt-1">
               {loading ? "Please wait..." : "Sign In"}
             </Button>
-          </div>
-
-          <div className="mt-6">
-            <p className="text-xs text-muted-foreground text-center">
-              This portal is invite-only. Contact your account manager for access.
-            </p>
-          </div>
+          </form>
+          <p className="text-[10px] text-muted-foreground text-center mt-3">
+            This portal is invite-only. Contact your account manager for access.
+          </p>
         </div>
       </div>
     </div>
