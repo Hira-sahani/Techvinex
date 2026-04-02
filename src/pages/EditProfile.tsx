@@ -1,5 +1,5 @@
 import Navbar from "@/components/Navbar";
-import BottomTabBar from "@/components/BottomTabBar";
+
 import { ArrowLeft, ChevronDown } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
