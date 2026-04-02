@@ -1,5 +1,5 @@
 import Navbar from "@/components/Navbar";
-import BottomTabBar from "@/components/BottomTabBar";
+
 import { ArrowLeft, Bell, Moon, Globe, Shield, ChevronRight, HelpCircle, Trash2, Lock, MessageCircle, ChevronDown, Loader2 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Switch } from "@/components/ui/switch";
@@ -390,7 +390,7 @@ const Settings = () => {
           </div>
         )}
       </div>
-      <BottomTabBar />
+      
     </div>
   );
 };

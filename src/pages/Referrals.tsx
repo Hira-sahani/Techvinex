@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import SidebarNav from "@/components/SidebarNav";
 import TopStatusBar from "@/components/TopStatusBar";
-import BottomTabBar from "@/components/BottomTabBar";
+
 import { UserPlus, Copy, Gift, Share2, Mail, MessageCircle, Link2, CheckCircle2, ArrowRight, Users, DollarSign, Send, Loader2 } from "lucide-react";
 import PageDotLoader from "@/components/PageDotLoader";
 import { Button } from "@/components/ui/button";
@@ -271,7 +271,7 @@ const Referrals = () => {
           )}
         </div>
       </div>
-      <BottomTabBar />
+      
       </div>
     </div>
   );
