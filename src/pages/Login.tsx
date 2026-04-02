@@ -2,12 +2,11 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
-import { CheckCircle, ShieldAlert, ArrowLeft, Eye, EyeOff } from "lucide-react";
-import { checkPasswordStrength, checkLeakedPassword } from "@/lib/passwordSecurity";
+import { CheckCircle, ArrowLeft, Eye, EyeOff, LogIn } from "lucide-react";
 
 const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
@@ -20,26 +19,18 @@ const Login = () => {
   const [isSignUp, setIsSignUp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showCheckInbox, setShowCheckInbox] = useState(false);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
   const [emailError, setEmailError] = useState("");
   const [passwordError, setPasswordError] = useState("");
 
   const handleForgotPassword = async () => {
-    if (!email) {
-      toast.error("Please enter your email first");
-      return;
-    }
+    if (!email) { toast.error("Please enter your email first"); return; }
     setLoading(true);
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
     setLoading(false);
-    if (error) {
-      toast.error(error.message);
-    } else {
-      setResetEmailSent(true);
-    }
+    if (error) { toast.error(error.message); } else { setResetEmailSent(true); }
   };
 
   const handleLogin = async () => {
@@ -51,80 +42,45 @@ const Login = () => {
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
-    if (error) {
-      setPasswordError("Invalid email or password");
-    } else {
-      toast.success("Logged in successfully!");
-    }
+    if (error) { setPasswordError("Invalid email or password"); } else { toast.success("Logged in successfully!"); }
   };
 
   const handleSignUp = async () => {
-    if (!email) {
-      setEmailError("Please enter your email");
-      return;
-    }
-    if (!isValidEmail(email)) {
-      setEmailError("Invalid email address");
-      return;
-    }
+    if (!email) { setEmailError("Please enter your email"); return; }
+    if (!isValidEmail(email)) { setEmailError("Invalid email address"); return; }
     setEmailError("");
     setLoading(true);
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: {
-        emailRedirectTo: window.location.origin,
-        shouldCreateUser: true,
-      },
+      options: { emailRedirectTo: window.location.origin, shouldCreateUser: true },
     });
     setLoading(false);
-    if (error) {
-      toast.error(error.message);
-    } else {
-      setIsSignUp(true);
-      setShowCheckInbox(true);
-    }
+    if (error) { toast.error(error.message); } else { setIsSignUp(true); setShowCheckInbox(true); }
   };
 
   const handleLoginClick = async () => {
-    if (!email) {
-      setEmailError("Please enter your email");
-      return;
-    }
-    if (!isValidEmail(email)) {
-      setEmailError("Invalid email address");
-      return;
-    }
+    if (!email) { setEmailError("Please enter your email"); return; }
+    if (!isValidEmail(email)) { setEmailError("Invalid email address"); return; }
     setEmailError("");
-    if (!showPassword) {
-      setIsSignUp(false);
-      setShowPassword(true);
-      return;
-    }
+    if (!showPassword) { setIsSignUp(false); setShowPassword(true); return; }
     await handleLogin();
   };
 
   if (resetEmailSent) {
     return (
-      <div className="min-h-screen bg-muted/30 flex flex-col items-center justify-center px-4">
-        <div className="w-full max-w-md bg-card rounded-2xl shadow-xl p-10 mb-6 flex flex-col items-center text-center">
-          <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mb-5">
-            <CheckCircle className="w-8 h-8 text-green-500" />
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="w-full max-w-sm">
+          <div className="bg-card border border-border rounded-lg p-5 flex flex-col items-center text-center">
+            <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mb-3">
+              <CheckCircle className="w-4 h-4 text-green-600" />
+            </div>
+            <h1 className="text-sm font-semibold text-foreground mb-1">Check your inbox</h1>
+            <p className="text-[10px] text-muted-foreground mb-4">We've sent you a password reset link.</p>
+            <Button size="sm" className="w-full h-8 text-xs"
+              onClick={() => { setResetEmailSent(false); setShowPassword(false); }}>
+              Got it
+            </Button>
           </div>
-          <h1 className="text-2xl font-bold text-foreground mb-3">Check your inbox</h1>
-          <p className="text-sm text-muted-foreground mb-8 leading-relaxed">
-            We've sent you a password reset link.<br />
-            Please check your email to continue.
-          </p>
-          <Button
-            className="w-full rounded-lg py-5 text-sm font-semibold gradient-cta border-0 text-primary-foreground hover:opacity-90"
-            onClick={() => {
-              setResetEmailSent(false);
-              setShowForgotPassword(false);
-              setShowPassword(false);
-            }}
-          >
-            Got it
-          </Button>
         </div>
       </div>
     );
@@ -132,167 +88,116 @@ const Login = () => {
 
   if (showCheckInbox) {
     return (
-      <div className="min-h-screen bg-muted/30 flex flex-col items-center justify-center px-4">
-        <div className="w-full max-w-md bg-card rounded-2xl shadow-xl p-10 mb-6 flex flex-col items-center text-center">
-          <div className="w-14 h-14 rounded-full bg-green-100 flex items-center justify-center mb-5">
-            <CheckCircle className="w-8 h-8 text-green-500" />
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="w-full max-w-sm">
+          <div className="bg-card border border-border rounded-lg p-5 flex flex-col items-center text-center">
+            <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mb-3">
+              <CheckCircle className="w-4 h-4 text-green-600" />
+            </div>
+            <h1 className="text-sm font-semibold text-foreground mb-1">Check your inbox</h1>
+            <p className="text-[10px] text-muted-foreground mb-4">We've sent you an activation link. Check your email.</p>
+            <Button size="sm" className="w-full h-8 text-xs"
+              onClick={() => { setShowCheckInbox(false); setShowPassword(false); setPassword(""); setIsSignUp(false); }}>
+              Got it
+            </Button>
           </div>
-          <h1 className="text-2xl font-bold text-foreground mb-3">Check your inbox</h1>
-          <p className="text-sm text-muted-foreground mb-8 leading-relaxed">
-            We've sent you an activation link. Please check your email<br />
-            and login with magic link.
+          <p className="text-[10px] text-muted-foreground text-center mt-3">
+            By signing in, <a href="/terms" className="underline text-foreground">you agree to our Worker Terms of Service</a>.
           </p>
-          <Button
-            className="w-full rounded-lg py-5 text-sm font-semibold gradient-cta border-0 text-primary-foreground hover:opacity-90"
-            onClick={() => {
-              setShowCheckInbox(false);
-              setShowPassword(false);
-              setPassword("");
-              setIsSignUp(false);
-            }}
-          >
-            Got it
-          </Button>
         </div>
-        <p className="text-xs text-muted-foreground text-center">
-          By signing in, <a href="/terms" className="underline text-foreground">you agree to our Worker Terms of Service</a>.
-        </p>
       </div>
     );
   }
 
   return (
-    <div className="relative min-h-screen bg-muted/30 flex flex-col items-center justify-center px-4">
-      
-      <div className="w-full max-w-md">
-        <button
-          type="button"
-          onClick={() => navigate("/explore")}
-          className="flex items-center gap-1.5 px-3 py-1.5 mb-4 rounded-lg bg-secondary text-foreground text-sm font-medium hover:bg-primary/15 hover:text-primary active:bg-primary/25 active:text-primary transition-colors"
-        >
-          <ArrowLeft size={16} />
-          Back
+    <div className="relative min-h-screen flex items-center justify-center bg-background p-4">
+      <div className="w-full max-w-sm">
+        <button type="button" onClick={() => navigate("/explore")}
+          className="flex items-center gap-1 px-2 py-1 mb-4 rounded-md text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+          <ArrowLeft size={12} /> Back
         </button>
-        <div className="bg-card rounded-2xl shadow-xl p-10 mb-6">
-          <div className="flex flex-col items-center mb-10">
 
-
-            <h1 className="text-2xl font-bold text-foreground tracking-tight">
-              Continue to Jetra
-            </h1>
+        <div className="text-center mb-6">
+          <div className="mx-auto w-9 h-9 rounded-md bg-foreground flex items-center justify-center mb-3">
+            <LogIn className="w-4 h-4 text-background" />
           </div>
+          <h1 className="text-sm font-semibold text-foreground">Continue to Jetra</h1>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Sign in or create your account</p>
+        </div>
 
-          <div className="space-y-6">
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-sm font-medium text-foreground">Email address</label>
-                {emailError && (
-                  <span className="text-xs text-destructive">{emailError}</span>
-                )}
+        <div className="bg-card border border-border rounded-lg p-5">
+          <form onSubmit={(e) => { e.preventDefault(); handleLoginClick(); }} className="space-y-3">
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Email</Label>
+                {emailError && <span className="text-[10px] text-destructive">{emailError}</span>}
               </div>
-              <Input
-                type="text"
-                inputMode="email"
-                autoComplete="email"
-                placeholder="your@email.com"
-                value={email}
+              <Input type="email" inputMode="email" autoComplete="email" value={email}
                 onChange={(e) => { setEmail(e.target.value); setEmailError(""); }}
-                className={`rounded-lg py-5 bg-background ${emailError ? "border-destructive" : "border-border"}`}
-              />
+                placeholder="your@email.com" required
+                className={`h-8 text-xs bg-muted/30 border-transparent focus-visible:border-border ${emailError ? "border-destructive" : ""}`} />
             </div>
 
             {showPassword && (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium text-foreground">Password</label>
-                  {passwordError && (
-                    <span className="text-xs text-destructive">{passwordError}</span>
-                  )}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Password</Label>
+                  {passwordError && <span className="text-[10px] text-destructive">{passwordError}</span>}
                 </div>
                 <div className="relative">
-                  <Input
-                    type={passwordVisible ? "text" : "password"}
-                    placeholder="••••••••"
-                    value={password}
+                  <Input type={passwordVisible ? "text" : "password"} value={password}
                     onChange={(e) => { setPassword(e.target.value); setPasswordError(""); }}
-                    className={`rounded-lg py-5 pr-10 bg-background ${passwordError ? "border-destructive" : "border-border"}`}
-                    autoFocus
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setPasswordVisible(!passwordVisible)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    {passwordVisible ? <EyeOff size={16} /> : <Eye size={16} />}
+                    placeholder="••••••••" autoFocus
+                    className={`h-8 text-xs pr-8 bg-muted/30 border-transparent focus-visible:border-border ${passwordError ? "border-destructive" : ""}`} />
+                  <button type="button" onClick={() => setPasswordVisible(!passwordVisible)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                    {passwordVisible ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                   </button>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleForgotPassword}
-                  className="text-xs text-primary hover:underline mt-1.5 block text-right"
-                >
+                <button type="button" onClick={handleForgotPassword}
+                  className="text-[10px] text-primary hover:underline block text-right">
                   Forgot password?
                 </button>
               </div>
             )}
 
-            <Button
-              type="button"
-              disabled={loading}
-              className="w-full rounded-lg py-5 text-sm font-semibold gradient-cta border-0 text-primary-foreground hover:opacity-90"
-              onClick={handleLoginClick}
-            >
+            <Button type="submit" disabled={loading} size="sm" className="w-full h-8 text-xs mt-1">
               {loading && !isSignUp ? "Please wait..." : "Login"}
             </Button>
 
-            <Button
-              type="button"
-              variant="outline"
-              disabled={loading}
-              className="w-full rounded-lg py-5 text-sm font-semibold border-border"
-              onClick={handleSignUp}
-            >
+            <Button type="button" variant="outline" disabled={loading} size="sm"
+              className="w-full h-8 text-xs" onClick={handleSignUp}>
               {loading && isSignUp ? "Please wait..." : "Sign Up"}
             </Button>
+          </form>
+
+          <div className="flex items-center gap-2 my-3">
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-[10px] text-muted-foreground">Or continue with</span>
+            <div className="flex-1 h-px bg-border" />
           </div>
 
-          <div className="flex items-center gap-3 my-8">
-            <div className="flex-1 h-px bg-border" />
-            <span className="text-xs text-muted-foreground">Or continue with</span>
-            <div className="flex-1 h-px bg-border" />
-          </div>
-
-          <div className="flex gap-4">
-            <Button
-              variant="outline"
-              className="flex-1 rounded-lg py-5 text-sm font-medium border-border"
-              disabled={loading}
-              onClick={async () => {
-                setLoading(true);
-                const { error } = await lovable.auth.signInWithOAuth("google", {
-                  redirect_uri: window.location.origin,
-                });
-                setLoading(false);
-                if (error) {
-                  toast.error("Google sign-in failed: " + (error as Error).message);
-                }
-              }}
-            >
-              <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-              </svg>
-              Google
-            </Button>
-          </div>
+          <Button variant="outline" size="sm" className="w-full h-8 text-xs" disabled={loading}
+            onClick={async () => {
+              setLoading(true);
+              const { error } = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
+              setLoading(false);
+              if (error) toast.error("Google sign-in failed: " + (error as Error).message);
+            }}>
+            <svg className="w-3.5 h-3.5 mr-1.5" viewBox="0 0 24 24">
+              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+            </svg>
+            Google
+          </Button>
         </div>
-      </div>
 
-      <p className="text-xs text-muted-foreground text-center">
-        By signing in, <a href="/terms" className="underline text-foreground">you agree to our Worker Terms of Service</a>.
-      </p>
+        <p className="text-[10px] text-muted-foreground text-center mt-3">
+          By signing in, <a href="/terms" className="underline text-foreground">you agree to our Worker Terms of Service</a>.
+        </p>
+      </div>
     </div>
   );
 };
