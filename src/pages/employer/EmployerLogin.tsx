@@ -60,7 +60,7 @@ const EmployerLogin = () => {
 
   return (
     <div className="relative min-h-screen bg-muted/30 flex items-center justify-center px-4">
-      {loading && <JetraLoader />}
+      
       <div className="w-full max-w-md">
         <div className="bg-card rounded-2xl shadow-xl p-8 md:p-10">
           <div className="flex flex-col items-center mb-8">

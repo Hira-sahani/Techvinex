@@ -28,7 +28,7 @@ const AdminLogin = () => {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-background p-4">
-      {loading && <JetraLoader />}
+      
       <div className="w-full max-w-sm">
         <div className="text-center mb-6">
           <div className="mx-auto w-9 h-9 rounded-md bg-foreground flex items-center justify-center mb-3">

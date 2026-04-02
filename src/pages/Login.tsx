@@ -163,7 +163,7 @@ const Login = () => {
 
   return (
     <div className="relative min-h-screen bg-muted/30 flex flex-col items-center justify-center px-4">
-      {loading && <JetraLoader />}
+      
       <div className="w-full max-w-md">
         <button
           type="button"
