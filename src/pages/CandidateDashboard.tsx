@@ -7,7 +7,7 @@ import BottomTabBar from "@/components/BottomTabBar";
 import TopStatusBar from "@/components/TopStatusBar";
 import ProfileDropdown from "@/components/ProfileDropdown";
 import NotificationBell from "@/components/NotificationBell";
-import JetraLoader from "@/components/JetraLoader";
+import DashboardPageSkeleton from "@/components/skeletons/DashboardPageSkeleton";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -106,7 +106,18 @@ const CandidateDashboard = () => {
     return () => { supabase.removeChannel(channel); };
   }, [user]);
 
-  if (loading) return null;
+  if (loading) return (
+    <div className="min-h-screen bg-background">
+      <SidebarNav />
+      <div className="ml-16 pb-20">
+        <TopStatusBar currentStep={2} />
+        <div className="px-4 sm:px-6 pt-4">
+          <DashboardPageSkeleton />
+        </div>
+      </div>
+      <BottomTabBar />
+    </div>
+  );
 
   const activeApps = applications.filter(a => !['rejected', 'hired', 'withdrawn'].includes(a.status));
   const pendingOffers = offers.filter(o => o.status === 'pending');

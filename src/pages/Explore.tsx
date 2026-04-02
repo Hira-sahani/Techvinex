@@ -10,7 +10,7 @@ import ProfileDropdown from "@/components/ProfileDropdown";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLang } from "@/contexts/LangContext";
 import NotificationBell from "@/components/NotificationBell";
-import JetraLoader from "@/components/JetraLoader";
+import ExplorePageSkeleton from "@/components/skeletons/ExplorePageSkeleton";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
@@ -158,7 +158,18 @@ const Explore = () => {
     return true;
   };
 
-  if (isLoading) return <JetraLoader />;
+  if (isLoading) return (
+    <div className="min-h-screen bg-background">
+      <SidebarNav />
+      <div className="ml-16 pb-20">
+        <TopStatusBar currentStep={2} />
+        <div className="px-4 sm:px-6 pt-4">
+          <ExplorePageSkeleton />
+        </div>
+      </div>
+      <BottomTabBar />
+    </div>
+  );
 
 
   const filteredJobs = allJobs
