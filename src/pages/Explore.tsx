@@ -10,7 +10,7 @@ import ProfileDropdown from "@/components/ProfileDropdown";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLang } from "@/contexts/LangContext";
 import NotificationBell from "@/components/NotificationBell";
-import JetraLoader from "@/components/JetraLoader";
+import ExplorePageSkeleton from "@/components/skeletons/ExplorePageSkeleton";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
