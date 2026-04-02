@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useLang } from "@/contexts/LangContext";
 import { useNavigate } from "react-router-dom";
 import { countries } from "@/data/countries";
-import BottomTabBar from "@/components/BottomTabBar";
+
 import SidebarNav from "@/components/SidebarNav";
 import TopStatusBar from "@/components/TopStatusBar";
 import ProfileResumeTab from "@/components/profile/ProfileResumeTab";
