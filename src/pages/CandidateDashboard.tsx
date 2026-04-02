@@ -106,7 +106,7 @@ const CandidateDashboard = () => {
     return () => { supabase.removeChannel(channel); };
   }, [user]);
 
-  if (loading) return <JetraLoader />;
+  if (loading) return null;
 
   const activeApps = applications.filter(a => !['rejected', 'hired', 'withdrawn'].includes(a.status));
   const pendingOffers = offers.filter(o => o.status === 'pending');
