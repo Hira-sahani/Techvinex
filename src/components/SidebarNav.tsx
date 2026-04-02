@@ -15,7 +15,7 @@ const SidebarNav = () => {
   const navigate = useNavigate();
 
   return (
-    <aside className="hidden md:flex fixed left-0 top-0 bottom-0 w-16 flex-col items-center pt-4 pb-6 bg-background border-r border-border z-50">
+    <aside className="flex fixed left-0 top-0 bottom-0 w-16 flex-col items-center pt-4 pb-6 bg-background border-r border-border z-50">
       <button onClick={() => navigate("/")} className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center mb-8">
         <span className="text-primary-foreground font-bold text-sm">X</span>
       </button>

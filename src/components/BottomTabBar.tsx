@@ -17,7 +17,7 @@ const BottomTabBar = () => {
   const { t } = useLang();
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t border-border md:hidden">
+    <nav className="fixed bottom-0 left-16 right-0 z-50 bg-background border-t border-border">
       <div className="flex items-center justify-around h-16 px-1">
         {tabs.map((tab) => {
           const isActive = location.pathname === tab.path;
