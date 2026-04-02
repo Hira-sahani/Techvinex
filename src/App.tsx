@@ -1,4 +1,4 @@
-import { lazy, Suspense, Component, type ReactNode, type ErrorInfo } from "react";
+import { lazy, Suspense, Component, type ReactNode, type ErrorInfo, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -102,11 +102,39 @@ const queryClient = new QueryClient();
 
 const TABS_VISIBLE_ROUTES = ["/", "/explore", "/dashboard", "/referrals", "/earnings", "/profile"];
 
+const hideSplashScreen = () => {
+  const splash = document.getElementById("splash-screen");
+  if (!splash) return;
+
+  splash.style.opacity = "0";
+  splash.style.pointerEvents = "none";
+  window.setTimeout(() => splash.remove(), 220);
+};
+
 const PageLoader = () => <JetraLoader />;
 
 const AppLayout = () => {
   const location = useLocation();
   const showTabs = TABS_VISIBLE_ROUTES.includes(location.pathname);
+
+  useEffect(() => {
+    let frameId = 0;
+
+    const waitForAppReady = () => {
+      const hasActiveLoader = Boolean(document.querySelector(".loader-overlay"));
+
+      if (hasActiveLoader) {
+        frameId = window.requestAnimationFrame(waitForAppReady);
+        return;
+      }
+
+      hideSplashScreen();
+    };
+
+    frameId = window.requestAnimationFrame(waitForAppReady);
+
+    return () => window.cancelAnimationFrame(frameId);
+  }, [location.pathname]);
 
   return (
     <>
