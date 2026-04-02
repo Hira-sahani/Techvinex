@@ -2,7 +2,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { MapPin, Briefcase, Users, CheckCircle2, ChevronLeft, ChevronRight, LinkIcon, Sparkles } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useRoles } from "@/hooks/useRoles";
-import JetraLoader from "@/components/JetraLoader";
+import JobDetailSkeleton from "@/components/skeletons/JobDetailSkeleton";
 import JetraLoaderInline from "@/components/JetraLoaderInline";
 import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
