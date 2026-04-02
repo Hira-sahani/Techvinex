@@ -16,7 +16,7 @@ import EmployerProtectedRoute from "@/components/employer/EmployerProtectedRoute
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 
 import OfflineBanner from "@/components/OfflineBanner";
-import JetraLoaderInline from "@/components/JetraLoaderInline";
+import JetraLoader from "@/components/JetraLoader";
 
 // Error boundary to handle dynamic import failures (common in preview)
 class LazyErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
