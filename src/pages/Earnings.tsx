@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import SidebarNav from "@/components/SidebarNav";
 import TopStatusBar from "@/components/TopStatusBar";
-import BottomTabBar from "@/components/BottomTabBar";
+
 import { Wallet, ArrowLeft, Settings, Download, DollarSign, Clock, ArrowRight, Shield, Camera, Upload, CheckCircle2, FileText, Phone, User } from "lucide-react";
 import { useLang } from "@/contexts/LangContext";
 import { Button } from "@/components/ui/button";
