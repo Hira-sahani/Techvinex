@@ -1,19 +1,19 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Search, MoreVertical, FlaskConical, Building2, BookOpen, X } from "lucide-react";
+import { Search, Menu, X } from "lucide-react";
 import { useBlogs } from "@/hooks/useBlogs";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-
-const DRAWER_ITEMS = [
-  { label: "Atlas", icon: FlaskConical, href: "/blog" },
-  { label: "Research", icon: BookOpen, href: "/blog?tab=Research" },
-  { label: "Enterprise", icon: Building2, href: "/blog?tab=Company" },
-  { label: "Blog", icon: BookOpen, href: "/blog" },
-];
+import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 
 const CATEGORIES = ["All", "Company", "Research", "Team", "Stories"];
+
+const DRAWER_ITEMS = [
+  { label: "APEX", href: "/blog" },
+  { label: "Research", href: "/blog" },
+  { label: "Enterprise", href: "/blog" },
+  { label: "Blog", href: "/blog" },
+];
 
 const Blog = () => {
   const { data: blogs = [], isLoading } = useBlogs();
@@ -32,35 +32,39 @@ const Blog = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border">
-        <div className="max-w-3xl mx-auto px-4 py-3 flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
-            <span className="text-white font-bold text-sm">X</span>
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-30 bg-background border-b border-border">
+        <div className="max-w-3xl mx-auto px-5 py-4 flex items-center justify-between">
+          {/* Logo */}
+          <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+            <span className="text-white font-bold text-base">X</span>
           </div>
-          <h1 className="text-lg font-semibold text-foreground flex-1">Blog</h1>
-          
+
+          {/* Hamburger Menu */}
           <Sheet>
             <SheetTrigger asChild>
-              <button className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted transition-colors">
-                <MoreVertical className="w-5 h-5 text-foreground" />
+              <button className="w-9 h-9 flex items-center justify-center">
+                <Menu className="w-6 h-6 text-foreground" />
               </button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-72 p-0">
-              <div className="flex items-center gap-3 px-5 pt-6 pb-4 border-b border-border">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">X</span>
+            <SheetContent side="right" className="w-full max-w-full sm:max-w-full p-0 border-none [&>button]:hidden">
+              <div className="flex items-center justify-between px-5 py-4">
+                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                  <span className="text-white font-bold text-base">X</span>
                 </div>
-                <span className="text-base font-semibold text-foreground">Atlas</span>
+                <SheetClose asChild>
+                  <button className="w-9 h-9 flex items-center justify-center">
+                    <X className="w-6 h-6 text-foreground" />
+                  </button>
+                </SheetClose>
               </div>
-              <nav className="flex flex-col py-2">
+              <nav className="flex flex-col px-5 pt-8 gap-6">
                 {DRAWER_ITEMS.map((item) => (
                   <Link
                     key={item.label}
                     to={item.href}
-                    className="flex items-center gap-3 px-5 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                    className="text-xl font-medium text-foreground hover:text-primary transition-colors"
                   >
-                    <item.icon className="w-4 h-4 text-muted-foreground" />
                     {item.label}
                   </Link>
                 ))}
@@ -70,28 +74,20 @@ const Blog = () => {
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-4 pt-4 pb-24">
-        {/* Search */}
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search articles..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 h-9 bg-muted/40 border-border text-sm"
-          />
-        </div>
+      <div className="max-w-3xl mx-auto px-5 pt-10 pb-24">
+        {/* Big Title */}
+        <h1 className="text-4xl font-bold text-foreground mb-6">Blog</h1>
 
-        {/* Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-3 mb-4 scrollbar-none">
+        {/* Category Tabs - plain text style */}
+        <div className="flex gap-5 overflow-x-auto pb-6 mb-2 scrollbar-none">
           {CATEGORIES.map((cat) => (
             <button
               key={cat}
               onClick={() => setActiveTab(cat)}
-              className={`px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all ${
+              className={`text-sm font-medium whitespace-nowrap transition-colors pb-1 ${
                 activeTab === cat
-                  ? "bg-foreground text-background"
-                  : "bg-muted/60 text-muted-foreground hover:bg-muted"
+                  ? "text-foreground border-b-2 border-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               }`}
             >
               {cat}
@@ -99,17 +95,26 @@ const Blog = () => {
           ))}
         </div>
 
+        {/* Search */}
+        <div className="relative mb-6">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            placeholder="Search articles..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 h-10 bg-muted/40 border-border text-sm rounded-lg"
+          />
+        </div>
+
         {/* Cards */}
         {isLoading ? (
-          <div className="space-y-4">
-            {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="rounded-2xl border border-border bg-card overflow-hidden">
-                <Skeleton className="w-full h-44" />
-                <div className="p-4 space-y-2">
-                  <Skeleton className="h-3 w-16" />
-                  <Skeleton className="h-5 w-3/4" />
-                  <Skeleton className="h-3 w-full" />
-                  <Skeleton className="h-3 w-1/2" />
+          <div className="space-y-8">
+            {[1, 2, 3].map((i) => (
+              <div key={i}>
+                <Skeleton className="w-full h-52 rounded-2xl" />
+                <div className="mt-4 space-y-2">
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-1/2" />
                 </div>
               </div>
             ))}
@@ -119,15 +124,15 @@ const Blog = () => {
             <p className="text-muted-foreground text-sm">No articles found</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-10">
             {filtered.map((blog) => (
               <Link
                 key={blog.id}
                 to={`/blog/${blog.slug}`}
-                className="group block rounded-2xl border border-border bg-card overflow-hidden transition-all hover:shadow-lg hover:shadow-primary/5 hover:scale-[1.01] active:scale-[0.99]"
+                className="group block"
               >
                 {blog.image_url && (
-                  <div className="w-full h-44 overflow-hidden">
+                  <div className="w-full h-56 rounded-2xl overflow-hidden">
                     <img
                       src={blog.image_url}
                       alt={blog.title}
@@ -136,25 +141,20 @@ const Blog = () => {
                     />
                   </div>
                 )}
-                <div className="p-4">
-                  <span className="text-[10px] font-medium uppercase tracking-wider text-primary">
-                    {blog.category}
-                  </span>
-                  <h2 className="text-sm font-semibold text-foreground mt-1 line-clamp-2 leading-snug">
-                    {blog.title}
-                  </h2>
-                  {blog.short_description && (
-                    <p className="text-xs text-muted-foreground mt-1.5 line-clamp-2">
-                      {blog.short_description}
-                    </p>
-                  )}
-                  <div className="flex items-center gap-2 mt-3 text-[10px] text-muted-foreground">
-                    <span>{blog.author}</span>
-                    <span>·</span>
-                    <span>{blog.read_time}</span>
-                    <span>·</span>
-                    <span>{new Date(blog.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
-                  </div>
+                <h2 className="text-xl font-semibold text-foreground mt-4 leading-snug line-clamp-2">
+                  {blog.title}
+                </h2>
+                {blog.short_description && (
+                  <p className="text-sm text-muted-foreground mt-1.5 line-clamp-2">
+                    {blog.short_description}
+                  </p>
+                )}
+                <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
+                  <span>{blog.author}</span>
+                  <span>·</span>
+                  <span>{blog.read_time}</span>
+                  <span>·</span>
+                  <span>{new Date(blog.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}</span>
                 </div>
               </Link>
             ))}
