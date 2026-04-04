@@ -58,12 +58,12 @@ const Blog = () => {
                   </button>
                 </SheetClose>
               </div>
-              <nav className="flex flex-col px-5 pt-8 gap-6">
+              <nav className="flex flex-col px-5 pt-8 gap-5">
                 {DRAWER_ITEMS.map((item) => (
                   <Link
                     key={item.label}
                     to={item.href}
-                    className="text-xl font-medium text-foreground hover:text-primary transition-colors"
+                    className="text-base font-medium text-foreground hover:text-primary transition-colors"
                   >
                     {item.label}
                   </Link>
