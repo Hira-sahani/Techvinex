@@ -96,7 +96,10 @@ const AdminPayments = lazy(() => import("./pages/admin/AdminPayments"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
 const AdminAIMatching = lazy(() => import("./pages/admin/AdminAIMatching"));
 const AdminExploreJobs = lazy(() => import("./pages/admin/AdminExploreJobs"));
+const AdminBlogs = lazy(() => import("./pages/admin/AdminBlogs"));
 const ExploreJobDetail = lazy(() => import("./pages/ExploreJobDetail"));
+const Blog = lazy(() => import("./pages/Blog"));
+const BlogDetail = lazy(() => import("./pages/BlogDetail"));
 
 const queryClient = new QueryClient();
 
