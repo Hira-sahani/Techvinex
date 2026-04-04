@@ -1,9 +1,17 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Search } from "lucide-react";
+import { Search, MoreVertical, FlaskConical, Building2, BookOpen, X } from "lucide-react";
 import { useBlogs } from "@/hooks/useBlogs";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+
+const DRAWER_ITEMS = [
+  { label: "Atlas", icon: FlaskConical, href: "/blog" },
+  { label: "Research", icon: BookOpen, href: "/blog?tab=Research" },
+  { label: "Enterprise", icon: Building2, href: "/blog?tab=Company" },
+  { label: "Blog", icon: BookOpen, href: "/blog" },
+];
 
 const CATEGORIES = ["All", "Company", "Research", "Team", "Stories"];
 
@@ -31,6 +39,34 @@ const Blog = () => {
             <span className="text-white font-bold text-sm">X</span>
           </div>
           <h1 className="text-lg font-semibold text-foreground flex-1">Blog</h1>
+          
+          <Sheet>
+            <SheetTrigger asChild>
+              <button className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-muted transition-colors">
+                <MoreVertical className="w-5 h-5 text-foreground" />
+              </button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-72 p-0">
+              <div className="flex items-center gap-3 px-5 pt-6 pb-4 border-b border-border">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">X</span>
+                </div>
+                <span className="text-base font-semibold text-foreground">Atlas</span>
+              </div>
+              <nav className="flex flex-col py-2">
+                {DRAWER_ITEMS.map((item) => (
+                  <Link
+                    key={item.label}
+                    to={item.href}
+                    className="flex items-center gap-3 px-5 py-3 text-sm font-medium text-foreground hover:bg-muted transition-colors"
+                  >
+                    <item.icon className="w-4 h-4 text-muted-foreground" />
+                    {item.label}
+                  </Link>
+                ))}
+              </nav>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
 
