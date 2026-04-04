@@ -96,7 +96,10 @@ const AdminPayments = lazy(() => import("./pages/admin/AdminPayments"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
 const AdminAIMatching = lazy(() => import("./pages/admin/AdminAIMatching"));
 const AdminExploreJobs = lazy(() => import("./pages/admin/AdminExploreJobs"));
+const AdminBlogs = lazy(() => import("./pages/admin/AdminBlogs"));
 const ExploreJobDetail = lazy(() => import("./pages/ExploreJobDetail"));
+const Blog = lazy(() => import("./pages/Blog"));
+const BlogDetail = lazy(() => import("./pages/BlogDetail"));
 
 const queryClient = new QueryClient();
 
@@ -162,6 +165,8 @@ const AppLayout = () => {
           <Route path="/cookie-policy" element={<CookiePolicy />} />
           <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
           <Route path="/jobs/:slug" element={<ExploreJobDetail />} />
+          <Route path="/blog" element={<Blog />} />
+          <Route path="/blog/:slug" element={<BlogDetail />} />
 
           {/* Employer Portal */}
           <Route path="/employer/login" element={<EmployerLogin />} />
@@ -194,6 +199,7 @@ const AppLayout = () => {
             <Route path="settings" element={<AdminSettings />} />
             <Route path="ai-matching" element={<AdminAIMatching />} />
             <Route path="explore-jobs" element={<AdminExploreJobs />} />
+            <Route path="blogs" element={<AdminBlogs />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />
