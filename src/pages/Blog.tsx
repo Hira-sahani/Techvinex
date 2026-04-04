@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/s
 const CATEGORIES = ["All", "Company", "Research", "Team", "Stories"];
 
 const DRAWER_ITEMS = [
-  { label: "APEX", href: "/blog" },
+  { label: "Atlas", href: "/blog" },
   { label: "Research", href: "/blog" },
   { label: "Enterprise", href: "/blog" },
   { label: "Blog", href: "/blog" },
