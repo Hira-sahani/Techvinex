@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/s
 const CATEGORIES = ["All", "Company", "Research", "Team", "Stories"];
 
 const DRAWER_ITEMS = [
-  { label: "APEX", href: "/blog" },
+  { label: "Atlas", href: "/blog" },
   { label: "Research", href: "/blog" },
   { label: "Enterprise", href: "/blog" },
   { label: "Blog", href: "/blog" },
@@ -58,12 +58,12 @@ const Blog = () => {
                   </button>
                 </SheetClose>
               </div>
-              <nav className="flex flex-col px-5 pt-8 gap-6">
+              <nav className="flex flex-col px-5 pt-8 gap-5">
                 {DRAWER_ITEMS.map((item) => (
                   <Link
                     key={item.label}
                     to={item.href}
-                    className="text-xl font-medium text-foreground hover:text-primary transition-colors"
+                    className="text-base font-medium text-foreground hover:text-primary transition-colors"
                   >
                     {item.label}
                   </Link>
