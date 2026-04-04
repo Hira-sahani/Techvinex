@@ -1,9 +1,17 @@
 import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { Search } from "lucide-react";
+import { Search, MoreVertical, FlaskConical, Building2, BookOpen, X } from "lucide-react";
 import { useBlogs } from "@/hooks/useBlogs";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+
+const DRAWER_ITEMS = [
+  { label: "Atlas", icon: FlaskConical, href: "/blog" },
+  { label: "Research", icon: BookOpen, href: "/blog?tab=Research" },
+  { label: "Enterprise", icon: Building2, href: "/blog?tab=Company" },
+  { label: "Blog", icon: BookOpen, href: "/blog" },
+];
 
 const CATEGORIES = ["All", "Company", "Research", "Team", "Stories"];
 
