@@ -18,6 +18,7 @@ const navItems = [
   { label: "Audit Logs", path: "/admin/audit-logs", icon: ScrollText },
   { label: "Notifications", path: "/admin/notifications", icon: Bell },
   { label: "Payments", path: "/admin/payments", icon: DollarSign },
+  { label: "Blog", path: "/admin/blogs", icon: PenLine },
   { label: "Settings", path: "/admin/settings", icon: Settings },
 ];
 

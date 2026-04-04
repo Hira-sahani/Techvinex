@@ -199,6 +199,7 @@ const AppLayout = () => {
             <Route path="settings" element={<AdminSettings />} />
             <Route path="ai-matching" element={<AdminAIMatching />} />
             <Route path="explore-jobs" element={<AdminExploreJobs />} />
+            <Route path="blogs" element={<AdminBlogs />} />
           </Route>
 
           <Route path="*" element={<NotFound />} />
