@@ -208,6 +208,7 @@ const AppLayout = () => {
           </Route>
 
           {/* Benchmark Platform */}
+          <Route path="/benchmark/login" element={<Suspense fallback={<PageLoader />}><BenchmarkLogin /></Suspense>} />
           <Route path="/benchmark" element={
             <Suspense fallback={<PageLoader />}>
               <BenchmarkProtectedRoute><BenchmarkLayout /></BenchmarkProtectedRoute>
