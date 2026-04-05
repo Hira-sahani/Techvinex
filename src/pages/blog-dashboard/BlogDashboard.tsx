@@ -98,7 +98,7 @@ const BlogDashboard = () => {
 
   const handleLogout = async () => {
     await logout();
-    navigate("/blog-dashboard/login");
+    navigate("/admin/login");
   };
 
   const filtered = useMemo(() =>

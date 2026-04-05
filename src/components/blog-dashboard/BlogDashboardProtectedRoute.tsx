@@ -6,7 +6,7 @@ const BlogDashboardProtectedRoute = ({ children }: { children: React.ReactNode }
   const { user, loading } = useAuth();
 
   if (loading) return <JetraLoader />;
-  if (!user) return <Navigate to="/blog-dashboard/login" replace />;
+  if (!user) return <Navigate to="/admin/login" replace />;
   return <>{children}</>;
 };
 

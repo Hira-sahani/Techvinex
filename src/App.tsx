@@ -1,6 +1,6 @@
 import { lazy, Suspense, Component, type ReactNode, type ErrorInfo, useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
+import { BrowserRouter, Route, Routes, Navigate, useLocation } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -100,7 +100,6 @@ const AdminBlogs = lazy(() => import("./pages/admin/AdminBlogs"));
 const ExploreJobDetail = lazy(() => import("./pages/ExploreJobDetail"));
 const Blog = lazy(() => import("./pages/Blog"));
 const BlogDetail = lazy(() => import("./pages/BlogDetail"));
-const BlogDashboardLogin = lazy(() => import("./pages/blog-dashboard/BlogDashboardLogin"));
 const BlogDashboardPage = lazy(() => import("./pages/blog-dashboard/BlogDashboard"));
 const BlogDashboardProtectedRoute = lazy(() => import("./components/blog-dashboard/BlogDashboardProtectedRoute"));
 
@@ -170,7 +169,7 @@ const AppLayout = () => {
           <Route path="/jobs/:slug" element={<ExploreJobDetail />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:slug" element={<BlogDetail />} />
-          <Route path="/blog-dashboard/login" element={<BlogDashboardLogin />} />
+          <Route path="/blog-dashboard/login" element={<Navigate to="/admin/login" replace />} />
           <Route path="/blog-dashboard" element={
             <Suspense fallback={<PageLoader />}>
               <BlogDashboardProtectedRoute><BlogDashboardPage /></BlogDashboardProtectedRoute>
