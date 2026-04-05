@@ -11,17 +11,19 @@ import { FlaskConical, Loader2, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
 
 const models = [
-  { value: "gpt-4o", label: "GPT-4o" },
-  { value: "gpt-4o-mini", label: "GPT-4o Mini" },
-  { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
-  { value: "gpt-3.5-turbo", label: "GPT-3.5 Turbo" },
+  { value: "google/gemini-3-flash-preview", label: "Gemini 3 Flash" },
+  { value: "google/gemini-2.5-pro", label: "Gemini 2.5 Pro" },
+  { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash" },
+  { value: "openai/gpt-5", label: "GPT-5" },
+  { value: "openai/gpt-5-mini", label: "GPT-5 Mini" },
+  { value: "openai/gpt-5-nano", label: "GPT-5 Nano" },
 ];
 
 const BenchmarkRunTest = () => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<any[]>([]);
   const [selectedTask, setSelectedTask] = useState("");
-  const [selectedModel, setSelectedModel] = useState("gpt-4o");
+  const [selectedModel, setSelectedModel] = useState("google/gemini-3-flash-preview");
   const [retryCount, setRetryCount] = useState(1);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<any>(null);

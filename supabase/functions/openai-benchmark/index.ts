@@ -7,6 +7,8 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+
 interface BenchmarkRequest {
   task_id: string;
   model: string;
@@ -19,10 +21,10 @@ serve(async (req) => {
   }
 
   try {
-    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
-    if (!OPENAI_API_KEY) {
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
       return new Response(
-        JSON.stringify({ error: "OPENAI_API_KEY is not configured" }),
+        JSON.stringify({ error: "LOVABLE_API_KEY is not configured" }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -47,7 +49,7 @@ serve(async (req) => {
       });
     }
 
-    const { task_id, model = "gpt-4o", retry_count = 1 }: BenchmarkRequest = await req.json();
+    const { task_id, model = "google/gemini-3-flash-preview", retry_count = 1 }: BenchmarkRequest = await req.json();
 
     if (!task_id) {
       return new Response(JSON.stringify({ error: "task_id is required" }), {
@@ -98,10 +100,10 @@ serve(async (req) => {
         });
       }
 
-      const openaiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      const aiResponse = await fetch(GATEWAY_URL, {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${OPENAI_API_KEY}`,
+          Authorization: `Bearer ${LOVABLE_API_KEY}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
@@ -112,20 +114,32 @@ serve(async (req) => {
         }),
       });
 
-      if (!openaiResponse.ok) {
-        const errText = await openaiResponse.text();
+      if (!aiResponse.ok) {
+        const errText = await aiResponse.text();
+        if (aiResponse.status === 429) {
+          return new Response(
+            JSON.stringify({ error: "Rate limited. Please try again later." }),
+            { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        if (aiResponse.status === 402) {
+          return new Response(
+            JSON.stringify({ error: "Credits exhausted. Please add funds in Settings > Workspace > Usage." }),
+            { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
         return new Response(
-          JSON.stringify({ error: `OpenAI API error [${openaiResponse.status}]: ${errText}` }),
+          JSON.stringify({ error: `AI Gateway error [${aiResponse.status}]: ${errText}` }),
           { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      const openaiData = await openaiResponse.json();
-      const aiContent = openaiData.choices?.[0]?.message?.content || "";
+      const aiData = await aiResponse.json();
+      const aiContent = aiData.choices?.[0]?.message?.content || "";
       const latencyMs = Date.now() - startTime;
 
       // Score the response using rubric
-      const score = await scoreResponse(OPENAI_API_KEY, task, aiContent, model);
+      const score = await scoreResponse(LOVABLE_API_KEY, task, aiContent);
 
       attempts.push({
         attempt: i + 1,
@@ -193,8 +207,7 @@ serve(async (req) => {
 async function scoreResponse(
   apiKey: string,
   task: any,
-  response: string,
-  model: string
+  response: string
 ): Promise<number> {
   const rubricText = Array.isArray(task.rubric)
     ? task.rubric.map((r: any, i: number) => `${i + 1}. ${r.criterion} (weight: ${r.weight || 1})`).join("\n")
@@ -215,14 +228,14 @@ ${response}
 Score from 0 to ${task.max_score}. Respond with ONLY a JSON object: {"score": <number>, "reasoning": "<brief explanation>"}`;
 
   try {
-    const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    const res = await fetch(GATEWAY_URL, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "google/gemini-2.5-flash-lite",
         messages: [{ role: "user", content: scoringPrompt }],
         temperature: 0.1,
         max_tokens: 500,
