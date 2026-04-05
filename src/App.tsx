@@ -169,7 +169,7 @@ const AppLayout = () => {
           <Route path="/jobs/:slug" element={<ExploreJobDetail />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:slug" element={<BlogDetail />} />
-          <Route path="/blog-dashboard/login" element={<BlogDashboardLogin />} />
+          <Route path="/blog-dashboard/login" element={<Navigate to="/admin/login" replace />} />
           <Route path="/blog-dashboard" element={
             <Suspense fallback={<PageLoader />}>
               <BlogDashboardProtectedRoute><BlogDashboardPage /></BlogDashboardProtectedRoute>
