@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useBlogs } from "@/hooks/useBlogs";
 import useDocumentMeta from "@/hooks/useDocumentMeta";
 import { Skeleton } from "@/components/ui/skeleton";
+import Footer from "@/components/Footer";
 
 const CATEGORIES = ["All", "Company", "Research", "Team", "Stories"];
 
@@ -211,44 +212,7 @@ const Blog = () => {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-border bg-background">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-8 mb-8">
-            <div>
-              <h4 className="text-xs font-medium text-foreground mb-3">For Experts</h4>
-              <ul className="space-y-2">
-                <li><Link to="/explore" className="text-xs text-muted-foreground hover:text-foreground">Find work</Link></li>
-                <li><Link to="/blog" className="text-xs text-muted-foreground hover:text-foreground">Stories</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-xs font-medium text-foreground mb-3">Our Research</h4>
-              <ul className="space-y-2">
-                <li><Link to="/#apex" className="text-xs text-muted-foreground hover:text-foreground">APEX</Link></li>
-                <li><Link to="/benchmark/login" className="text-xs text-muted-foreground hover:text-foreground">Benchmarks</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-xs font-medium text-foreground mb-3">Contact Us</h4>
-              <ul className="space-y-2">
-                <li><Link to="/#cta" className="text-xs text-muted-foreground hover:text-foreground">Support</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-xs font-medium text-foreground mb-3">Jetra</h4>
-              <ul className="space-y-2">
-                <li><Link to="/blog" className="text-xs text-muted-foreground hover:text-foreground">Blog</Link></li>
-                <li><Link to="/privacy" className="text-xs text-muted-foreground hover:text-foreground">Privacy</Link></li>
-                <li><Link to="/terms" className="text-xs text-muted-foreground hover:text-foreground">Terms</Link></li>
-              </ul>
-            </div>
-          </div>
-          <div className="flex items-center justify-between pt-6 border-t border-border">
-            <p className="text-xs text-muted-foreground">© 2026 Jetra</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };
