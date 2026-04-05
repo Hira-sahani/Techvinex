@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import SidebarNav from "@/components/SidebarNav";
+import { useTheme } from "next-themes";
 
 import TopStatusBar from "@/components/TopStatusBar";
 import ProfileDropdown from "@/components/ProfileDropdown";
