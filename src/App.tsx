@@ -135,11 +135,14 @@ const AppLayout = () => {
 
   useEffect(() => {
     let frameId = 0;
+    let attempts = 0;
+    const MAX_ATTEMPTS = 60; // ~1 second at 60fps
 
     const waitForAppReady = () => {
+      attempts++;
       const hasActiveLoader = Boolean(document.querySelector(".loader-overlay"));
 
-      if (hasActiveLoader) {
+      if (hasActiveLoader && attempts < MAX_ATTEMPTS) {
         frameId = window.requestAnimationFrame(waitForAppReady);
         return;
       }
