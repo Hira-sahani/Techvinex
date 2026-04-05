@@ -23,7 +23,7 @@ const BenchmarkRunTest = () => {
   const { user } = useAuth();
   const [tasks, setTasks] = useState<any[]>([]);
   const [selectedTask, setSelectedTask] = useState("");
-  const [selectedModel, setSelectedModel] = useState("gpt-4o");
+  const [selectedModel, setSelectedModel] = useState("google/gemini-3-flash-preview");
   const [retryCount, setRetryCount] = useState(1);
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<any>(null);
