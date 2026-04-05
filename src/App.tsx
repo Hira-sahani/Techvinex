@@ -112,6 +112,7 @@ const BenchmarkResults = lazy(() => import("./pages/benchmark/BenchmarkResults")
 const BenchmarkLeaderboard = lazy(() => import("./pages/benchmark/BenchmarkLeaderboard"));
 const BenchmarkReviews = lazy(() => import("./pages/benchmark/BenchmarkReviews"));
 const BenchmarkSettings = lazy(() => import("./pages/benchmark/BenchmarkSettings"));
+const BenchmarkLogin = lazy(() => import("./pages/benchmark/BenchmarkLogin"));
 const BlogDashboardProtectedRoute = lazy(() => import("./components/blog-dashboard/BlogDashboardProtectedRoute"));
 
 const queryClient = new QueryClient();
