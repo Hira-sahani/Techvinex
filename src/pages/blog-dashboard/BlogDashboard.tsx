@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import JetraLoader from "@/components/JetraLoader";
+import RichTextEditor from "@/components/blog-dashboard/RichTextEditor";
 
 const NAV_ITEMS = ["Atlas", "Research", "Enterprise", "Blog"];
 const BLOG_CATEGORIES = [
