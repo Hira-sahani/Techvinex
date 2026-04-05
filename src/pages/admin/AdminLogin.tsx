@@ -41,7 +41,7 @@ const AdminLogin = () => {
           <form onSubmit={handleLogin} className="space-y-3">
             <div className="space-y-1">
               <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Email</Label>
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@yourapp.com" required className="h-8 text-xs bg-muted/30 border-transparent focus-visible:border-border" />
+              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@example.com" required className="h-8 text-xs bg-muted/30 border-transparent focus-visible:border-border" />
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Password</Label>
