@@ -135,26 +135,13 @@ const AppLayout = () => {
   const showTabs = TABS_VISIBLE_ROUTES.includes(location.pathname);
 
   useEffect(() => {
-    let frameId = 0;
-    let attempts = 0;
-    const MAX_ATTEMPTS = 60; // ~1 second at 60fps
-
-    const waitForAppReady = () => {
-      attempts++;
-      const hasActiveLoader = Boolean(document.querySelector(".loader-overlay"));
-
-      if (hasActiveLoader && attempts < MAX_ATTEMPTS) {
-        frameId = window.requestAnimationFrame(waitForAppReady);
-        return;
-      }
-
+    // Hide splash screen after a short delay to allow React to render
+    const timer = window.setTimeout(() => {
       hideSplashScreen();
-    };
+    }, 300);
 
-    frameId = window.requestAnimationFrame(waitForAppReady);
-
-    return () => window.cancelAnimationFrame(frameId);
-  }, [location.pathname]);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   return (
     <>
