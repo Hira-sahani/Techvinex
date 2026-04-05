@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Search, Menu, X } from "lucide-react";
 import { useBlogs } from "@/hooks/useBlogs";
+import useDocumentMeta from "@/hooks/useDocumentMeta";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";
@@ -19,6 +20,12 @@ const Blog = () => {
   const { data: blogs = [], isLoading } = useBlogs();
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("All");
+
+  useDocumentMeta({
+    title: "Blog",
+    description: "Latest insights, research, and stories from the Atlas team on remote work, talent, and the future of employment.",
+    url: `${window.location.origin}/blog`,
+  });
 
   const filtered = useMemo(() => {
     return blogs.filter((b) => {

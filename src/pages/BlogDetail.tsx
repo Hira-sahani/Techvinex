@@ -1,6 +1,7 @@
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Share2, Clock, User, Calendar } from "lucide-react";
 import { useBlog } from "@/hooks/useBlogs";
+import useDocumentMeta from "@/hooks/useDocumentMeta";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -8,6 +9,15 @@ import { toast } from "sonner";
 const BlogDetail = () => {
   const { slug } = useParams<{ slug: string }>();
   const { data: blog, isLoading } = useBlog(slug || "");
+
+  useDocumentMeta({
+    title: blog?.title,
+    description: blog?.short_description || undefined,
+    image: blog?.image_url || undefined,
+    url: blog ? `${window.location.origin}/blog/${blog.slug}` : undefined,
+    type: "article",
+    author: blog?.author || undefined,
+  });
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -44,8 +54,22 @@ const BlogDetail = () => {
     );
   }
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: blog.title,
+    description: blog.short_description || "",
+    image: blog.image_url || undefined,
+    author: { "@type": "Person", name: blog.author || "Atlas Team" },
+    datePublished: blog.created_at,
+    dateModified: blog.updated_at,
+    publisher: { "@type": "Organization", name: "Atlas" },
+    url: `${window.location.origin}/blog/${blog.slug}`,
+  };
+
   return (
     <div className="min-h-screen bg-background">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       {/* Header */}
       <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
