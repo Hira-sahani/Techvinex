@@ -1,9 +1,10 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { useBlogs } from "@/hooks/useBlogs";
 import useDocumentMeta from "@/hooks/useDocumentMeta";
 import { Skeleton } from "@/components/ui/skeleton";
 import Footer from "@/components/Footer";
+import { supabase } from "@/integrations/supabase/client";
 
 const CATEGORIES = ["All", "Company", "Research", "Team", "Stories"];
 
