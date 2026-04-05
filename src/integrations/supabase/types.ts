@@ -104,6 +104,166 @@ export type Database = {
         }
         Relationships: []
       }
+      benchmark_results: {
+        Row: {
+          ai_response: string | null
+          attempts: Json | null
+          created_at: string
+          id: string
+          latency_ms: number | null
+          max_score: number
+          metadata: Json | null
+          model: string
+          pass_at_1: boolean | null
+          pass_at_n: boolean | null
+          score: number | null
+          status: string
+          task_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_response?: string | null
+          attempts?: Json | null
+          created_at?: string
+          id?: string
+          latency_ms?: number | null
+          max_score?: number
+          metadata?: Json | null
+          model?: string
+          pass_at_1?: boolean | null
+          pass_at_n?: boolean | null
+          score?: number | null
+          status?: string
+          task_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_response?: string | null
+          attempts?: Json | null
+          created_at?: string
+          id?: string
+          latency_ms?: number | null
+          max_score?: number
+          metadata?: Json | null
+          model?: string
+          pass_at_1?: boolean | null
+          pass_at_n?: boolean | null
+          score?: number | null
+          status?: string
+          task_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "benchmark_results_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "benchmark_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      benchmark_reviews: {
+        Row: {
+          comments: string | null
+          created_at: string
+          id: string
+          override_score: number | null
+          result_id: string
+          reviewer_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          comments?: string | null
+          created_at?: string
+          id?: string
+          override_score?: number | null
+          result_id: string
+          reviewer_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          comments?: string | null
+          created_at?: string
+          id?: string
+          override_score?: number | null
+          result_id?: string
+          reviewer_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "benchmark_reviews_result_id_fkey"
+            columns: ["result_id"]
+            isOneToOne: false
+            referencedRelation: "benchmark_results"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      benchmark_tasks: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          difficulty: string
+          expected_output: string | null
+          id: string
+          input_data: string | null
+          input_type: string
+          is_active: boolean
+          max_score: number
+          prompt: string
+          rubric: Json
+          system_prompt: string | null
+          tags: string[] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          difficulty?: string
+          expected_output?: string | null
+          id?: string
+          input_data?: string | null
+          input_type?: string
+          is_active?: boolean
+          max_score?: number
+          prompt: string
+          rubric?: Json
+          system_prompt?: string | null
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          difficulty?: string
+          expected_output?: string | null
+          id?: string
+          input_data?: string | null
+          input_type?: string
+          is_active?: boolean
+          max_score?: number
+          prompt?: string
+          rubric?: Json
+          system_prompt?: string | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       blogs: {
         Row: {
           author: string | null
