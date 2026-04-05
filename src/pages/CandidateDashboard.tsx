@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import SidebarNav from "@/components/SidebarNav";
-import { useTheme } from "next-themes";
 
 import TopStatusBar from "@/components/TopStatusBar";
 import ProfileDropdown from "@/components/ProfileDropdown";
@@ -37,7 +36,6 @@ const hasValue = (val: any): boolean => {
 const CandidateDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { setTheme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [profileStrength, setProfileStrength] = useState(0);
   const [profileData, setProfileData] = useState<any>(null);
@@ -46,10 +44,6 @@ const CandidateDashboard = () => {
   const [offers, setOffers] = useState<any[]>([]);
   const [contracts, setContracts] = useState<any[]>([]);
   const [savedRoles, setSavedRoles] = useState<any[]>([]);
-
-  useEffect(() => {
-    setTheme("light");
-  }, [setTheme]);
 
   useEffect(() => {
     if (!user) return;
