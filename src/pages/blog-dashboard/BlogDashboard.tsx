@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import JetraLoader from "@/components/JetraLoader";
+import RichTextEditor from "@/components/blog-dashboard/RichTextEditor";
 
 const NAV_ITEMS = ["Atlas", "Research", "Enterprise", "Blog"];
 const BLOG_CATEGORIES = [
@@ -262,8 +263,10 @@ const BlogDashboard = () => {
               <Textarea className="mt-1 bg-muted/30 min-h-[60px] text-xs" value={form.short_description} onChange={e => setForm(f => ({ ...f, short_description: e.target.value }))} />
             </div>
             <div>
-              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Content (HTML)</Label>
-              <Textarea className="mt-1 bg-muted/30 min-h-[180px] font-mono text-xs" value={form.content} onChange={e => setForm(f => ({ ...f, content: e.target.value }))} />
+              <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Content</Label>
+              <div className="mt-1">
+                <RichTextEditor content={form.content} onChange={(html) => setForm(f => ({ ...f, content: html }))} />
+              </div>
             </div>
             <Button size="sm" className="h-8 text-xs" onClick={handleSave} disabled={createBlog.isPending || updateBlog.isPending}>
               {editing ? "Update" : "Publish"} Post
