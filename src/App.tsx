@@ -203,6 +203,21 @@ const AppLayout = () => {
             <Route path="notifications" element={<EmployerNotifications />} />
           </Route>
 
+          {/* Benchmark Platform */}
+          <Route path="/benchmark" element={
+            <Suspense fallback={<PageLoader />}>
+              <BenchmarkProtectedRoute><BenchmarkLayout /></BenchmarkProtectedRoute>
+            </Suspense>
+          }>
+            <Route path="dashboard" element={<BenchmarkDashboard />} />
+            <Route path="tasks" element={<BenchmarkTasks />} />
+            <Route path="run" element={<BenchmarkRunTest />} />
+            <Route path="results" element={<BenchmarkResults />} />
+            <Route path="leaderboard" element={<BenchmarkLeaderboard />} />
+            <Route path="reviews" element={<BenchmarkReviews />} />
+            <Route path="settings" element={<BenchmarkSettings />} />
+          </Route>
+
 
           {/* Admin Panel */}
           <Route path="/admin/login" element={<AdminLogin />} />
