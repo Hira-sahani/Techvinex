@@ -100,7 +100,6 @@ const AdminBlogs = lazy(() => import("./pages/admin/AdminBlogs"));
 const ExploreJobDetail = lazy(() => import("./pages/ExploreJobDetail"));
 const Blog = lazy(() => import("./pages/Blog"));
 const BlogDetail = lazy(() => import("./pages/BlogDetail"));
-const BlogDashboardLogin = lazy(() => import("./pages/blog-dashboard/BlogDashboardLogin"));
 const BlogDashboardPage = lazy(() => import("./pages/blog-dashboard/BlogDashboard"));
 const BlogDashboardProtectedRoute = lazy(() => import("./components/blog-dashboard/BlogDashboardProtectedRoute"));
 
