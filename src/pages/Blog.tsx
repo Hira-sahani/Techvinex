@@ -21,6 +21,12 @@ const Blog = () => {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("All");
 
+  useDocumentMeta({
+    title: "Blog",
+    description: "Latest insights, research, and stories from the Atlas team on remote work, talent, and the future of employment.",
+    url: `${window.location.origin}/blog`,
+  });
+
   const filtered = useMemo(() => {
     return blogs.filter((b) => {
       const matchCat = activeTab === "All" || b.category?.toLowerCase() === activeTab.toLowerCase();

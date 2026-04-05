@@ -10,6 +10,15 @@ const BlogDetail = () => {
   const { slug } = useParams<{ slug: string }>();
   const { data: blog, isLoading } = useBlog(slug || "");
 
+  useDocumentMeta({
+    title: blog?.title,
+    description: blog?.short_description || undefined,
+    image: blog?.image_url || undefined,
+    url: blog ? `${window.location.origin}/blog/${blog.slug}` : undefined,
+    type: "article",
+    author: blog?.author || undefined,
+  });
+
   const handleShare = async () => {
     if (navigator.share) {
       await navigator.share({ title: blog?.title, url: window.location.href });
