@@ -190,57 +190,132 @@ const Blog = () => {
 };
 
 /* ── APEX Tab Content ── */
-const ApexContent = () => (
-  <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-16 pb-24">
-    <div className="text-center mb-12">
-      <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">APEX Benchmarks</h1>
-      <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
-        The APEX family of benchmarks assesses whether frontier AI models can perform economically valuable tasks across professional services, medicine, software engineering, and consumer activities.
-      </p>
-      <Link to="/#cta" className="inline-block mt-6 px-5 py-2.5 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors">
-        Get in touch
-      </Link>
-    </div>
+const ApexContent = () => {
+  const [loading, setLoading] = useState(true);
+  const [categoryData, setCategoryData] = useState<
+    Record<string, { model: string; score: number; maxScore: number; count: number; avgLatency: number }[]>
+  >({});
+  const [totalTasks, setTotalTasks] = useState(0);
+  const [totalResults, setTotalResults] = useState(0);
 
-    <div className="space-y-12">
-      {/* APEX-Agents */}
-      <BenchmarkSection
-        title="APEX-Agents"
-        description="The AI Productivity Index for Agents (APEX-Agents) measures whether frontier AI agents can execute long-horizon, cross-application tasks across three jobs in professional services."
-        tags={["Blog", "Paper", "Data", "Code", "Sample task"]}
-        results={[
-          { model: "GPT 5.4 (xHigh)", score: 36.0, margin: 3.8, color: "bg-amber-400" },
-          { model: "GPT 5.2 (xHigh)", score: 34.4, margin: 3.8, color: "bg-yellow-400" },
-          { model: "Gemini 3.1 Pro (High)", score: 33.5, margin: 3.6, color: "bg-blue-500" },
-        ]}
-      />
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      const [tasksRes, resultsRes] = await Promise.all([
+        supabase.from("benchmark_tasks").select("id, category, title", { count: "exact" }).eq("is_active", true),
+        supabase.from("benchmark_results").select("model, score, max_score, latency_ms, pass_at_1, benchmark_tasks(category, title)"),
+      ]);
 
-      {/* APEX-SWE */}
-      <BenchmarkSection
-        title="APEX-SWE"
-        description="The AI Productivity Index for Software Engineers (APEX-SWE) measures whether frontier AI agents can execute high-value engineering work, split across Observability and Integration tasks."
-        tags={["Blog", "Paper", "Data", "Code", "Sample task"]}
-        results={[
-          { model: "GPT 5.3 Codex (High)", score: 41.5, margin: 6.3, color: "bg-amber-400" },
-          { model: "Opus 4.6 (High)", score: 40.5, margin: 6.3, color: "bg-orange-500" },
-          { model: "Opus 4.5 (High)", score: 38.7, margin: 6.3, color: "bg-orange-500" },
-        ]}
-      />
+      setTotalTasks(tasksRes.count || 0);
+      const results = resultsRes.data || [];
+      setTotalResults(results.length);
 
-      {/* APEX */}
-      <BenchmarkSection
-        title="APEX"
-        description="The AI Productivity Index (APEX) assesses whether frontier models are capable of performing economically valuable tasks across four jobs: investment banking, management consulting, big law, and primary care physician."
-        tags={["Blog", "Paper", "Data", "Code", "Sample task"]}
-        results={[
-          { model: "GPT 5.4 (High)", score: 67.2, margin: 2.4, color: "bg-amber-400" },
-          { model: "Opus 4.6 (Max)", score: 65.7, margin: 2.6, color: "bg-orange-500" },
-          { model: "Gemini 3.1 Pro (High)", score: 63.1, margin: 2.5, color: "bg-blue-500" },
-        ]}
-      />
-    </div>
-  </main>
-);
+      // Group by category, then aggregate by model
+      const grouped: Record<string, Record<string, { totalScore: number; totalMax: number; count: number; totalLatency: number }>> = {};
+      results.forEach((r: any) => {
+        const cat = r.benchmark_tasks?.category || "General";
+        const model = r.model || "Unknown";
+        if (!grouped[cat]) grouped[cat] = {};
+        if (!grouped[cat][model]) grouped[cat][model] = { totalScore: 0, totalMax: 0, count: 0, totalLatency: 0 };
+        grouped[cat][model].totalScore += Number(r.score || 0);
+        grouped[cat][model].totalMax += Number(r.max_score || 100);
+        grouped[cat][model].count += 1;
+        grouped[cat][model].totalLatency += Number(r.latency_ms || 0);
+      });
+
+      const processed: typeof categoryData = {};
+      Object.entries(grouped).forEach(([cat, models]) => {
+        processed[cat] = Object.entries(models)
+          .map(([model, data]) => ({
+            model,
+            score: data.totalMax > 0 ? (data.totalScore / data.totalMax) * 100 : 0,
+            maxScore: data.totalMax,
+            count: data.count,
+            avgLatency: Math.round(data.totalLatency / data.count),
+          }))
+          .sort((a, b) => b.score - a.score)
+          .slice(0, 5);
+      });
+      setCategoryData(processed);
+      setLoading(false);
+    };
+    fetchData();
+  }, []);
+
+  const modelColors = ["bg-amber-400", "bg-blue-500", "bg-orange-500", "bg-emerald-500", "bg-purple-500"];
+  const categories = Object.keys(categoryData);
+
+  return (
+    <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-16 pb-24">
+      <div className="text-center mb-12">
+        <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">APEX Benchmarks</h1>
+        <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
+          Real-time AI model evaluation results from the Atlas Benchmark platform — measuring performance across categories with standardized scoring.
+        </p>
+        <div className="flex items-center justify-center gap-4 mt-6 text-sm">
+          <span className="text-muted-foreground"><strong className="text-foreground">{totalTasks}</strong> Tasks</span>
+          <span className="text-muted-foreground">·</span>
+          <span className="text-muted-foreground"><strong className="text-foreground">{totalResults}</strong> Results</span>
+          <span className="text-muted-foreground">·</span>
+          <span className="text-muted-foreground"><strong className="text-foreground">{categories.length}</strong> Categories</span>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="space-y-8">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="border-t border-border pt-8 space-y-3">
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-4 w-64" />
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-3/4" />
+            </div>
+          ))}
+        </div>
+      ) : categories.length === 0 ? (
+        <div className="text-center py-20 border border-dashed border-border rounded-xl">
+          <p className="text-muted-foreground text-sm">No benchmark results yet. Run your first benchmark test!</p>
+          <Link to="/benchmark" className="inline-block mt-4 px-5 py-2.5 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:bg-primary/90 transition-colors">
+            Go to Benchmark
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-12">
+          {categories.map((cat) => (
+            <section key={cat} className="border-t border-border pt-8">
+              <h2 className="text-xl font-bold text-foreground mb-1 capitalize">{cat}</h2>
+              <p className="text-xs text-muted-foreground mb-5">
+                {categoryData[cat].reduce((s, m) => s + m.count, 0)} test runs across {categoryData[cat].length} models
+              </p>
+              <div className="space-y-3">
+                {categoryData[cat].map((r, idx) => (
+                  <div key={r.model}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-medium text-foreground">{r.model}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {r.score.toFixed(1)}% · {r.avgLatency}ms · {r.count} runs
+                      </span>
+                    </div>
+                    <div className="w-full bg-muted rounded-full h-2.5">
+                      <div
+                        className={`${modelColors[idx % modelColors.length]} h-2.5 rounded-full transition-all duration-500`}
+                        style={{ width: `${Math.min(r.score, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between text-[10px] text-muted-foreground pt-1">
+                <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
+              </div>
+            </section>
+          ))}
+        </div>
+      )}
+    </main>
+  );
+};
 
 /* ── Research Tab Content ── */
 const ResearchContent = () => (
