@@ -37,6 +37,7 @@ const hasValue = (val: any): boolean => {
 const CandidateDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { setTheme } = useTheme();
   const [loading, setLoading] = useState(true);
   const [profileStrength, setProfileStrength] = useState(0);
   const [profileData, setProfileData] = useState<any>(null);
