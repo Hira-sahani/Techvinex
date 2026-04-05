@@ -101,6 +101,17 @@ const ExploreJobDetail = lazy(() => import("./pages/ExploreJobDetail"));
 const Blog = lazy(() => import("./pages/Blog"));
 const BlogDetail = lazy(() => import("./pages/BlogDetail"));
 const BlogDashboardPage = lazy(() => import("./pages/blog-dashboard/BlogDashboard"));
+
+// Benchmark pages
+const BenchmarkLayout = lazy(() => import("./components/benchmark/BenchmarkLayout"));
+const BenchmarkProtectedRoute = lazy(() => import("./components/benchmark/BenchmarkProtectedRoute"));
+const BenchmarkDashboard = lazy(() => import("./pages/benchmark/BenchmarkDashboard"));
+const BenchmarkTasks = lazy(() => import("./pages/benchmark/BenchmarkTasks"));
+const BenchmarkRunTest = lazy(() => import("./pages/benchmark/BenchmarkRunTest"));
+const BenchmarkResults = lazy(() => import("./pages/benchmark/BenchmarkResults"));
+const BenchmarkLeaderboard = lazy(() => import("./pages/benchmark/BenchmarkLeaderboard"));
+const BenchmarkReviews = lazy(() => import("./pages/benchmark/BenchmarkReviews"));
+const BenchmarkSettings = lazy(() => import("./pages/benchmark/BenchmarkSettings"));
 const BlogDashboardProtectedRoute = lazy(() => import("./components/blog-dashboard/BlogDashboardProtectedRoute"));
 
 const queryClient = new QueryClient();
@@ -190,6 +201,21 @@ const AppLayout = () => {
             <Route path="settings" element={<EmployerSettings />} />
             <Route path="messages" element={<EmployerMessages />} />
             <Route path="notifications" element={<EmployerNotifications />} />
+          </Route>
+
+          {/* Benchmark Platform */}
+          <Route path="/benchmark" element={
+            <Suspense fallback={<PageLoader />}>
+              <BenchmarkProtectedRoute><BenchmarkLayout /></BenchmarkProtectedRoute>
+            </Suspense>
+          }>
+            <Route path="dashboard" element={<BenchmarkDashboard />} />
+            <Route path="tasks" element={<BenchmarkTasks />} />
+            <Route path="run" element={<BenchmarkRunTest />} />
+            <Route path="results" element={<BenchmarkResults />} />
+            <Route path="leaderboard" element={<BenchmarkLeaderboard />} />
+            <Route path="reviews" element={<BenchmarkReviews />} />
+            <Route path="settings" element={<BenchmarkSettings />} />
           </Route>
 
 
