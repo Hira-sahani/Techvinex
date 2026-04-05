@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import JetraLoader from "@/components/JetraLoader";
 import RichTextEditor from "@/components/blog-dashboard/RichTextEditor";
+import BlogImageUpload from "@/components/blog-dashboard/BlogImageUpload";
 
 const NAV_ITEMS = ["Atlas", "Research", "Enterprise", "Blog"];
 const BLOG_CATEGORIES = [
