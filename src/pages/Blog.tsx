@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { Search, Menu, X } from "lucide-react";
 import { useBlogs } from "@/hooks/useBlogs";
+import useDocumentMeta from "@/hooks/useDocumentMeta";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Sheet, SheetContent, SheetTrigger, SheetClose } from "@/components/ui/sheet";

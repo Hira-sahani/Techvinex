@@ -1,6 +1,7 @@
 import { useParams, Link } from "react-router-dom";
 import { ArrowLeft, Share2, Clock, User, Calendar } from "lucide-react";
 import { useBlog } from "@/hooks/useBlogs";
+import useDocumentMeta from "@/hooks/useDocumentMeta";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
