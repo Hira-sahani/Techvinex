@@ -54,8 +54,22 @@ const BlogDetail = () => {
     );
   }
 
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
+    headline: blog.title,
+    description: blog.short_description || "",
+    image: blog.image_url || undefined,
+    author: { "@type": "Person", name: blog.author || "Atlas Team" },
+    datePublished: blog.created_at,
+    dateModified: blog.updated_at,
+    publisher: { "@type": "Organization", name: "Atlas" },
+    url: `${window.location.origin}/blog/${blog.slug}`,
+  };
+
   return (
     <div className="min-h-screen bg-background">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       {/* Header */}
       <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
