@@ -48,6 +48,10 @@ const CandidateDashboard = () => {
   const [savedRoles, setSavedRoles] = useState<any[]>([]);
 
   useEffect(() => {
+    setTheme("light");
+  }, [setTheme]);
+
+  useEffect(() => {
     if (!user) return;
     const fetchAll = async () => {
       const [profileRes, appsRes, notifsRes, offersRes, contractsRes, savedRes] = await Promise.all([
