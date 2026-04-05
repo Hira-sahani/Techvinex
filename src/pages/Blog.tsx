@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useBlogs } from "@/hooks/useBlogs";
 import useDocumentMeta from "@/hooks/useDocumentMeta";
 import { Skeleton } from "@/components/ui/skeleton";
+import Footer from "@/components/Footer";
 
 const CATEGORIES = ["All", "Company", "Research", "Team", "Stories"];
 
