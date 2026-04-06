@@ -4,7 +4,7 @@ type Lang = string;
 
 const translations: Record<string, Record<Lang, string>> = {
   // Navbar
-  "nav.apex": { en: "APEX", hi: "APEX", es: "APEX", fr: "APEX", de: "APEX", ja: "APEX", zh: "APEX", ar: "APEX", pt: "APEX", ko: "APEX", ru: "APEX", tr: "APEX" },
+  "nav.apex": { en: "ATLAS", hi: "ATLAS", es: "ATLAS", fr: "ATLAS", de: "ATLAS", ja: "ATLAS", zh: "ATLAS", ar: "ATLAS", pt: "ATLAS", ko: "ATLAS", ru: "ATLAS", tr: "ATLAS" },
   "nav.research": { en: "Research", hi: "रिसर्च", es: "Investigación", fr: "Recherche", de: "Forschung", ja: "リサーチ", zh: "研究", ar: "أبحاث", pt: "Pesquisa", ko: "연구", ru: "Исследования", tr: "Araştırma" },
   "nav.enterprise": { en: "Enterprise", hi: "एंटरप्राइज़", es: "Empresa", fr: "Entreprise", de: "Unternehmen", ja: "エンタープライズ", zh: "企业", ar: "المؤسسات", pt: "Empresa", ko: "기업", ru: "Предприятие", tr: "Kurumsal" },
   "nav.blog": { en: "Blog", hi: "ब्लॉग", es: "Blog", fr: "Blog", de: "Blog", ja: "ブログ", zh: "博客", ar: "مدونة", pt: "Blog", ko: "블로그", ru: "Блог", tr: "Blog" },

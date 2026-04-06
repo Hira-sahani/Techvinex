@@ -248,7 +248,7 @@ const ApexContent = () => {
   return (
     <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-16 pb-24">
       <div className="text-center mb-12">
-        <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">APEX Benchmarks</h1>
+        <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">ATLAS Benchmarks</h1>
         <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto">
           Real-time AI model evaluation results from the Atlas Benchmark platform — measuring performance across categories with standardized scoring.
         </p>

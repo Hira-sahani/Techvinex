@@ -7,8 +7,8 @@ const footerLinks = {
     { label: "Stories", to: "/blog" },
   ],
   "Our Research": [
-    { label: "APEX", to: "/#apex" },
-    { label: "APEX-Agents", to: "/benchmark/login" },
+    { label: "ATLAS", to: "/#apex" },
+    { label: "ATLAS-Agents", to: "/benchmark/login" },
     { label: "ACE", to: "/#features" },
   ],
   "Contact Us": [

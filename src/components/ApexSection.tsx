@@ -12,7 +12,7 @@ const ApexSection = () => {
             className="rounded-2xl gradient-cta p-8 sm:p-12 text-primary-foreground flex flex-col justify-between min-h-[280px] cursor-pointer hover:opacity-95 transition-opacity active:scale-[0.99]"
           >
             <div>
-              <p className="text-sm font-medium opacity-80 mb-2">APEX</p>
+              <p className="text-sm font-medium opacity-80 mb-2">ATLAS</p>
               <h3 className="text-2xl sm:text-3xl font-bold mb-3">The AI Productivity Index</h3>
               <p className="text-sm opacity-80">Release · 5 min read</p>
             </div>
