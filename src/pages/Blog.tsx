@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 const CATEGORIES = ["All", "Company", "Research", "Team", "Stories"];
 
-const NAV_TABS = ["APEX", "Research", "Enterprise", "Blog"] as const;
+const NAV_TABS = ["ATLAS", "Research", "Enterprise", "Blog"] as const;
 type NavTab = (typeof NAV_TABS)[number];
 
 const Blog = () => {
