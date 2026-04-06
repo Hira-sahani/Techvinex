@@ -97,7 +97,7 @@ const Blog = () => {
       </header>
 
       {/* Content based on active nav tab */}
-      {activeNav === "APEX" && <ApexContent />}
+      {activeNav === "ATLAS" && <ApexContent />}
       {activeNav === "Research" && <ResearchContent />}
       {activeNav === "Enterprise" && <EnterpriseContent />}
       {activeNav === "Blog" && (
