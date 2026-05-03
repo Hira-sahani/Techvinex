@@ -83,4 +83,51 @@ describe("AuthProvider regression", () => {
     unmount();
     expect(mocks.unsubscribe).toHaveBeenCalledTimes(1);
   });
+
+  it("regression: triggering logout from a consumer signs out and clears user/session in context", async () => {
+    const fakeUser = { id: "u-1", email: "test@example.com" } as unknown as import("@supabase/supabase-js").User;
+    const fakeSession = { user: fakeUser, access_token: "tok" } as unknown as import("@supabase/supabase-js").Session;
+
+    // Start the session as logged-in for this test only
+    mocks.getSession.mockResolvedValueOnce({ data: { session: fakeSession }, error: null });
+
+    const Consumer = () => {
+      const { isLoggedIn, user, logout } = useAuth();
+      return (
+        <div>
+          <span data-testid="logged-in">{String(isLoggedIn)}</span>
+          <span data-testid="user-email">{user?.email ?? "none"}</span>
+          <button onClick={() => void logout()}>Sign out</button>
+        </div>
+      );
+    };
+
+    const { default: userEvent } = await import("@testing-library/user-event");
+    const user = userEvent.setup();
+
+    render(
+      <AuthProvider>
+        <Consumer />
+      </AuthProvider>,
+    );
+
+    // After getSession resolves, the consumer reflects the logged-in state
+    await waitFor(() => {
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("true");
+    });
+    expect(screen.getByTestId("user-email")).toHaveTextContent("test@example.com");
+    expect(mocks.signOut).not.toHaveBeenCalled();
+
+    // Trigger logout from the consumer
+    await user.click(screen.getByRole("button", { name: /sign out/i }));
+
+    // signOut was invoked
+    expect(mocks.signOut).toHaveBeenCalledTimes(1);
+
+    // Context cleared after signOut resolves
+    await waitFor(() => {
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("false");
+    });
+    expect(screen.getByTestId("user-email")).toHaveTextContent("none");
+  });
 });
