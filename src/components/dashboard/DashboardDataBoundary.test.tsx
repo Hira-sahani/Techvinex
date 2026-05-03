@@ -99,6 +99,33 @@ describe("DashboardDataBoundary", () => {
     expect(screen.getByTestId("sk")).toBeInTheDocument();
   });
 
+  it("empty state action renders configured label and triggers its callback exactly once", () => {
+    const onAction = vi.fn();
+    render(
+      <DashboardDataBoundary
+        query={makeQuery<string[]>({ isEmpty: true, status: "empty", data: [] })}
+        skeleton={<Skeleton />}
+        empty={{
+          title: "No jobs yet",
+          description: "Post a job to get started",
+          actionLabel: "Post a job",
+          onAction,
+        }}
+      >
+        {renderContent}
+      </DashboardDataBoundary>,
+    );
+
+    const btn = screen.getByRole("button", { name: "Post a job" });
+    expect(btn).toHaveAccessibleName("Post a job");
+    expect(screen.queryByRole("button", { name: /create/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /add/i })).toBeNull();
+
+    expect(onAction).not.toHaveBeenCalled();
+    fireEvent.click(btn);
+    expect(onAction).toHaveBeenCalledTimes(1);
+  });
+
   it("transitions skeleton -> content on rerender", () => {
     const { rerender } = render(
       <DashboardDataBoundary query={makeQuery<string[]>({ isLoading: true, status: "loading" })} skeleton={<Skeleton />}>
