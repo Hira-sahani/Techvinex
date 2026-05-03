@@ -227,3 +227,113 @@ describe("apiInvoke (supabase.functions.invoke wrapper)", () => {
     expect(opts.method).toBe("POST");
   });
 });
+
+import { setUnauthorizedHandler } from "./apiClient";
+
+describe("apiFetch global 401 handling", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("regression: a 401 response triggers the global unauthorized handler (sign-out / refresh-failure flow)", async () => {
+    const handler = vi.fn();
+    setUnauthorizedHandler(handler);
+
+    mocks.getSession.mockResolvedValueOnce({
+      data: { session: { access_token: "tok-soon-to-be-rejected" } },
+      error: null,
+    });
+
+    const fetchMock = vi.fn(() =>
+      Promise.resolve({
+        ok: false,
+        status: 401,
+        json: () => Promise.resolve({}),
+      }) as unknown as Promise<Response>,
+    );
+    const originalFetch = global.fetch;
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    try {
+      const res = await apiFetch("/api/protected");
+      expect(res.status).toBe(401);
+
+      // Allow the void-promise handler to settle.
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(handler).toHaveBeenCalledTimes(1);
+      const [resArg, inputArg] = handler.mock.calls[0];
+      expect((resArg as Response).status).toBe(401);
+      expect(inputArg).toBe("/api/protected");
+    } finally {
+      global.fetch = originalFetch;
+      // Reset to a no-op so other suites aren't affected.
+      setUnauthorizedHandler(() => {});
+    }
+  });
+
+  it("regression: bursts of parallel 401s only invoke the handler once", async () => {
+    const handler = vi.fn();
+    setUnauthorizedHandler(handler);
+
+    mocks.getSession.mockResolvedValue({
+      data: { session: null },
+      error: null,
+    });
+
+    const fetchMock = vi.fn(() =>
+      Promise.resolve({
+        ok: false,
+        status: 401,
+        json: () => Promise.resolve({}),
+      }) as unknown as Promise<Response>,
+    );
+    const originalFetch = global.fetch;
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    try {
+      await Promise.all([
+        apiFetch("/a"),
+        apiFetch("/b"),
+        apiFetch("/c"),
+      ]);
+      await Promise.resolve();
+      await Promise.resolve();
+
+      expect(handler).toHaveBeenCalledTimes(1);
+    } finally {
+      global.fetch = originalFetch;
+      setUnauthorizedHandler(() => {});
+    }
+  });
+
+  it("does NOT invoke the unauthorized handler on 2xx responses", async () => {
+    const handler = vi.fn();
+    setUnauthorizedHandler(handler);
+
+    mocks.getSession.mockResolvedValueOnce({
+      data: { session: { access_token: "tok" } },
+      error: null,
+    });
+
+    const fetchMock = vi.fn(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        json: () => Promise.resolve({}),
+      }) as unknown as Promise<Response>,
+    );
+    const originalFetch = global.fetch;
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    try {
+      await apiFetch("/api/me");
+      await Promise.resolve();
+      expect(handler).not.toHaveBeenCalled();
+    } finally {
+      global.fetch = originalFetch;
+      setUnauthorizedHandler(() => {});
+    }
+  });
+});
