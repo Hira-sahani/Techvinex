@@ -301,3 +301,5 @@ const AdminOverview = () => {
     </DashboardDataBoundary>
   );
 };
+
+export default AdminOverview;
