@@ -385,6 +385,40 @@ describe("AuthProvider regression", () => {
     expect(screen.getByTestId("loading")).toHaveTextContent("false");
   });
 
+  it("regression: malformed/unexpected listener payloads flip loading safely without flicker and keep isLoggedIn=false", async () => {
+    seedNextSession(mocks, null);
+    const listener = captureNextAuthListener(mocks);
+
+    renderProvider(<LoadingTrackerProbe />);
+
+    // After init: history is exactly [true, false]
+    await waitFor(() => {
+      expect(screen.getByTestId("loading")).toHaveTextContent("false");
+    });
+    expect(screen.getByTestId("loading-history")).toHaveTextContent("true,false");
+
+    // Unexpected listener events: null session, malformed session w/o user,
+    // unknown event name, and a user-less object. None should throw, none
+    // should add a loading transition, and isLoggedIn must stay false.
+    expect(() => listener.emit("SIGNED_IN", null)).not.toThrow();
+    expect(() =>
+      listener.emit("SIGNED_IN", { access_token: "broken" } as unknown as never),
+    ).not.toThrow();
+    expect(() =>
+      listener.emit("USER_UPDATED", { user: null } as unknown as never),
+    ).not.toThrow();
+    expect(() =>
+      listener.emit("UNKNOWN_EVENT" as string, null),
+    ).not.toThrow();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("false");
+    });
+    expect(screen.getByTestId("loading")).toHaveTextContent("false");
+    // No additional flips — still exactly the initial transition.
+    expect(screen.getByTestId("loading-history")).toHaveTextContent("true,false");
+  });
+
   it("no UI flicker: loading flips exactly once during init (true → false), then never flips on listener events", async () => {
     seedNextSession(mocks, null);
     const listener = captureNextAuthListener(mocks);
