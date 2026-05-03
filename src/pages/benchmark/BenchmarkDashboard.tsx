@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { BarChart3, Brain, CheckCircle, Clock, FlaskConical, TrendingUp } from "lucide-react";
 import { BenchmarkDashboardSkeleton } from "@/components/skeletons/DashboardSkeletons";
+import { DashboardEmptyState } from "@/components/dashboard/DashboardStates";
 
 const BenchmarkDashboard = () => {
   const [stats, setStats] = useState({
