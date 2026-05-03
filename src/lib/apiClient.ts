@@ -13,6 +13,18 @@ type FunctionsResponse<T> = Awaited<ReturnType<typeof supabase.functions.invoke<
  */
 export type UnauthorizedHandler = (response: Response, input: RequestInfo | URL) => void | Promise<void>;
 
+/**
+ * Resolve the right login route for the area the user is currently in,
+ * so e.g. an admin lands back on /admin/login rather than the generic /login.
+ */
+function resolveLoginPath(pathname: string): string {
+  if (pathname.startsWith("/admin")) return "/admin/login";
+  if (pathname.startsWith("/blog-dashboard")) return "/admin/login";
+  if (pathname.startsWith("/employer")) return "/employer/login";
+  if (pathname.startsWith("/benchmark")) return "/benchmark/login";
+  return "/login";
+}
+
 let unauthorizedHandler: UnauthorizedHandler = async () => {
   // Avoid duplicate toasts on a burst of 401s by reusing a stable id.
   toast.error("Your session has expired. Please sign in again.", {
@@ -24,6 +36,17 @@ let unauthorizedHandler: UnauthorizedHandler = async () => {
     // signOut failures should not break callers — AuthContext also reacts to
     // the resulting auth state change, and the toast already informed the user.
   }
+
+  // Redirect to the appropriate login screen so the user lands on a valid
+  // session-recovery surface. Skip if we're already on a login page (avoid
+  // redirect loops) and skip in non-browser environments.
+  if (typeof window === "undefined") return;
+  const current = window.location.pathname;
+  if (current.endsWith("/login") || current === "/login") return;
+
+  const loginPath = resolveLoginPath(current);
+  const redirectTo = encodeURIComponent(current + window.location.search);
+  window.location.assign(`${loginPath}?redirect=${redirectTo}`);
 };
 
 export function setUnauthorizedHandler(handler: UnauthorizedHandler) {
