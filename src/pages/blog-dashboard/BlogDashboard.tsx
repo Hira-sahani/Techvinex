@@ -303,9 +303,16 @@ const BlogDashboard = () => {
           {filtered.length === 0 && (
             <div className="text-center py-16">
               <p className="text-sm text-muted-foreground">No posts found</p>
-              <Button variant="outline" size="sm" className="mt-3 text-xs h-8" onClick={() => { resetForm(); setShowForm(true); }}>
-                Create your first post
-              </Button>
+              <div className="flex items-center justify-center gap-2 mt-3">
+                <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => { resetForm(); setShowForm(true); }}>
+                  {blogs.length === 0 ? "Create your first post" : "New post"}
+                </Button>
+                {(search || activeCat !== "All") && (
+                  <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => { setSearch(""); setActiveCat("All"); }}>
+                    Clear filters
+                  </Button>
+                )}
+              </div>
             </div>
           )}
         </div>

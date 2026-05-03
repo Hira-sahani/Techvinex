@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { BarChart3, Brain, CheckCircle, Clock, FlaskConical, TrendingUp } from "lucide-react";
 import { BenchmarkDashboardSkeleton } from "@/components/skeletons/DashboardSkeletons";
+import { DashboardEmptyState } from "@/components/dashboard/DashboardStates";
 
 const BenchmarkDashboard = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalTasks: 0,
     totalResults: 0,
@@ -68,6 +71,22 @@ const BenchmarkDashboard = () => {
 
   if (loading) return <BenchmarkDashboardSkeleton />;
 
+  if (stats.totalTasks === 0 && stats.totalResults === 0) {
+    return (
+      <div className="p-6">
+        <DashboardEmptyState
+          title="No benchmark activity yet"
+          description="Create benchmark tasks and run your first model evaluation to see scores, pass rates, and latency here."
+          actionLabel="Create task"
+          onAction={() => navigate("/benchmark/tasks")}
+          secondaryActionLabel="Run a test"
+          onSecondaryAction={() => navigate("/benchmark/run")}
+        />
+      </div>
+    );
+  }
+
+
   return (
     <div className="p-6 space-y-6">
       <div>
@@ -90,7 +109,10 @@ const BenchmarkDashboard = () => {
       <Card className="p-4">
         <h2 className="text-sm font-semibold mb-3">Recent Results</h2>
         {recentResults.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No results yet. Run your first benchmark test!</p>
+          <div className="flex items-center justify-between gap-3 py-2">
+            <p className="text-xs text-muted-foreground">No results yet. Run your first benchmark test.</p>
+            <button onClick={() => navigate("/benchmark/run")} className="text-xs font-medium text-primary hover:underline">Run test →</button>
+          </div>
         ) : (
           <div className="space-y-2">
             {recentResults.map((r) => (

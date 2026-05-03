@@ -7,6 +7,8 @@ import {
   LineChart, Line,
 } from "recharts";
 import { AdminOverviewSkeleton } from "@/components/skeletons/DashboardSkeletons";
+import { DashboardEmptyState } from "@/components/dashboard/DashboardStates";
+import { useNavigate } from "react-router-dom";
 
 /* ── Shared chart config ── */
 const GRID = { stroke: "hsl(var(--border))", strokeOpacity: 0.4, strokeDasharray: "none" };
@@ -56,14 +58,15 @@ const PIE_COLORS = [
 ];
 
 const AdminOverview = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({ users: 0, jobs: 0, applications: 0, revenue: 0, hires: 0, interviews: 0 });
   const [recentApps, setRecentApps] = useState<any[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
   const [pieData, setPieData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchAll = async () => {
+  const fetchAll = async () => {
+    setLoading(true);
       // Counts + recent
       const [profilesRes, jobsRes, appsRes, billingRes, hiresRes, interviewsRes, recentRes] = await Promise.all([
         supabase.from("profiles").select("id", { count: "exact", head: true }),
@@ -104,8 +107,10 @@ const AdminOverview = () => {
         .map(([name, value]) => ({ name, value: Math.round((value / total) * 100) }));
       setPieData(pie.length > 0 ? pie : [{ name: "No Data", value: 100 }]);
 
-      setLoading(false);
-    };
+    setLoading(false);
+  };
+
+  useEffect(() => {
     fetchAll();
   }, []);
 
@@ -119,6 +124,21 @@ const AdminOverview = () => {
   ];
 
   if (loading) return <AdminOverviewSkeleton />;
+
+  const isPlatformEmpty = stats.users === 0 && stats.jobs === 0 && stats.applications === 0;
+  if (isPlatformEmpty) {
+    return (
+      <DashboardEmptyState
+        title="No platform activity yet"
+        description="Once users sign up and employers post jobs, you'll see metrics, charts, and recent activity here."
+        actionLabel="Refresh data"
+        onAction={fetchAll}
+        secondaryActionLabel="Manage users"
+        onSecondaryAction={() => navigate("/admin/users")}
+      />
+    );
+  }
+
 
   return (
     <div className="space-y-6">
