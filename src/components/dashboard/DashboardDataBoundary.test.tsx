@@ -702,5 +702,40 @@ describe("DashboardDataBoundary", () => {
       expect(screen.getByText("Still empty")).toBeInTheDocument();
       expect(screen.queryByTestId("content")).toBeNull();
     });
+
+    it("regression: empty state action is keyboard accessible (Tab focus, Enter + Space) and triggers onAction", async () => {
+      const user = userEvent.setup();
+      const onAction = vi.fn();
+      render(
+        <DashboardDataBoundary
+          query={makeQuery<string[]>({ isEmpty: true, status: "empty", data: [] })}
+          skeleton={<Skeleton />}
+          empty={{
+            title: "No items",
+            description: "Add your first item",
+            actionLabel: "Add",
+            onAction,
+          }}
+        >
+          {renderContent}
+        </DashboardDataBoundary>,
+      );
+
+      const btn = screen.getByRole("button", { name: "Add" });
+      expect(btn).toBeEnabled();
+      expect(btn).not.toHaveAttribute("tabindex", "-1");
+
+      // Tab moves focus to the action button (first focusable in empty state)
+      await user.tab();
+      expect(btn).toHaveFocus();
+
+      // Enter activates
+      await user.keyboard("{Enter}");
+      expect(onAction).toHaveBeenCalledTimes(1);
+
+      // Space activates (standard button keyboard semantics)
+      await user.keyboard(" ");
+      expect(onAction).toHaveBeenCalledTimes(2);
+    });
   });
 });
