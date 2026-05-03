@@ -592,5 +592,38 @@ describe("DashboardDataBoundary", () => {
       await user.keyboard("{Enter}");
       expect(onAction).toHaveBeenCalledTimes(2);
     });
+
+    it("regression: does NOT render empty state when isEmpty is false, even if isLoading and isError are both false", () => {
+      render(
+        <DashboardDataBoundary
+          query={makeQuery<string[]>({
+            isLoading: false,
+            isError: false,
+            isEmpty: false,
+            isSuccess: true,
+            status: "success",
+            data: ["a", "b"],
+          })}
+          skeleton={<Skeleton />}
+          empty={{
+            title: "Should not appear",
+            description: "Empty config provided but isEmpty=false",
+            actionLabel: "Add",
+            onAction: vi.fn(),
+          }}
+        >
+          {renderContent}
+        </DashboardDataBoundary>,
+      );
+
+      // Empty state must not be rendered
+      expect(screen.queryByText("Should not appear")).toBeNull();
+      expect(screen.queryByText("Empty config provided but isEmpty=false")).toBeNull();
+      expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
+      expect(screen.queryByRole("status")).toBeNull();
+
+      // Content should be rendered instead
+      expect(screen.getByTestId("content")).toHaveTextContent("a,b");
+    });
   });
 });
