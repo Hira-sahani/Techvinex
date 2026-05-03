@@ -77,6 +77,7 @@ const resetLoadingHistory = () => {
 describe("AuthProvider regression", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetLoadingHistory();
   });
 
   it("mounts without throwing and renders its children", () => {
