@@ -396,4 +396,56 @@ describe("DashboardDataBoundary", () => {
       expect(onSecondaryAction).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe("snapshots", () => {
+    it("matches snapshot for loading state", () => {
+      const { container } = render(
+        <DashboardDataBoundary
+          query={makeQuery<string[]>({ isLoading: true, status: "loading" })}
+          skeleton={<Skeleton />}
+        >
+          {renderContent}
+        </DashboardDataBoundary>,
+      );
+      expect(container.firstChild).toMatchSnapshot();
+    });
+
+    it("matches snapshot for error state", () => {
+      const { container } = render(
+        <DashboardDataBoundary
+          query={makeQuery<string[]>({
+            isError: true,
+            status: "error",
+            error: new Error("Network down"),
+            refetch: vi.fn(async () => {}),
+          })}
+          skeleton={<Skeleton />}
+          errorConfig={{ title: "Failed to load", description: "Network down" }}
+        >
+          {renderContent}
+        </DashboardDataBoundary>,
+      );
+      expect(container.firstChild).toMatchSnapshot();
+    });
+
+    it("matches snapshot for empty state with primary + secondary actions", () => {
+      const { container } = render(
+        <DashboardDataBoundary
+          query={makeQuery<string[]>({ isEmpty: true, status: "empty", data: [] })}
+          skeleton={<Skeleton />}
+          empty={{
+            title: "No items yet",
+            description: "Create your first item to get started",
+            actionLabel: "Create",
+            onAction: () => {},
+            secondaryActionLabel: "Learn more",
+            onSecondaryAction: () => {},
+          }}
+        >
+          {renderContent}
+        </DashboardDataBoundary>,
+      );
+      expect(container.firstChild).toMatchSnapshot();
+    });
+  });
 });
