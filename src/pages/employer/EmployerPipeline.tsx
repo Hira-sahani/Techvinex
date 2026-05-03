@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { useEmployerCandidates, useEmployerJobs } from "@/hooks/useEmployerData";
 import { GripVertical, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-import JetraLoaderInline from "@/components/JetraLoaderInline";
+import { EmployerListSkeleton } from "@/components/skeletons/EmployerSkeletons";
 
 const STAGES = [
   { key: "applied", label: "AI Matched", color: "border-blue-400 bg-blue-50" },
@@ -40,7 +40,7 @@ const EmployerPipeline = () => {
   };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center py-20"><JetraLoaderInline /></div>;
+    return <EmployerListSkeleton />;
   }
 
   return (

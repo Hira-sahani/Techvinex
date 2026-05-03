@@ -1,7 +1,7 @@
 import { useEmployerCandidates, useEmployerJobs } from "@/hooks/useEmployerData";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { TrendingUp, Users, Briefcase } from "lucide-react";
-import JetraLoaderInline from "@/components/JetraLoaderInline";
+import { EmployerStatsSkeleton } from "@/components/skeletons/EmployerSkeletons";
 
 const PIE_COLORS = ["hsl(217, 91%, 60%)", "hsl(38, 92%, 50%)", "hsl(271, 91%, 65%)", "hsl(142, 71%, 45%)", "hsl(0, 0%, 70%)"];
 
@@ -10,7 +10,7 @@ const EmployerAnalytics = () => {
   const { data: candidates = [], isLoading: candidatesLoading } = useEmployerCandidates();
 
   if (jobsLoading || candidatesLoading) {
-    return <div className="flex items-center justify-center py-20"><JetraLoaderInline /></div>;
+    return <EmployerStatsSkeleton />;
   }
 
   const funnelData = [

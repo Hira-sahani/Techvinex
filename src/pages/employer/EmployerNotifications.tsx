@@ -2,13 +2,13 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { Bell, Check, CheckCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatDistanceToNow } from "date-fns";
-import JetraLoaderInline from "@/components/JetraLoaderInline";
+import { EmployerListSkeleton } from "@/components/skeletons/EmployerSkeletons";
 
 const EmployerNotifications = () => {
   const { notifications, unreadCount, loading, markAsRead, markAllRead } = useNotifications();
 
   if (loading) {
-    return <div className="flex items-center justify-center py-20"><JetraLoaderInline /></div>;
+    return <EmployerListSkeleton />;
   }
 
   return (

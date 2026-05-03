@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { X, ChevronRight } from "lucide-react";
 import { useNotifications } from "@/hooks/useNotifications";
 import { formatDistanceToNow } from "date-fns";
-import JetraLoaderInline from "@/components/JetraLoaderInline";
+import { SkeletonList } from "@/components/skeletons/Skeleton";
 
 const Notifications = () => {
   const navigate = useNavigate();
@@ -19,7 +19,7 @@ const Notifications = () => {
 
       <div className="divide-y divide-border">
         {loading ? (
-          <div className="flex items-center justify-center py-12"><JetraLoaderInline /></div>
+          <div className="p-4"><SkeletonList rows={6} /></div>
         ) : notifications.length === 0 ? (
           <div className="px-4 py-16 text-center">
             <p className="text-sm text-muted-foreground">No notifications yet</p>
