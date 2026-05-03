@@ -166,4 +166,33 @@ describe("AuthProvider regression", () => {
     });
     expect(screen.getByTestId("logged-in")).toHaveTextContent("false");
   });
+
+  it("regression: invoking the auth listener callback updates isLoggedIn and loading", async () => {
+    let capturedCallback: ((event: string, session: unknown) => void) | null = null;
+    mocks.onAuthStateChange.mockImplementationOnce(((cb: (event: string, session: unknown) => void) => {
+      capturedCallback = cb;
+      return { data: { subscription: { unsubscribe: mocks.unsubscribe } } };
+    }) as unknown as () => { data: { subscription: { unsubscribe: typeof mocks.unsubscribe } } });
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+
+    expect(typeof capturedCallback).toBe("function");
+
+    const fakeUser = { id: "u-3", email: "listener@example.com" } as unknown as import("@supabase/supabase-js").User;
+    const fakeSession = { user: fakeUser, access_token: "tok-3" } as unknown as import("@supabase/supabase-js").Session;
+
+    const { act } = await import("react");
+    act(() => {
+      capturedCallback!("SIGNED_IN", fakeSession);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("true");
+      expect(screen.getByTestId("loading")).toHaveTextContent("false");
+    });
+  });
 });
