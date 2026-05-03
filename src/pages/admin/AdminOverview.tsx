@@ -6,6 +6,7 @@ import {
   AreaChart, Area, PieChart, Pie, Cell,
   LineChart, Line,
 } from "recharts";
+import { AdminOverviewSkeleton } from "@/components/skeletons/DashboardSkeletons";
 
 /* ── Shared chart config ── */
 const GRID = { stroke: "hsl(var(--border))", strokeOpacity: 0.4, strokeDasharray: "none" };
@@ -116,6 +117,8 @@ const AdminOverview = () => {
     { label: "Total Hires", value: stats.hires, icon: CheckCircle, change: stats.hires > 0 ? 8 : 0, spark: [4, 6, 5, 8, 7, 10, stats.hires || 12] },
     { label: "Interviews", value: stats.interviews, icon: Clock, change: stats.interviews > 0 ? -3 : 0, spark: [22, 20, 24, 18, 21, 19, stats.interviews || 17] },
   ];
+
+  if (loading) return <AdminOverviewSkeleton />;
 
   return (
     <div className="space-y-6">
