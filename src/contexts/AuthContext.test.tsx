@@ -247,4 +247,59 @@ describe("AuthProvider regression", () => {
       expect(screen.getByTestId("loading")).toHaveTextContent("false");
     });
   });
+
+  it("regression: TOKEN_REFRESHED updates session/access token without toggling isLoggedIn", async () => {
+    const fakeUser = { id: "u-5", email: "refresh@example.com" } as unknown as import("@supabase/supabase-js").User;
+    const initialSession = { user: fakeUser, access_token: "tok-old" } as unknown as import("@supabase/supabase-js").Session;
+    const refreshedSession = { user: fakeUser, access_token: "tok-new" } as unknown as import("@supabase/supabase-js").Session;
+
+    mocks.getSession.mockResolvedValueOnce({ data: { session: initialSession }, error: null });
+
+    let capturedCallback: ((event: string, session: unknown) => void) | null = null;
+    mocks.onAuthStateChange.mockImplementationOnce(((cb: (event: string, session: unknown) => void) => {
+      capturedCallback = cb;
+      return { data: { subscription: { unsubscribe: mocks.unsubscribe } } };
+    }) as unknown as () => { data: { subscription: { unsubscribe: typeof mocks.unsubscribe } } });
+
+    const TokenProbe = () => {
+      const { isLoggedIn, session, loading } = useAuth();
+      return (
+        <div>
+          <span data-testid="logged-in">{String(isLoggedIn)}</span>
+          <span data-testid="loading">{String(loading)}</span>
+          <span data-testid="access-token">{session?.access_token ?? "none"}</span>
+        </div>
+      );
+    };
+
+    render(
+      <AuthProvider>
+        <TokenProbe />
+      </AuthProvider>,
+    );
+
+    // Initial logged-in state with the old token
+    await waitFor(() => {
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("true");
+      expect(screen.getByTestId("access-token")).toHaveTextContent("tok-old");
+      expect(screen.getByTestId("loading")).toHaveTextContent("false");
+    });
+
+    // Track isLoggedIn changes to ensure no incorrect toggling occurs
+    const loggedInBeforeRefresh = screen.getByTestId("logged-in").textContent;
+
+    expect(typeof capturedCallback).toBe("function");
+    const { act } = await import("react");
+    act(() => {
+      capturedCallback!("TOKEN_REFRESHED", refreshedSession);
+    });
+
+    // After refresh: token updated, still logged in, still not loading
+    await waitFor(() => {
+      expect(screen.getByTestId("access-token")).toHaveTextContent("tok-new");
+    });
+    expect(screen.getByTestId("logged-in")).toHaveTextContent("true");
+    expect(screen.getByTestId("logged-in").textContent).toBe(loggedInBeforeRefresh);
+    expect(screen.getByTestId("loading")).toHaveTextContent("false");
+  });
 });
