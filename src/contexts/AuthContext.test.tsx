@@ -503,6 +503,89 @@ describe("AuthProvider regression", () => {
     ).toBe(false);
   });
 
+  it("regression: TOKEN_REFRESHED updates the access token used by subsequent authenticated API calls (Authorization header)", async () => {
+    seedNextSession(
+      mocks,
+      buildFakeSession({
+        access_token: "tok-old",
+        user: { id: "u-api", email: "api@example.com" },
+      }),
+    );
+    const listener = captureNextAuthListener(mocks);
+
+    // Mock fetch to capture Authorization headers from authenticated calls.
+    const fetchMock = vi.fn(() =>
+      Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) }),
+    );
+    const originalFetch = global.fetch;
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    /**
+     * Consumer that performs a "fetch" using the current session's access
+     * token. This simulates how real code (e.g. supabase.functions.invoke,
+     * or any custom API client) would read session.access_token at call time
+     * to build the Authorization header.
+     */
+    const ApiConsumer = () => {
+      const { session } = useAuth();
+      const callApi = () =>
+        fetch("/api/me", {
+          headers: {
+            Authorization: session?.access_token
+              ? `Bearer ${session.access_token}`
+              : "",
+          },
+        });
+      return (
+        <div>
+          <span data-testid="access-token">{session?.access_token ?? "none"}</span>
+          <button onClick={() => void callApi()}>Call API</button>
+        </div>
+      );
+    };
+
+    const { default: userEvent } = await import("@testing-library/user-event");
+    const user = userEvent.setup();
+
+    try {
+      renderProvider(<ApiConsumer />);
+
+      // Wait for init.
+      await waitFor(() => {
+        expect(screen.getByTestId("access-token")).toHaveTextContent("tok-old");
+      });
+
+      // First authenticated call uses the OLD token.
+      await user.click(screen.getByRole("button", { name: /call api/i }));
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+      const firstHeaders = (fetchMock.mock.calls[0][1] as RequestInit | undefined)
+        ?.headers as Record<string, string> | undefined;
+      expect(firstHeaders?.Authorization).toBe("Bearer tok-old");
+
+      // TOKEN_REFRESHED arrives — context's session.access_token must update.
+      listener.emit(
+        "TOKEN_REFRESHED",
+        buildFakeSession({
+          access_token: "tok-new",
+          user: { id: "u-api", email: "api@example.com" },
+        }),
+      );
+      await waitFor(() => {
+        expect(screen.getByTestId("access-token")).toHaveTextContent("tok-new");
+      });
+
+      // Second authenticated call MUST use the NEW token (no stale header).
+      await user.click(screen.getByRole("button", { name: /call api/i }));
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const secondHeaders = (fetchMock.mock.calls[1][1] as RequestInit | undefined)
+        ?.headers as Record<string, string> | undefined;
+      expect(secondHeaders?.Authorization).toBe("Bearer tok-new");
+      expect(secondHeaders?.Authorization).not.toBe("Bearer tok-old");
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
   it("no UI flicker: loading flips exactly once during init (true → false), then never flips on listener events", async () => {
     seedNextSession(mocks, null);
     const listener = captureNextAuthListener(mocks);
