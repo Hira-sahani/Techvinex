@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { TableCell, TableRow } from "@/components/ui/table";
 
 /**
  * Shimmer skeleton primitive. Uses a moving gradient overlay over a muted bg.
@@ -115,7 +116,6 @@ export const SkeletonTable = ({
  * Shimmer rows for use inside an existing <TableBody>. Renders TableRow/TableCell
  * elements so it can be dropped in place of a "Loading..." row.
  */
-import { TableCell, TableRow } from "@/components/ui/table";
 
 export const SkeletonTableRows = ({
   rows = 5,
