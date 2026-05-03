@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
-import type { FunctionInvokeOptions, FunctionsResponse } from "@supabase/functions-js";
+type FunctionInvokeOptions = Parameters<typeof supabase.functions.invoke>[1];
+type FunctionsResponse<T> = Awaited<ReturnType<typeof supabase.functions.invoke<T>>>;
 
 /**
  * Thin authenticated fetch wrapper used across the app.
