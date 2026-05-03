@@ -163,6 +163,11 @@ const ProfileResumeTab = () => {
     toast.success("Resume details saved.");
   };
 
+  if (loading) {
+    const { ProfileTabSkeleton } = require("@/components/skeletons/PageSkeletons");
+    return <ProfileTabSkeleton rows={6} loadingLabel="Loading resume" />;
+  }
+
   return (
     <div className="space-y-8 pb-24">
       {/* Header with Edit button */}
