@@ -118,7 +118,7 @@ const BlogDashboard = () => {
     draft: blogs.filter(b => b.status === "draft").length,
   }), [blogs]);
 
-  if (isLoading) return <BlogDashboardSkeleton />;
+  if (dashboardQuery.isLoading) return <BlogDashboardSkeleton />;
 
   return (
     <div className="min-h-screen bg-background">
