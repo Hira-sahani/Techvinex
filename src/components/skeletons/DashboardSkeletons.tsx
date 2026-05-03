@@ -46,14 +46,16 @@ type CandidateOpts = DashboardSkeletonOptions & {
 export const CandidateDashboardSkeleton = ({
   className,
   extraSlot,
+  loadingLabel = "Loading candidate dashboard",
   statCount = 5,
   statCols = "grid-cols-2 sm:grid-cols-3 lg:grid-cols-5",
   listRows = [4, 3],
   showProgress = true,
 }: CandidateOpts = {}) => (
-  <div className={cn("min-h-screen bg-background", className)}>
+  <div className={cn("min-h-screen bg-background", className)} {...a11yLoadingProps(loadingLabel)}>
+    <SrLoading label={loadingLabel} />
     <SidebarNav />
-    <div className="ml-16 pb-20">
+    <div className="ml-16 pb-20" aria-hidden="true">
       <TopStatusBar currentStep={2} />
       <div className="px-4 sm:px-6 pt-4">
         <div className="max-w-5xl mx-auto space-y-6">
