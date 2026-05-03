@@ -7,6 +7,8 @@ import {
   LineChart, Line,
 } from "recharts";
 import { AdminOverviewSkeleton } from "@/components/skeletons/DashboardSkeletons";
+import { DashboardEmptyState } from "@/components/dashboard/DashboardStates";
+import { useNavigate } from "react-router-dom";
 
 /* ── Shared chart config ── */
 const GRID = { stroke: "hsl(var(--border))", strokeOpacity: 0.4, strokeDasharray: "none" };
