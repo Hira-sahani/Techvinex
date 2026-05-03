@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import JetraLoaderInline from "@/components/JetraLoaderInline";
+import { SkeletonList } from "@/components/skeletons/Skeleton";
 import { useNavigate } from "react-router-dom";
 import { Briefcase, Linkedin, CircleAlert, Building2, DollarSign, Clock, CheckCircle2, BookmarkCheck, FileText, Star } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
@@ -303,9 +303,7 @@ const DashboardSection = () => {
 
         {/* Tab Content */}
         {tabLoading ? (
-          <div className="flex items-center justify-center py-16">
-            <JetraLoaderInline />
-          </div>
+          <SkeletonList rows={4} />
         ) : tabData.length > 0 ? (
           <div className="space-y-3">
             {tabData.map((item) => renderItem(item))}

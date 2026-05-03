@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import JetraLoaderInline from "@/components/JetraLoaderInline";
+import { SkeletonCard } from "@/components/skeletons/Skeleton";
 import { ChevronLeft, ChevronRight, Star, MapPin, Briefcase } from "lucide-react";
 import { useExploreJobs } from "@/hooks/useExploreJobs";
 import { useRoles } from "@/hooks/useRoles";
@@ -70,7 +70,9 @@ const RolesSection = () => {
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-12"><JetraLoaderInline /></div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
+          </div>
         ) : displayJobs.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-sm text-muted-foreground">{t("explore.noResults") || "No open positions right now. Check back soon!"}</p>
