@@ -6,12 +6,8 @@ import CandidateDashboard from "./CandidateDashboard";
 const mockUseAuth = vi.fn();
 const mockUseMinimumLoading = vi.fn();
 const mockNavigate = vi.fn();
-const maybeSingle = vi.fn();
-const selectChain = vi.fn();
-const orderChain = vi.fn();
-const limitChain = vi.fn();
-const eqChain = vi.fn();
 const fromMock = vi.fn();
+const removeChannel = vi.fn();
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => mockUseAuth(),
@@ -35,7 +31,7 @@ vi.mock("@/integrations/supabase/client", () => ({
     channel: () => ({
       on: () => ({ on: () => ({ on: () => ({ subscribe: () => ({}) }) }) }),
     }),
-    removeChannel: vi.fn(),
+    removeChannel,
   },
 }));
 
@@ -48,17 +44,36 @@ vi.mock("@/components/dashboard/ApplicationPipeline", () => ({ default: () => <d
 vi.mock("@/components/dashboard/DashboardStats", () => ({ default: () => <div>Dashboard Stats</div> }));
 vi.mock("@/components/dashboard/UpcomingInterviews", () => ({ default: () => <div>Upcoming Interviews</div> }));
 
+const createQuery = (table: string) => {
+  const state = { filters: [] as Array<{ column: string; value: unknown }> };
+
+  const builder: any = {
+    select: () => builder,
+    eq: (column: string, value: unknown) => {
+      state.filters.push({ column, value });
+      return builder;
+    },
+    maybeSingle: async () => {
+      if (table === "profiles") {
+        return { data: { full_name: "Aman Singh", email: "a@test.com" }, error: null };
+      }
+      return { data: null, error: null };
+    },
+    order: () => builder,
+    limit: async () => ({ data: [], error: null }),
+    then: (resolve: (value: unknown) => void) => {
+      resolve({ data: [], error: null });
+    },
+  };
+
+  return builder;
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockUseAuth.mockReturnValue({ user: { id: "user-1" } });
   mockUseMinimumLoading.mockReturnValue(false);
-
-  maybeSingle.mockResolvedValue({ data: { full_name: "Aman Singh", email: "a@test.com" }, error: null });
-  orderChain.mockResolvedValue({ data: [], error: null });
-  limitChain.mockResolvedValue({ data: [], error: null });
-  selectChain.mockReturnValue({ eq: eqChain, order: orderChain });
-  eqChain.mockReturnValue({ maybeSingle, order: orderChain, limit: limitChain, eq: eqChain });
-  fromMock.mockReturnValue({ select: selectChain });
+  fromMock.mockImplementation((table: string) => createQuery(table));
 });
 
 describe("CandidateDashboard", () => {

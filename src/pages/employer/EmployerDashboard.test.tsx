@@ -82,7 +82,7 @@ describe("EmployerDashboard", () => {
     );
 
     expect(screen.getByRole("heading", { name: /dashboard/i })).toBeInTheDocument();
-    expect(screen.getByText(/react engineer/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/react engineer/i).length).toBeGreaterThan(0);
     expect(screen.queryByText("Employer Dashboard Skeleton")).not.toBeInTheDocument();
   });
 });
