@@ -195,4 +195,20 @@ describe("AuthProvider regression", () => {
       expect(screen.getByTestId("loading")).toHaveTextContent("false");
     });
   });
+
+  it("regression: repeated mount/unmount cycles do not leak subscriptions or duplicate listeners", () => {
+    const CYCLES = 5;
+    for (let i = 0; i < CYCLES; i++) {
+      const { unmount } = render(
+        <AuthProvider>
+          <div />
+        </AuthProvider>,
+      );
+      unmount();
+    }
+
+    // Each mount registers exactly one listener; each unmount tears it down.
+    expect(mocks.onAuthStateChange).toHaveBeenCalledTimes(CYCLES);
+    expect(mocks.unsubscribe).toHaveBeenCalledTimes(CYCLES);
+  });
 });
