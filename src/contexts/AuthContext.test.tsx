@@ -242,4 +242,30 @@ describe("AuthProvider regression", () => {
     expect(screen.getByTestId("logged-in").textContent).toBe(loggedInBeforeRefresh);
     expect(screen.getByTestId("loading")).toHaveTextContent("false");
   });
+
+  it("regression: REAUTHENTICATED listener callback updates isLoggedIn=true and loading=false with the new session", async () => {
+    // Start logged out so we can verify the transition into a logged-in state.
+    seedNextSession(mocks, null);
+    const listener = captureNextAuthListener(mocks);
+
+    renderProvider();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("false");
+      expect(screen.getByTestId("loading")).toHaveTextContent("false");
+    });
+
+    listener.emit(
+      "REAUTHENTICATED",
+      buildFakeSession({
+        access_token: "tok-reauth",
+        user: { id: "u-6", email: "reauth@example.com" },
+      }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("true");
+      expect(screen.getByTestId("loading")).toHaveTextContent("false");
+    });
+  });
 });
