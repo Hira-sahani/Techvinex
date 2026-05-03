@@ -148,4 +148,22 @@ describe("AuthProvider regression", () => {
       expect(screen.getByTestId("loading")).toHaveTextContent("false");
     });
   });
+
+  it("regression: when getSession returns an error, isLoggedIn stays false and loading becomes false", async () => {
+    mocks.getSession.mockResolvedValueOnce({
+      data: { session: null },
+      error: { name: "AuthError", message: "boom" } as unknown as Error,
+    });
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("loading")).toHaveTextContent("false");
+    });
+    expect(screen.getByTestId("logged-in")).toHaveTextContent("false");
+  });
 });
