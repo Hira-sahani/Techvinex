@@ -177,5 +177,46 @@ describe("DashboardDataBoundary", () => {
     );
     expect(screen.queryByText("EMPTY")).toBeNull();
     expect(screen.getByTestId("content")).toBeInTheDocument();
+
+  it("shows skeleton when isLoading is true even if isError or isEmpty are also set", () => {
+    const refetch = vi.fn(async () => {});
+    const { rerender } = render(
+      <DashboardDataBoundary
+        query={makeQuery<string[]>({
+          isLoading: true,
+          isError: true,
+          status: "loading",
+          error: new Error("Boom"),
+          refetch,
+        })}
+        skeleton={<Skeleton />}
+        errorConfig={{ title: "Failed" }}
+        empty={{ title: "Nothing here", description: "Add one" }}
+      >
+        {renderContent}
+      </DashboardDataBoundary>,
+    );
+    expect(screen.getByTestId("sk")).toBeInTheDocument();
+    expect(screen.queryByText("Failed")).toBeNull();
+    expect(screen.queryByText("Boom")).toBeNull();
+    expect(screen.queryByRole("button", { name: /try again/i })).toBeNull();
+
+    rerender(
+      <DashboardDataBoundary
+        query={makeQuery<string[]>({
+          isLoading: true,
+          isEmpty: true,
+          status: "loading",
+          data: [],
+        })}
+        skeleton={<Skeleton />}
+        empty={{ title: "Nothing here", description: "Add one", actionLabel: "Create", onAction: vi.fn() }}
+      >
+        {renderContent}
+      </DashboardDataBoundary>,
+    );
+    expect(screen.getByTestId("sk")).toBeInTheDocument();
+    expect(screen.queryByText("Nothing here")).toBeNull();
+    expect(screen.queryByRole("button", { name: /create/i })).toBeNull();
   });
 });
