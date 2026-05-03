@@ -169,12 +169,11 @@ const ApplyStepInterview = ({ onInterviewComplete, onPhaseChange }: ApplyStepInt
     setStatusText("AI is speaking...");
 
     try {
-      const response = await fetch(TTS_URL, {
+      const response = await apiFetch(TTS_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({ text }),
       });
