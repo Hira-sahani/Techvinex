@@ -289,18 +289,11 @@ export async function apiFetch(
 
   // --- 401 path ---
   if (retryOnUnauthorized) {
-    // Try to refresh the session ONCE. On success, replay the request
-    // through apiFetch (which re-reads getSession), guaranteeing the
-    // stale token from the first attempt is never reused.
-    let refreshed: string | null = null;
-    try {
-      const { data: refreshData, error } = await supabase.auth.refreshSession();
-      if (!error) {
-        refreshed = refreshData.session?.access_token ?? null;
-      }
-    } catch {
-      refreshed = null;
-    }
+    // Coalesce concurrent refresh attempts: if many requests 401 at the
+    // same time, they should all await the SAME refreshSession() call
+    // rather than each firing their own (which would burn refresh tokens
+    // and risk Supabase revoking the chain).
+    const refreshed: string | null = await dedupedRefreshSession();
 
     if (refreshed) {
       // Telemetry: initial 401 that we're about to retry.
