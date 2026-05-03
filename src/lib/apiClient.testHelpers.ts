@@ -107,8 +107,34 @@ export function createUnauthorizedCapture(): UnauthorizedCapture {
       newTelemetryEvents().filter((e) => e.endpoint.includes(substring)),
     busFor: (substring) => bus.filter((e) => e.endpoint.includes(substring)),
 
-    async drain(ticks = 4) {
-      for (let i = 0; i < ticks; i++) await Promise.resolve();
+    async drain(ticks = 8) {
+      // Deterministically flush:
+      //  1. Pending microtasks (Promise.resolve loop)
+      //  2. Queued macrotasks (setTimeout 0) — covers handlers scheduled via
+      //     queueMicrotask-after-timer or .finally chains that yield.
+      //  3. Settle when telemetry + bus counts are stable across two passes
+      //     OR we hit the tick budget. This avoids racing the in-flight
+      //     unauthorized/refresh dedup promises in apiClient.
+      let lastTel = newTelemetryEvents().length;
+      let lastBus = bus.length;
+      let stable = 0;
+      for (let i = 0; i < ticks; i++) {
+        // Microtask flush (multiple rounds — chained .then/.finally).
+        for (let m = 0; m < 4; m++) await Promise.resolve();
+        // Macrotask flush.
+        await new Promise<void>((r) => setTimeout(r, 0));
+
+        const tel = newTelemetryEvents().length;
+        const b = bus.length;
+        if (tel === lastTel && b === lastBus) {
+          stable += 1;
+          if (stable >= 2) return;
+        } else {
+          stable = 0;
+          lastTel = tel;
+          lastBus = b;
+        }
+      }
     },
 
     telemetryCountsByEndpoint() {
