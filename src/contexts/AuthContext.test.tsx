@@ -651,6 +651,61 @@ describe("AuthProvider regression", () => {
     expect(screen.getByTestId("user-email")).toHaveTextContent("none");
   });
 
+  it("regression: TOKEN_REFRESH_FAILED-equivalent listener path stops loading, sets isLoggedIn=false, and clears the old access token", async () => {
+    // Start logged in with a known access token.
+    seedNextSession(
+      mocks,
+      buildFakeSession({
+        access_token: "tok-doomed",
+        user: { id: "u-fail", email: "fail@example.com" },
+      }),
+    );
+    const listener = captureNextAuthListener(mocks);
+
+    const Probe3 = () => {
+      const { isLoggedIn, loading, session, user } = useAuth();
+      return (
+        <div>
+          <span data-testid="logged-in">{String(isLoggedIn)}</span>
+          <span data-testid="loading">{String(loading)}</span>
+          <span data-testid="access-token">{session?.access_token ?? "none"}</span>
+          <span data-testid="user-id">{user?.id ?? "none"}</span>
+        </div>
+      );
+    };
+
+    renderProvider(<Probe3 />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("true");
+      expect(screen.getByTestId("access-token")).toHaveTextContent("tok-doomed");
+      expect(screen.getByTestId("loading")).toHaveTextContent("false");
+    });
+
+    // Supabase signals refresh failure by emitting an event with a null
+    // session (the SDK uses TOKEN_REFRESHED w/ null or SIGNED_OUT depending
+    // on version). Test both common shapes to pin the contract.
+    listener.emit("TOKEN_REFRESHED", null);
+    await waitFor(() => {
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("false");
+      expect(screen.getByTestId("access-token")).toHaveTextContent("none");
+      expect(screen.getByTestId("user-id")).toHaveTextContent("none");
+      expect(screen.getByTestId("loading")).toHaveTextContent("false");
+    });
+
+    // The old access token must NEVER be present after a failed refresh.
+    expect(screen.getByTestId("access-token").textContent).not.toBe("tok-doomed");
+
+    // Equivalent path: explicit SIGNED_OUT after refresh failure must keep
+    // the cleared state — no resurrection of the old token.
+    listener.emit("SIGNED_OUT", null);
+    await waitFor(() => {
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("false");
+      expect(screen.getByTestId("loading")).toHaveTextContent("false");
+    });
+    expect(screen.getByTestId("access-token")).toHaveTextContent("none");
+  });
+
   it("no UI flicker: loading flips exactly once during init (true → false), then never flips on listener events", async () => {
     seedNextSession(mocks, null);
     const listener = captureNextAuthListener(mocks);
