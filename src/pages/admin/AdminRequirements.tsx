@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Search, ArrowRight } from "lucide-react";
 import { useCreateExploreJob } from "@/hooks/useExploreJobs";
 import { toast } from "sonner";
+import { SkeletonTableRows } from "@/components/skeletons/Skeleton";
 
 const AdminRequirements = () => {
   const [jobs, setJobs] = useState<any[]>([]);

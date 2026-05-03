@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import { SkeletonTableRows } from "@/components/skeletons/Skeleton";
 
 const AdminAuditLogs = () => {
   const [logs, setLogs] = useState<any[]>([]);

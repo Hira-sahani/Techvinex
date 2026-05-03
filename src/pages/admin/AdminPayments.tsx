@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowUpRight, ArrowDownRight, DollarSign } from "lucide-react";
+import { SkeletonTableRows } from "@/components/skeletons/Skeleton";
 
 const AdminPayments = () => {
   const [billing, setBilling] = useState<any[]>([]);

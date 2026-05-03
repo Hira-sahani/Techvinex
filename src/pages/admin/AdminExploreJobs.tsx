@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import AdminExploreJobForm from "@/components/admin/AdminExploreJobForm";
+import { SkeletonTable } from "@/components/skeletons/Skeleton";
 
 const statusColors: Record<string, string> = {
   draft: "bg-amber-500/10 text-amber-600",

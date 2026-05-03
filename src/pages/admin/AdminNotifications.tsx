@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/contexts/AuthContext";
 import { Send } from "lucide-react";
 import { toast } from "sonner";
+import { SkeletonTableRows } from "@/components/skeletons/Skeleton";
 
 const AdminNotifications = () => {
   const { user } = useAuth();
