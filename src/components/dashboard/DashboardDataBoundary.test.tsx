@@ -177,6 +177,7 @@ describe("DashboardDataBoundary", () => {
     );
     expect(screen.queryByText("EMPTY")).toBeNull();
     expect(screen.getByTestId("content")).toBeInTheDocument();
+  });
 
   it("shows skeleton when isLoading is true even if isError or isEmpty are also set", () => {
     const refetch = vi.fn(async () => {});
