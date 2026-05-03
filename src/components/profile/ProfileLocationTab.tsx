@@ -16,6 +16,7 @@ import { countries } from "@/data/countries";
 import { statesByCountry } from "@/data/states";
 import { citiesByState } from "@/data/cities";
 import { toast } from "sonner";
+import { ProfileTabSkeleton } from "@/components/skeletons/PageSkeletons";
 
 const profileLocationSchema = z.object({
   country: z.string().trim().max(100),
@@ -98,6 +99,8 @@ const ProfileLocationTab = () => {
   };
 
   const disabled = loading || !editMode;
+
+  if (loading) return <ProfileTabSkeleton rows={5} loadingLabel="Loading location" />;
 
   return (
     <div className="space-y-6 max-w-xl pb-24">
