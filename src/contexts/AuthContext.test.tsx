@@ -5,22 +5,22 @@ import { render, screen, waitFor } from "@testing-library/react";
 // these handles are safe to reference inside the factory AND in the tests
 // without resorting to brittle re-import / __mocks casts.
 const mocks = vi.hoisted(() => {
-  const unsubscribe = vi.fn();
-  const onAuthStateChange = vi.fn(() => ({
-    data: { subscription: { unsubscribe } },
+  const mocks.unsubscribe = vi.fn();
+  const mocks.onAuthStateChange = vi.fn(() => ({
+    data: { subscription: { mocks.unsubscribe } },
   }));
-  const getSession = vi.fn(() =>
+  const mocks.getSession = vi.fn(() =>
     Promise.resolve({ data: { session: null }, error: null }),
   );
   const signOut = vi.fn(() => Promise.resolve({ error: null }));
-  return { unsubscribe, onAuthStateChange, getSession, signOut };
+  return { mocks.unsubscribe, mocks.onAuthStateChange, mocks.getSession, signOut };
 });
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     auth: {
-      onAuthStateChange: mocks.onAuthStateChange,
-      getSession: mocks.getSession,
+      mocks.onAuthStateChange: mocks.mocks.onAuthStateChange,
+      mocks.getSession: mocks.mocks.getSession,
       signOut: mocks.signOut,
     },
   },
@@ -66,13 +66,13 @@ describe("AuthProvider regression", () => {
       </AuthProvider>,
     );
 
-    expect(onAuthStateChange).toHaveBeenCalledTimes(1);
-    expect(getSession).toHaveBeenCalledTimes(1);
+    expect(mocks.onAuthStateChange).toHaveBeenCalledTimes(1);
+    expect(mocks.getSession).toHaveBeenCalledTimes(1);
 
     expect(screen.getByTestId("probe")).toBeInTheDocument();
     expect(screen.getByTestId("logged-in")).toHaveTextContent("false");
 
-    // After getSession resolves, loading should flip to false
+    // After mocks.getSession resolves, loading should flip to false
     await waitFor(() => {
       expect(screen.getByTestId("loading")).toHaveTextContent("false");
     });
@@ -84,8 +84,8 @@ describe("AuthProvider regression", () => {
         <div />
       </AuthProvider>,
     );
-    expect(unsubscribe).not.toHaveBeenCalled();
+    expect(mocks.unsubscribe).not.toHaveBeenCalled();
     unmount();
-    expect(unsubscribe).toHaveBeenCalledTimes(1);
+    expect(mocks.unsubscribe).toHaveBeenCalledTimes(1);
   });
 });
