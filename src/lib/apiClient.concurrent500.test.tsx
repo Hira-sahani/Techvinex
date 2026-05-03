@@ -113,6 +113,20 @@ describe("apiFetch — concurrent 500 responses do not trigger session-expired f
     // Telemetry ring buffer is dedicated to 401s — non-401s must not appear.
     const newEvents = getRecentUnauthorizedEvents().slice(baselineEventCount);
     expect(newEvents).toHaveLength(0);
+
+    // Even with retryOnUnauthorized=true, a 500 must NOT trigger a replay —
+    // exactly one fetch per request.
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+  });
+
+  it("regression: retryOnUnauthorized=true does NOT replay a 500 response", async () => {
+    const res = await apiFetch("/api/single", { retryOnUnauthorized: true });
+
+    expect(res.status).toBe(500);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(busEvents).toHaveLength(0);
+    expect(getRecentUnauthorizedEvents().slice(baselineEventCount)).toHaveLength(0);
+    expect(mocks.signOut).not.toHaveBeenCalled();
   });
 
   it("regression: a mix of 500 responses across multiple bursts never triggers signOut or bus", async () => {
