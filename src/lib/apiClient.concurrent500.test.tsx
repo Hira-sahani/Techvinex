@@ -84,6 +84,16 @@ describe("apiFetch — concurrent 500 responses do not trigger session-expired f
       expect.anything(),
     );
     expect(mocks.signOut).not.toHaveBeenCalled();
+
+    // Bus must not fire for 500s.
+    expect(busEvents).toHaveLength(0);
+
+    // Any recorded unauthorized telemetry (defensive: should be none) must
+    // never report retryAttempted=true for a non-401 response.
+    const newEvents = getRecentUnauthorizedEvents().slice(baselineEventCount);
+    for (const ev of newEvents) {
+      expect(ev.retryAttempted).toBe(false);
+    }
   });
 
   it("regression: 500 responses do NOT emit session-expired bus events", async () => {
@@ -142,5 +152,10 @@ describe("apiFetch — concurrent 500 responses do not trigger session-expired f
       expect.anything(),
     );
     expect(busEvents).toHaveLength(0);
+
+    const newEvents = getRecentUnauthorizedEvents().slice(baselineEventCount);
+    for (const ev of newEvents) {
+      expect(ev.retryAttempted).toBe(false);
+    }
   });
 });
