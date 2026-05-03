@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({
   refreshSession: vi.fn(),
   signOut: vi.fn(),
   toastError: vi.fn(),
+  toastSuccess: vi.fn(),
+  toastMessage: vi.fn(),
 }));
 
 vi.mock("@/integrations/supabase/client", () => ({
@@ -19,7 +21,11 @@ vi.mock("@/integrations/supabase/client", () => ({
 }));
 
 vi.mock("sonner", () => ({
-  toast: { error: mocks.toastError, success: vi.fn(), message: vi.fn() },
+  toast: {
+    error: mocks.toastError,
+    success: mocks.toastSuccess,
+    message: mocks.toastMessage,
+  },
 }));
 
 import { apiFetch, addTelemetrySink, type UnauthorizedEvent } from "./apiClient";
