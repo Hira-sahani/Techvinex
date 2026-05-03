@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { BlogDashboardSkeleton } from "@/components/skeletons/DashboardSkeletons";
+import { DashboardDataBoundary } from "@/components/dashboard/DashboardDataBoundary";
+import { useQueryAsDashboardData } from "@/hooks/useQueryAsDashboardData";
 import RichTextEditor from "@/components/blog-dashboard/RichTextEditor";
 import BlogImageUpload from "@/components/blog-dashboard/BlogImageUpload";
 
