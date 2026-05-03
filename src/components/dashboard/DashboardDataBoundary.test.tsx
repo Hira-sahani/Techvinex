@@ -500,4 +500,66 @@ describe("DashboardDataBoundary", () => {
       expect(node).toHaveAttribute("data-rows", "5");
     });
   });
+
+  describe("empty state precedence", () => {
+    it("does NOT render empty state when isLoading is true (skeleton wins)", () => {
+      render(
+        <DashboardDataBoundary
+          query={makeQuery<string[]>({ isLoading: true, isEmpty: true, status: "loading", data: [] })}
+          skeleton={<Skeleton />}
+          empty={{ title: "No data", description: "Nothing here", actionLabel: "Add", onAction: vi.fn() }}
+        >
+          {renderContent}
+        </DashboardDataBoundary>,
+      );
+      expect(screen.getByTestId("sk")).toBeInTheDocument();
+      expect(screen.queryByText("No data")).toBeNull();
+      expect(screen.queryByRole("button", { name: /add/i })).toBeNull();
+    });
+
+    it("does NOT render empty state when isError is true (error wins over empty)", () => {
+      render(
+        <DashboardDataBoundary
+          query={makeQuery<string[]>({
+            isError: true,
+            isEmpty: true,
+            status: "error",
+            error: new Error("Boom"),
+            data: [],
+            refetch: vi.fn(async () => {}),
+          })}
+          skeleton={<Skeleton />}
+          errorConfig={{ title: "Failed" }}
+          empty={{ title: "No data", description: "Nothing here", actionLabel: "Add", onAction: vi.fn() }}
+        >
+          {renderContent}
+        </DashboardDataBoundary>,
+      );
+      expect(screen.getByText("Failed")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+      expect(screen.queryByText("No data")).toBeNull();
+      expect(screen.queryByRole("button", { name: /add/i })).toBeNull();
+    });
+
+    it("renders empty state ONLY when isLoading=false and isError=false", () => {
+      render(
+        <DashboardDataBoundary
+          query={makeQuery<string[]>({
+            isLoading: false,
+            isError: false,
+            isEmpty: true,
+            status: "empty",
+            data: [],
+          })}
+          skeleton={<Skeleton />}
+          empty={{ title: "No data", description: "Nothing here", actionLabel: "Add", onAction: vi.fn() }}
+        >
+          {renderContent}
+        </DashboardDataBoundary>,
+      );
+      expect(screen.getByText("No data")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Add" })).toBeInTheDocument();
+      expect(screen.queryByTestId("sk")).toBeNull();
+    });
+  });
 });
