@@ -232,6 +232,29 @@ async function handleUnauthorized(response: Response, input: RequestInfo | URL) 
   return handling401;
 }
 
+// In-flight de-duplication for refreshSession(): a burst of concurrent 401s
+// must share ONE refresh attempt. Without this, each retrying call would fire
+// its own refreshSession() — burning refresh tokens and risking Supabase
+// revoking the whole chain. Resolves to the new access token, or null if the
+// refresh failed.
+let refreshInFlight: Promise<string | null> | null = null;
+
+async function dedupedRefreshSession(): Promise<string | null> {
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
+    try {
+      const { data, error } = await supabase.auth.refreshSession();
+      if (error) return null;
+      return data.session?.access_token ?? null;
+    } catch {
+      return null;
+    }
+  })().finally(() => {
+    refreshInFlight = null;
+  }) as Promise<string | null>;
+  return refreshInFlight;
+}
+
 export interface ApiFetchOptions extends RequestInit {
   /**
    * If true, when the first attempt returns 401 we try to refresh the
@@ -289,18 +312,11 @@ export async function apiFetch(
 
   // --- 401 path ---
   if (retryOnUnauthorized) {
-    // Try to refresh the session ONCE. On success, replay the request
-    // through apiFetch (which re-reads getSession), guaranteeing the
-    // stale token from the first attempt is never reused.
-    let refreshed: string | null = null;
-    try {
-      const { data: refreshData, error } = await supabase.auth.refreshSession();
-      if (!error) {
-        refreshed = refreshData.session?.access_token ?? null;
-      }
-    } catch {
-      refreshed = null;
-    }
+    // Coalesce concurrent refresh attempts: if many requests 401 at the
+    // same time, they should all await the SAME refreshSession() call
+    // rather than each firing their own (which would burn refresh tokens
+    // and risk Supabase revoking the chain).
+    const refreshed: string | null = await dedupedRefreshSession();
 
     if (refreshed) {
       // Telemetry: initial 401 that we're about to retry.
