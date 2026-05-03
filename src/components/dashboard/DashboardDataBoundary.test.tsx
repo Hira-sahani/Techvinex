@@ -625,5 +625,82 @@ describe("DashboardDataBoundary", () => {
       // Content should be rendered instead
       expect(screen.getByTestId("content")).toHaveTextContent("a,b");
     });
+
+    it("regression: status='loading' but isLoading=false → boundary uses flags, renders empty state", () => {
+      render(
+        <DashboardDataBoundary
+          query={makeQuery<string[]>({
+            // Inconsistent: status says loading, but flag says we're done
+            status: "loading",
+            isLoading: false,
+            isError: false,
+            isEmpty: true,
+            data: [],
+          })}
+          skeleton={<Skeleton />}
+          empty={{ title: "No data", description: "Nothing here", actionLabel: "Add", onAction: vi.fn() }}
+        >
+          {renderContent}
+        </DashboardDataBoundary>,
+      );
+
+      // Boundary trusts flags: skeleton must NOT render, empty must render
+      expect(screen.queryByTestId("sk")).toBeNull();
+      expect(screen.getByText("No data")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Add" })).toBeInTheDocument();
+    });
+
+    it("regression: status='error' but isError=false → boundary uses flags, renders empty state", () => {
+      render(
+        <DashboardDataBoundary
+          query={makeQuery<string[]>({
+            // Inconsistent: status says error, but flag says we're not erroring
+            status: "error",
+            isLoading: false,
+            isError: false,
+            isEmpty: true,
+            error: new Error("stale error message"),
+            data: [],
+          })}
+          skeleton={<Skeleton />}
+          errorConfig={{ title: "Should not appear" }}
+          empty={{ title: "Empty wins", description: "Flags drive UI", actionLabel: "Add", onAction: vi.fn() }}
+        >
+          {renderContent}
+        </DashboardDataBoundary>,
+      );
+
+      // Error UI must NOT render (flag is false)
+      expect(screen.queryByText("Should not appear")).toBeNull();
+      expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+      expect(screen.queryByText("stale error message")).toBeNull();
+
+      // Empty state wins because isEmpty=true
+      expect(screen.getByText("Empty wins")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Add" })).toBeInTheDocument();
+    });
+
+    it("regression: status='success' but isEmpty=true → empty state still wins over content", () => {
+      render(
+        <DashboardDataBoundary
+          query={makeQuery<string[]>({
+            // Inconsistent: status says success, but isEmpty flag is true with empty data
+            status: "success",
+            isSuccess: true,
+            isLoading: false,
+            isError: false,
+            isEmpty: true,
+            data: [],
+          })}
+          skeleton={<Skeleton />}
+          empty={{ title: "Still empty", description: "isEmpty wins", actionLabel: "Add", onAction: vi.fn() }}
+        >
+          {renderContent}
+        </DashboardDataBoundary>,
+      );
+
+      expect(screen.getByText("Still empty")).toBeInTheDocument();
+      expect(screen.queryByTestId("content")).toBeNull();
+    });
   });
 });
