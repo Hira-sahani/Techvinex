@@ -119,6 +119,28 @@ describe("DashboardDataBoundary", () => {
     expect(screen.getByTestId("content")).toHaveTextContent("x");
   });
 
+  it("shows skeleton while loading and hides it once content renders", () => {
+    const Boundary = (q: UseDashboardDataResult<string[]>) => (
+      <DashboardDataBoundary query={q} skeleton={<Skeleton />}>
+        {renderContent}
+      </DashboardDataBoundary>
+    );
+
+    const { rerender } = render(Boundary(makeQuery<string[]>({ isLoading: true, status: "loading" })));
+
+    // While loading: skeleton visible, content absent
+    expect(screen.getByTestId("sk")).toBeInTheDocument();
+    expect(screen.queryByTestId("content")).not.toBeInTheDocument();
+
+    // After data resolves: skeleton hidden, content visible
+    rerender(Boundary(makeQuery<string[]>({ status: "success", isSuccess: true, data: ["hello"] })));
+    expect(screen.queryByTestId("sk")).not.toBeInTheDocument();
+    const content = screen.getByTestId("content");
+    expect(content).toBeInTheDocument();
+    expect(content).toBeVisible();
+    expect(content).toHaveTextContent("hello");
+  });
+
   it("renders empty state without action button when actionLabel is missing", () => {
     const onAction = vi.fn();
     render(
