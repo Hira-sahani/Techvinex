@@ -498,6 +498,7 @@ describe("DashboardDataBoundary", () => {
       const node = screen.getByTestId("fn-skeleton");
       expect(node).toHaveTextContent("Loading rows");
       expect(node).toHaveAttribute("data-rows", "5");
+    });
   });
 
   describe("empty state precedence", () => {
