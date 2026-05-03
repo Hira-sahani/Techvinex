@@ -58,14 +58,15 @@ const PIE_COLORS = [
 ];
 
 const AdminOverview = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({ users: 0, jobs: 0, applications: 0, revenue: 0, hires: 0, interviews: 0 });
   const [recentApps, setRecentApps] = useState<any[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
   const [pieData, setPieData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchAll = async () => {
+  const fetchAll = async () => {
+    setLoading(true);
       // Counts + recent
       const [profilesRes, jobsRes, appsRes, billingRes, hiresRes, interviewsRes, recentRes] = await Promise.all([
         supabase.from("profiles").select("id", { count: "exact", head: true }),
