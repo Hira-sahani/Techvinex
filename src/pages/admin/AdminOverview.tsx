@@ -125,6 +125,21 @@ const AdminOverview = () => {
 
   if (loading) return <AdminOverviewSkeleton />;
 
+  const isPlatformEmpty = stats.users === 0 && stats.jobs === 0 && stats.applications === 0;
+  if (isPlatformEmpty) {
+    return (
+      <DashboardEmptyState
+        title="No platform activity yet"
+        description="Once users sign up and employers post jobs, you'll see metrics, charts, and recent activity here."
+        actionLabel="Refresh data"
+        onAction={fetchAll}
+        secondaryActionLabel="Manage users"
+        onSecondaryAction={() => navigate("/admin/users")}
+      />
+    );
+  }
+
+
   return (
     <div className="space-y-6">
       {/* Header */}
