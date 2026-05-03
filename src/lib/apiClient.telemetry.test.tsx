@@ -128,15 +128,18 @@ describe("apiFetch — 401 telemetry", () => {
     await apiFetch("/api/me", { retryOnUnauthorized: true });
     await Promise.resolve();
 
-    // The inner replay call also records its own initial_401 (with
-    // retryAttempted=false), then the outer call records replay_still_401.
+    // Three events recorded:
+    //  1. Outer initial_401 (with retryAttempted=true) — recorded before replay
+    //  2. Inner apiFetch's own initial_401 (retryAttempted=false) when the replay 401s
+    //  3. Outer replay_still_401 after the replay returned 401
     expect(events.map((e) => e.reason)).toEqual([
       "initial_401",
       "initial_401",
       "replay_still_401",
     ]);
-    expect(events[0].retryAttempted).toBe(false); // inner replay
-    expect(events[1].retryAttempted).toBe(false); // (recorded after replay returns) — wait, actually
+    expect(events[0].retryAttempted).toBe(true);
+    expect(events[1].retryAttempted).toBe(false);
+    expect(events[2].retryAttempted).toBe(true);
 
   });
 
