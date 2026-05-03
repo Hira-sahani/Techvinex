@@ -9,13 +9,32 @@ import { cn } from "@/lib/utils";
  * All dashboard skeletons accept optional layout overrides so each page can
  * tune its skeleton (stat count, chart height, list rows, extra slots) while
  * still flowing through the same DashboardDataBoundary gate.
+ *
+ * ARIA: every skeleton root exposes role="status", aria-busy="true",
+ * aria-live="polite", and an sr-only label so screen readers announce the
+ * loading state without reading the visual placeholder shapes.
  */
 
 export type DashboardSkeletonOptions = {
   className?: string;
   /** Optional extra skeleton slot rendered at the bottom for page-specific blocks. */
   extraSlot?: React.ReactNode;
+  /** Screen-reader label announced while loading. Defaults to "Loading dashboard". */
+  loadingLabel?: string;
 };
+
+/** Shared a11y props applied to every dashboard skeleton root. */
+const a11yLoadingProps = (label: string) => ({
+  role: "status" as const,
+  "aria-busy": true,
+  "aria-live": "polite" as const,
+  "aria-label": label,
+});
+
+const SrLoading = ({ label }: { label: string }) => (
+  <span className="sr-only">{label}</span>
+);
+
 
 type CandidateOpts = DashboardSkeletonOptions & {
   statCount?: number;
