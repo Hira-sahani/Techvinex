@@ -75,6 +75,8 @@ export const DashboardErrorState = ({
     actionLabel={onRetry ? "Try again" : undefined}
     onAction={onRetry}
     className={className}
+    role="alert"
+    ariaLabel={title}
   />
 );
 
