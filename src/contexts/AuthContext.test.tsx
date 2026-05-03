@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 
-vi.mock("@/integrations/supabase/client", () => {
+// vi.hoisted runs before any vi.mock factory and before module imports, so
+// these handles are safe to reference inside the factory AND in the tests
+// without resorting to brittle re-import / __mocks casts.
+const mocks = vi.hoisted(() => {
   const unsubscribe = vi.fn();
   const onAuthStateChange = vi.fn(() => ({
     data: { subscription: { unsubscribe } },
@@ -10,16 +13,18 @@ vi.mock("@/integrations/supabase/client", () => {
     Promise.resolve({ data: { session: null }, error: null }),
   );
   const signOut = vi.fn(() => Promise.resolve({ error: null }));
-  return {
-    supabase: { auth: { onAuthStateChange, getSession, signOut } },
-    __mocks: { unsubscribe, onAuthStateChange, getSession, signOut },
-  };
+  return { unsubscribe, onAuthStateChange, getSession, signOut };
 });
 
-// Pull mock handles back out for assertions.
-import * as supabaseClient from "@/integrations/supabase/client";
-const { unsubscribe, onAuthStateChange, getSession } =
-  (supabaseClient as unknown as { __mocks: { unsubscribe: ReturnType<typeof vi.fn>; onAuthStateChange: ReturnType<typeof vi.fn>; getSession: ReturnType<typeof vi.fn> } }).__mocks;
+vi.mock("@/integrations/supabase/client", () => ({
+  supabase: {
+    auth: {
+      onAuthStateChange: mocks.onAuthStateChange,
+      getSession: mocks.getSession,
+      signOut: mocks.signOut,
+    },
+  },
+}));
 
 import { AuthProvider, useAuth } from "./AuthContext";
 
