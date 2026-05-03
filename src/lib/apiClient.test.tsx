@@ -2,7 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const mocks = vi.hoisted(() => {
   const getSession = vi.fn();
-  return { getSession };
+  const invoke = vi.fn();
+  return { getSession, invoke };
 });
 
 vi.mock("@/integrations/supabase/client", () => ({
@@ -10,10 +11,13 @@ vi.mock("@/integrations/supabase/client", () => ({
     auth: {
       getSession: mocks.getSession,
     },
+    functions: {
+      invoke: mocks.invoke,
+    },
   },
 }));
 
-import { apiFetch } from "./apiClient";
+import { apiFetch, apiInvoke } from "./apiClient";
 
 describe("apiFetch (real API wrapper)", () => {
   let fetchMock: ReturnType<typeof vi.fn>;
