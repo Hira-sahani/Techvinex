@@ -1,6 +1,7 @@
 import { Video, Clock, Info, Shield, Calendar, RefreshCw, HelpCircle, Mic, MicOff, Volume2, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect, useCallback } from "react";
+import { apiFetch } from "@/lib/apiClient";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type InterviewPhase = "info" | "setup" | "interview" | "completed";
@@ -168,12 +169,11 @@ const ApplyStepInterview = ({ onInterviewComplete, onPhaseChange }: ApplyStepInt
     setStatusText("AI is speaking...");
 
     try {
-      const response = await fetch(TTS_URL, {
+      const response = await apiFetch(TTS_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({ text }),
       });
@@ -291,11 +291,10 @@ const ApplyStepInterview = ({ onInterviewComplete, onPhaseChange }: ApplyStepInt
     let assistantText = "";
 
     try {
-      const resp = await fetch(CHAT_URL, {
+      const resp = await apiFetch(CHAT_URL, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
         },
         body: JSON.stringify({ messages: allMessages, domain: "Software Engineering" }),
       });
