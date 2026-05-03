@@ -75,8 +75,15 @@ describe("apiClient — concurrent 401s with retryOnUnauthorized=false never rec
     ]);
     await capture.drain();
 
-    // No refresh attempt of any kind.
+    // No refresh attempt of any kind — for explicit OR default cases.
     expect(mocks.refreshSession).not.toHaveBeenCalled();
+    expect(mocks.refreshSession).toHaveBeenCalledTimes(0);
+
+    // Per-family verification: neither subset triggered a refresh.
+    expect(capture.telemetryFor("/no-retry/explicit/")).toHaveLength(6);
+    expect(capture.countRetryAttempted(true, "/no-retry/explicit/")).toBe(0);
+    expect(capture.telemetryFor("/no-retry/default/")).toHaveLength(6);
+    expect(capture.countRetryAttempted(true, "/no-retry/default/")).toBe(0);
 
     // 12 telemetry events captured, every one retryAttempted=false / initial_401.
     expect(capture.totalTelemetry()).toBe(12);
