@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { BarChart3, Brain, CheckCircle, Clock, FlaskConical, TrendingUp } from "lucide-react";
+import { BenchmarkDashboardSkeleton } from "@/components/skeletons/DashboardSkeletons";
 
 const BenchmarkDashboard = () => {
   const [stats, setStats] = useState({
@@ -13,10 +14,10 @@ const BenchmarkDashboard = () => {
     avgLatency: 0,
   });
   const [recentResults, setRecentResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchStats();
-    fetchRecentResults();
+    Promise.all([fetchStats(), fetchRecentResults()]).finally(() => setLoading(false));
   }, []);
 
   const fetchStats = async () => {
@@ -64,6 +65,8 @@ const BenchmarkDashboard = () => {
     { label: "Pending Reviews", value: stats.pendingReviews, icon: BarChart3, color: "text-orange-500" },
     { label: "Avg Latency", value: `${stats.avgLatency}ms`, icon: Clock, color: "text-cyan-500" },
   ];
+
+  if (loading) return <BenchmarkDashboardSkeleton />;
 
   return (
     <div className="p-6 space-y-6">
