@@ -253,6 +253,22 @@ describe("DashboardDataBoundary", () => {
       expect(status).toHaveAttribute("aria-live", "polite");
     });
 
+    it("error state retry button has accessible role 'button' and accessible name 'Try again'", () => {
+      render(
+        <DashboardDataBoundary
+          query={makeQuery<string[]>({ isError: true, status: "error", error: new Error("Boom"), refetch: vi.fn(async () => {}) })}
+          skeleton={<Skeleton />}
+        >
+          {renderContent}
+        </DashboardDataBoundary>,
+      );
+      const btn = screen.getByRole("button", { name: "Try again" });
+      expect(btn.tagName).toBe("BUTTON");
+      expect(btn).toHaveAccessibleName("Try again");
+      expect(btn).toBeEnabled();
+      expect(btn.querySelector("[aria-hidden='true']")).not.toBeNull();
+    });
+
     it("error retry button is keyboard reachable and activates via Enter", async () => {
       const user = userEvent.setup();
       const refetch = vi.fn(async () => {});
