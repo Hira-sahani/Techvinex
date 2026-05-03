@@ -106,5 +106,7 @@ export const DashboardEmptyState = ({
     secondaryActionLabel={secondaryActionLabel}
     onSecondaryAction={onSecondaryAction}
     className={className}
+    role="status"
+    ariaLabel={title}
   />
 );
