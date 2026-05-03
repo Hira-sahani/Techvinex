@@ -56,6 +56,12 @@ describe("apiFetch — concurrent refreshSession de-duplication", () => {
     });
     mocks.refreshSession.mockImplementation(async () => {
       await refreshGate;
+      // After refresh, getSession must return the fresh token so the
+      // inner apiFetch replay attaches it.
+      mocks.getSession.mockResolvedValue({
+        data: { session: { access_token: "tok-fresh" } },
+        error: null,
+      });
       return {
         data: { session: { access_token: "tok-fresh" } },
         error: null,
