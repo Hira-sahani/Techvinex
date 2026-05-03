@@ -22,7 +22,7 @@ vi.mock("sonner", () => ({
   toast: { error: mocks.toastError, success: vi.fn(), message: vi.fn() },
 }));
 
-import { apiFetch } from "./apiClient";
+import { apiFetch, addTelemetrySink, type UnauthorizedEvent } from "./apiClient";
 import {
   createUnauthorizedCapture,
   type UnauthorizedCapture,
