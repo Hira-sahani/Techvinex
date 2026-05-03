@@ -821,3 +821,122 @@ describe("AuthProvider regression", () => {
     expect(screen.getByTestId("loading-history")).toHaveTextContent("true,false");
   });
 });
+
+/**
+ * Refresh-failure contract suite.
+ *
+ * Supabase has historically signaled refresh failure through several
+ * equivalent listener event shapes depending on SDK version and timing:
+ *   - TOKEN_REFRESHED with a null session
+ *   - USER_UPDATED  with a null session
+ *   - SIGNED_OUT    with a null session
+ *
+ * Regardless of which shape arrives, the AuthProvider state-transition
+ * contract MUST be identical:
+ *   1. loading  → false
+ *   2. isLoggedIn → false
+ *   3. session   → null  (no stale access token)
+ *   4. user      → null  (no stale user id/email)
+ */
+describe("AuthProvider refresh-failure contract (equivalent event shapes)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const refreshFailureCases: Array<{ name: string; event: string }> = [
+    { name: "TOKEN_REFRESHED with null session", event: "TOKEN_REFRESHED" },
+    { name: "USER_UPDATED with null session", event: "USER_UPDATED" },
+    { name: "SIGNED_OUT with null session", event: "SIGNED_OUT" },
+  ];
+
+  for (const { name, event } of refreshFailureCases) {
+    it(`refresh failure via "${name}" — same state transition: loading=false, isLoggedIn=false, session/user cleared`, async () => {
+      // Start logged-in with a known cached session.
+      seedNextSession(
+        mocks,
+        buildFakeSession({
+          access_token: `tok-before-${event}`,
+          user: { id: `u-before-${event}`, email: `before-${event}@example.com` },
+        }),
+      );
+      const listener = captureNextAuthListener(mocks);
+
+      const ContractProbe = () => {
+        const { isLoggedIn, loading, session, user } = useAuth();
+        return (
+          <div>
+            <span data-testid="logged-in">{String(isLoggedIn)}</span>
+            <span data-testid="loading">{String(loading)}</span>
+            <span data-testid="access-token">{session?.access_token ?? "none"}</span>
+            <span data-testid="user-id">{user?.id ?? "none"}</span>
+            <span data-testid="user-email">{user?.email ?? "none"}</span>
+          </div>
+        );
+      };
+
+      render(
+        <AuthProvider>
+          <ContractProbe />
+        </AuthProvider>,
+      );
+
+      // Wait for cached/logged-in baseline.
+      await waitFor(() => {
+        expect(screen.getByTestId("logged-in")).toHaveTextContent("true");
+        expect(screen.getByTestId("loading")).toHaveTextContent("false");
+        expect(screen.getByTestId("access-token")).toHaveTextContent(`tok-before-${event}`);
+      });
+
+      // Fire the equivalent refresh-failure event with a null session.
+      listener.emit(event, null);
+
+      // Contract: identical post-state regardless of event name.
+      await waitFor(() => {
+        expect(screen.getByTestId("loading")).toHaveTextContent("false");
+        expect(screen.getByTestId("logged-in")).toHaveTextContent("false");
+        expect(screen.getByTestId("access-token")).toHaveTextContent("none");
+        expect(screen.getByTestId("user-id")).toHaveTextContent("none");
+        expect(screen.getByTestId("user-email")).toHaveTextContent("none");
+      });
+
+      // Hard guarantee: no stale token survives the failure event.
+      expect(screen.getByTestId("access-token").textContent).not.toContain(`tok-before-${event}`);
+    });
+  }
+
+  it("contract is stable across a full refresh-failure sequence (TOKEN_REFRESHED→null, then SIGNED_OUT→null)", async () => {
+    seedNextSession(
+      mocks,
+      buildFakeSession({
+        access_token: "tok-seq",
+        user: { id: "u-seq", email: "seq@example.com" },
+      }),
+    );
+    const listener = captureNextAuthListener(mocks);
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("true");
+    });
+
+    listener.emit("TOKEN_REFRESHED", null);
+    await waitFor(() => {
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("false");
+      expect(screen.getByTestId("loading")).toHaveTextContent("false");
+    });
+
+    // A trailing SIGNED_OUT (commonly emitted right after a failed refresh)
+    // must NOT toggle loading back on or resurrect any state.
+    listener.emit("SIGNED_OUT", null);
+    await waitFor(() => {
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("false");
+      expect(screen.getByTestId("loading")).toHaveTextContent("false");
+    });
+  });
+});
+
