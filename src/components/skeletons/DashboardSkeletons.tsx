@@ -176,30 +176,34 @@ type BlogOpts = DashboardSkeletonOptions & {
 export const BlogDashboardSkeleton = ({
   className,
   extraSlot,
+  loadingLabel = "Loading blog dashboard",
   statCount = 3,
   tabCount = 5,
   cardCount = 4,
 }: BlogOpts = {}) => (
-  <div className={cn("min-h-screen bg-background", className)}>
-    <div className="sticky top-0 z-30 bg-background border-b border-border">
-      <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+  <div className={cn("min-h-screen bg-background", className)} {...a11yLoadingProps(loadingLabel)}>
+    <SrLoading label={loadingLabel} />
+    <div aria-hidden="true">
+      <div className="sticky top-0 z-30 bg-background border-b border-border">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Shimmer className="h-8 w-8 rounded-lg" />
+            <Shimmer className="h-3 w-32 hidden sm:block" />
+          </div>
           <Shimmer className="h-8 w-8 rounded-lg" />
-          <Shimmer className="h-3 w-32 hidden sm:block" />
         </div>
-        <Shimmer className="h-8 w-8 rounded-lg" />
       </div>
-    </div>
-    <div className="max-w-4xl mx-auto px-4 py-6 space-y-5">
-      <SkeletonHeader />
-      <SkeletonStatGrid count={statCount} cols={`grid-cols-${statCount}`} />
-      <div className="flex gap-4">
-        {Array.from({ length: tabCount }).map((_, i) => <Shimmer key={i} className="h-3 w-16" />)}
+      <div className="max-w-4xl mx-auto px-4 py-6 space-y-5">
+        <SkeletonHeader />
+        <SkeletonStatGrid count={statCount} cols={`grid-cols-${statCount}`} />
+        <div className="flex gap-4">
+          {Array.from({ length: tabCount }).map((_, i) => <Shimmer key={i} className="h-3 w-16" />)}
+        </div>
+        <div className="space-y-3">
+          {Array.from({ length: cardCount }).map((_, i) => <SkeletonCard key={i} className="h-24" />)}
+        </div>
+        {extraSlot}
       </div>
-      <div className="space-y-3">
-        {Array.from({ length: cardCount }).map((_, i) => <SkeletonCard key={i} className="h-24" />)}
-      </div>
-      {extraSlot}
     </div>
   </div>
 );
