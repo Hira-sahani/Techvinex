@@ -3,7 +3,7 @@ import SidebarNav from "@/components/SidebarNav";
 import TopStatusBar from "@/components/TopStatusBar";
 
 import { UserPlus, Copy, Gift, Share2, Mail, MessageCircle, Link2, CheckCircle2, ArrowRight, Users, DollarSign, Send, Loader2 } from "lucide-react";
-import PageDotLoader from "@/components/PageDotLoader";
+import { ReferralsPageSkeleton } from "@/components/skeletons/PageSkeletons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -123,7 +123,7 @@ const Referrals = () => {
     }
   };
 
-  if (loading) return <PageDotLoader />;
+  if (loading) return <ReferralsPageSkeleton />;
 
   return (
     <div className="min-h-screen bg-background">

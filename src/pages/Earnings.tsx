@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import PageDotLoader from "@/components/PageDotLoader";
+import { EarningsPageSkeleton } from "@/components/skeletons/PageSkeletons";
 
 const VERIFICATION_OTP = "123456";
 
@@ -860,7 +860,7 @@ const Earnings = () => {
     }
   };
 
-  if (pageLoading) return <PageDotLoader />;
+  if (pageLoading) return <EarningsPageSkeleton />;
 
   return (
     <div className="min-h-screen bg-background">
