@@ -69,7 +69,7 @@ const AdminPayments = () => {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
+                    <SkeletonTableRows rows={4} cols={5} />
                   ) : billing.length === 0 ? (
                     <TableRow><TableCell colSpan={5} className="text-center py-8 text-muted-foreground text-xs">No billing records</TableCell></TableRow>
                   ) : billing.map((b) => (
@@ -99,7 +99,7 @@ const AdminPayments = () => {
                 </TableHeader>
                 <TableBody>
                   {loading ? (
-                    <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
+                    <SkeletonTableRows rows={4} cols={4} />
                   ) : payouts.length === 0 ? (
                     <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground text-xs">No payout records</TableCell></TableRow>
                   ) : payouts.map((p) => (

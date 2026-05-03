@@ -44,7 +44,7 @@ const AdminAuditLogs = () => {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={4} className="text-center py-12 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
+              <SkeletonTableRows rows={5} cols={4} />
             ) : filtered.length === 0 ? (
               <TableRow><TableCell colSpan={4} className="text-center py-12 text-muted-foreground text-xs">No audit logs found</TableCell></TableRow>
             ) : (

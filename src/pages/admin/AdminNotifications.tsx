@@ -80,7 +80,7 @@ const AdminNotifications = () => {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
+                <SkeletonTableRows rows={4} cols={4} />
               ) : notifications.length === 0 ? (
                 <TableRow><TableCell colSpan={4} className="text-center py-8 text-muted-foreground text-xs">No notifications</TableCell></TableRow>
               ) : notifications.map((n) => (
