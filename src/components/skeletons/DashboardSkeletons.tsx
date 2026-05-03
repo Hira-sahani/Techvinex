@@ -217,14 +217,18 @@ type AdminBlogsOpts = DashboardSkeletonOptions & {
 export const AdminBlogsSkeleton = ({
   className,
   extraSlot,
+  loadingLabel = "Loading blog posts",
   statCount = 3,
   tableRows = 6,
   tableCols = 5,
 }: AdminBlogsOpts = {}) => (
-  <div className={cn("space-y-5", className)}>
-    <SkeletonHeader />
-    <SkeletonStatGrid count={statCount} cols={`grid-cols-${statCount}`} />
-    <SkeletonTable rows={tableRows} cols={tableCols} />
-    {extraSlot}
+  <div className={cn("space-y-5", className)} {...a11yLoadingProps(loadingLabel)}>
+    <SrLoading label={loadingLabel} />
+    <div aria-hidden="true" className="space-y-5">
+      <SkeletonHeader />
+      <SkeletonStatGrid count={statCount} cols={`grid-cols-${statCount}`} />
+      <SkeletonTable rows={tableRows} cols={tableCols} />
+      {extraSlot}
+    </div>
   </div>
 );
