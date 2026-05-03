@@ -107,8 +107,10 @@ const AdminOverview = () => {
         .map(([name, value]) => ({ name, value: Math.round((value / total) * 100) }));
       setPieData(pie.length > 0 ? pie : [{ name: "No Data", value: 100 }]);
 
-      setLoading(false);
-    };
+    setLoading(false);
+  };
+
+  useEffect(() => {
     fetchAll();
   }, []);
 
