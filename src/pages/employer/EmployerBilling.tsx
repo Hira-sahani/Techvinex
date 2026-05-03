@@ -1,6 +1,6 @@
 import { useEmployerBilling } from "@/hooks/useEmployerData";
 import { IndianRupee, CheckCircle2, Clock, AlertCircle } from "lucide-react";
-import { EmployerListSkeleton } from "@/components/skeletons/EmployerSkeletons";
+import { EmployerStatsSkeleton } from "@/components/skeletons/EmployerSkeletons";
 
 const EmployerBilling = () => {
   const { data: billing = [], isLoading } = useEmployerBilling();
@@ -18,7 +18,7 @@ const EmployerBilling = () => {
   const formatCurrency = (n: number) => "₹" + n.toLocaleString("en-IN");
 
   if (isLoading) {
-    return <EmployerListSkeleton />;
+    return <EmployerStatsSkeleton />;
   }
 
   return (

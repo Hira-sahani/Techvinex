@@ -1,7 +1,7 @@
 import { useEmployerCandidates, useEmployerJobs } from "@/hooks/useEmployerData";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 import { TrendingUp, Users, Briefcase } from "lucide-react";
-import { EmployerListSkeleton } from "@/components/skeletons/EmployerSkeletons";
+import { EmployerStatsSkeleton } from "@/components/skeletons/EmployerSkeletons";
 
 const PIE_COLORS = ["hsl(217, 91%, 60%)", "hsl(38, 92%, 50%)", "hsl(271, 91%, 65%)", "hsl(142, 71%, 45%)", "hsl(0, 0%, 70%)"];
 
@@ -10,7 +10,7 @@ const EmployerAnalytics = () => {
   const { data: candidates = [], isLoading: candidatesLoading } = useEmployerCandidates();
 
   if (jobsLoading || candidatesLoading) {
-    return <EmployerListSkeleton />;
+    return <EmployerStatsSkeleton />;
   }
 
   const funnelData = [
