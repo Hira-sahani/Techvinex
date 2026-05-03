@@ -239,6 +239,8 @@ export async function apiFetch(
 
   if (response.status !== 401) return response;
 
+  const hadSession = !!accessToken;
+
   // --- 401 path ---
   if (retryOnUnauthorized) {
     // Try to refresh the session ONCE. On success, replay the request
@@ -255,6 +257,9 @@ export async function apiFetch(
     }
 
     if (refreshed) {
+      // Telemetry: initial 401 that we're about to retry.
+      record401(response, input, fetchInit, "initial_401", true, hadSession);
+
       // Strip any Authorization the caller may have supplied so the
       // replay can only ever carry the freshly refreshed token (set
       // by the inner apiFetch from the live session).
@@ -268,14 +273,19 @@ export async function apiFetch(
         retryOnUnauthorized: false, // hard cap: never loop
       });
       if (replay.status !== 401) return replay;
-      // Replay still 401 — fall through to the unauthorized handler.
+      // Replay still 401 — record + fall through to the unauthorized handler.
+      record401(replay, input, fetchInit, "replay_still_401", true, hadSession);
       void handleUnauthorized(replay, input);
       return replay;
     }
-    // Refresh failed — fall through to the unauthorized handler.
+    // Refresh failed — record + fall through to the unauthorized handler.
+    record401(response, input, fetchInit, "refresh_failed", true, hadSession);
+    void handleUnauthorized(response, input);
+    return response;
   }
 
-  // Fire-and-forget: don't block the caller from inspecting the response.
+  // No retry requested — record the initial 401 and trigger the handler.
+  record401(response, input, fetchInit, "initial_401", false, hadSession);
   void handleUnauthorized(response, input);
   return response;
 }
