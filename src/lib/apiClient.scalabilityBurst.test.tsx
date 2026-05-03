@@ -105,35 +105,36 @@ describe("apiClient — scalability: large mixed 500/401 concurrent burst", () =
     // ---- Refresh dedupe: still exactly ONE call across 30 concurrent retriers ----
     expect(mocks.refreshSession).toHaveBeenCalledTimes(1);
 
+    // Use the unbounded telemetry SINK (not the 50-event ring buffer) for
+    // count assertions at scale.
+    const srvEvents = sinkEvents.filter((e) => e.endpoint.startsWith("/srv/"));
+    const noEvents = sinkEvents.filter((e) => e.endpoint.startsWith("/no/"));
+    const yesEvents = sinkEvents.filter((e) => e.endpoint.startsWith("/yes/"));
+
     // ---- 500 family: zero leak anywhere ----
     capture.expectNoBusEmissionsFor("/srv/");
-    expect(capture.telemetryFor("/srv/")).toHaveLength(0);
-    expect(capture.countRetryAttempted(true, "/srv/")).toBe(0);
-    expect(capture.countRetryAttempted(false, "/srv/")).toBe(0);
+    expect(srvEvents).toHaveLength(0);
 
     // ---- 401 no-retry: NO telemetry events, all retryAttempted=false / initial_401 ----
-    expect(capture.telemetryFor("/no/")).toHaveLength(NO);
-    expect(capture.countRetryAttempted(false, "/no/")).toBe(NO);
-    expect(capture.countRetryAttempted(true, "/no/")).toBe(0);
-    for (const ev of capture.telemetryFor("/no/")) {
+    expect(noEvents).toHaveLength(NO);
+    for (const ev of noEvents) {
       expect(ev.reason).toBe("initial_401");
       expect(ev.retryAttempted).toBe(false);
     }
 
     // ---- 401 with-retry: YES telemetry events, all retryAttempted=true / refresh_failed ----
-    expect(capture.telemetryFor("/yes/")).toHaveLength(YES);
-    expect(capture.countRetryAttempted(true, "/yes/")).toBe(YES);
-    expect(capture.countRetryAttempted(false, "/yes/")).toBe(0);
-    for (const ev of capture.telemetryFor("/yes/")) {
+    expect(yesEvents).toHaveLength(YES);
+    for (const ev of yesEvents) {
       expect(ev.reason).toBe("refresh_failed");
       expect(ev.retryAttempted).toBe(true);
     }
 
-    // ---- Aggregate buckets ----
-    const buckets = capture.telemetryCountsByRetryAttempted();
-    expect(buckets.false).toBe(NO);
-    expect(buckets.true).toBe(YES);
-    expect(capture.totalTelemetry()).toBe(NO + YES);
+    // ---- Aggregate buckets across the sink ----
+    const trueCount = sinkEvents.filter((e) => e.retryAttempted).length;
+    const falseCount = sinkEvents.filter((e) => !e.retryAttempted).length;
+    expect(trueCount).toBe(YES);
+    expect(falseCount).toBe(NO);
+    expect(sinkEvents).toHaveLength(NO + YES);
 
     // ---- Bus only ever references 401 endpoints ----
     expect(capture.totalBus()).toBeGreaterThanOrEqual(1);
