@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { TableCell, TableRow } from "@/components/ui/table";
 
 /**
  * Shimmer skeleton primitive. Uses a moving gradient overlay over a muted bg.
@@ -109,6 +110,28 @@ export const SkeletonTable = ({
       </div>
     ))}
   </div>
+);
+
+/**
+ * Shimmer rows for use inside an existing <TableBody>. Renders TableRow/TableCell
+ * elements so it can be dropped in place of a "Loading..." row.
+ */
+
+export const SkeletonTableRows = ({
+  rows = 5,
+  cols = 4,
+}: { rows?: number; cols?: number }) => (
+  <>
+    {Array.from({ length: rows }).map((_, r) => (
+      <TableRow key={r}>
+        {Array.from({ length: cols }).map((_, c) => (
+          <TableCell key={c}>
+            <Shimmer className="h-3" style={{ width: `${60 + Math.random() * 35}%` }} />
+          </TableCell>
+        ))}
+      </TableRow>
+    ))}
+  </>
 );
 
 export const SkeletonHeader = () => (

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { SkeletonList } from "@/components/skeletons/Skeleton";
 
 interface BenchmarkTask {
   id: string;
@@ -222,7 +223,7 @@ const BenchmarkTasks = () => {
       </div>
 
       {loading ? (
-        <p className="text-xs text-muted-foreground">Loading...</p>
+        <SkeletonList rows={5} />
       ) : tasks.length === 0 ? (
         <Card className="p-8 text-center">
           <p className="text-sm text-muted-foreground">No tasks yet. Create your first benchmark task!</p>

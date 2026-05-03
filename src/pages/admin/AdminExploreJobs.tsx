@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import AdminExploreJobForm from "@/components/admin/AdminExploreJobForm";
+import { SkeletonTable } from "@/components/skeletons/Skeleton";
 
 const statusColors: Record<string, string> = {
   draft: "bg-amber-500/10 text-amber-600",
@@ -317,7 +318,7 @@ const AdminExploreJobs = () => {
 
           {/* Table */}
           {isLoading ? (
-            <div className="text-center py-12 text-muted-foreground text-xs">Loading...</div>
+            <SkeletonTable rows={5} cols={6} />
           ) : filtered.length === 0 ? (
             <div className="text-center py-16 border border-dashed border-border rounded-lg">
               <p className="text-muted-foreground text-xs mb-2.5">No jobs found</p>

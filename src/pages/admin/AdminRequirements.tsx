@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Search, ArrowRight } from "lucide-react";
 import { useCreateExploreJob } from "@/hooks/useExploreJobs";
 import { toast } from "sonner";
+import { SkeletonTableRows } from "@/components/skeletons/Skeleton";
 
 const AdminRequirements = () => {
   const [jobs, setJobs] = useState<any[]>([]);
@@ -66,7 +67,7 @@ const AdminRequirements = () => {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={8} className="text-center py-12 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
+              <SkeletonTableRows rows={5} cols={8} />
             ) : filtered.length === 0 ? (
               <TableRow><TableCell colSpan={8} className="text-center py-12 text-muted-foreground text-xs">No requirements found</TableCell></TableRow>
             ) : filtered.map((j) => (

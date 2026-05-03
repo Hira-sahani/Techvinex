@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SkeletonList } from "@/components/skeletons/Skeleton";
 
 const BenchmarkResults = () => {
   const [results, setResults] = useState<any[]>([]);
@@ -57,7 +58,7 @@ const BenchmarkResults = () => {
       </div>
 
       {loading ? (
-        <p className="text-xs text-muted-foreground">Loading...</p>
+        <SkeletonList rows={5} />
       ) : filtered.length === 0 ? (
         <Card className="p-8 text-center">
           <p className="text-sm text-muted-foreground">No results found</p>

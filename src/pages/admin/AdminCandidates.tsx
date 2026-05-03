@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import { SkeletonTableRows } from "@/components/skeletons/Skeleton";
 
 const AdminCandidates = () => {
   const [candidates, setCandidates] = useState<any[]>([]);
@@ -55,7 +56,7 @@ const AdminCandidates = () => {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
+              <SkeletonTableRows rows={5} cols={6} />
             ) : filtered.length === 0 ? (
               <TableRow><TableCell colSpan={6} className="text-center py-12 text-muted-foreground text-xs">No candidates found</TableCell></TableRow>
             ) : (

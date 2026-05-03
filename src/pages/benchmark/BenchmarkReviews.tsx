@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { CheckCircle, XCircle, Eye } from "lucide-react";
 import { toast } from "sonner";
+import { SkeletonList } from "@/components/skeletons/Skeleton";
 
 const BenchmarkReviews = () => {
   const { user } = useAuth();
@@ -79,7 +80,7 @@ const BenchmarkReviews = () => {
       </div>
 
       {loading ? (
-        <p className="text-xs text-muted-foreground">Loading...</p>
+        <SkeletonList rows={5} />
       ) : results.length === 0 ? (
         <Card className="p-8 text-center">
           <p className="text-sm text-muted-foreground">No results to review</p>

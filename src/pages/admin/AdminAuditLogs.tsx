@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import { SkeletonTableRows } from "@/components/skeletons/Skeleton";
 
 const AdminAuditLogs = () => {
   const [logs, setLogs] = useState<any[]>([]);
@@ -44,7 +45,7 @@ const AdminAuditLogs = () => {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow><TableCell colSpan={4} className="text-center py-12 text-muted-foreground text-xs">Loading...</TableCell></TableRow>
+              <SkeletonTableRows rows={5} cols={4} />
             ) : filtered.length === 0 ? (
               <TableRow><TableCell colSpan={4} className="text-center py-12 text-muted-foreground text-xs">No audit logs found</TableCell></TableRow>
             ) : (
