@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { ProfileTabSkeleton } from "@/components/skeletons/PageSkeletons";
 
 const timeOptions = ["Full-time", "Part-time", "Flexible"];
 const startOptions = ["Immediately", "In 1-2 weeks", "In 1 month", "In 2+ months"];
@@ -73,6 +74,8 @@ const ProfileAvailabilityTab = () => {
     setEditMode(false);
     toast.success("Availability saved.");
   };
+
+  if (loading) return <ProfileTabSkeleton rows={3} loadingLabel="Loading availability" />;
 
   return (
     <div className="space-y-6 max-w-xl pb-24">

@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { countries } from "@/data/countries";
 import { languages as languagesList } from "@/data/languages";
 import { toast } from "sonner";
+import { ProfileTabSkeleton } from "@/components/skeletons/PageSkeletons";
 
 const hobbies = [
   "Football (American)", "Basketball", "Soccer", "Cricket",
@@ -162,6 +163,8 @@ const ProfileResumeTab = () => {
     setEditMode(false);
     toast.success("Resume details saved.");
   };
+
+  if (loading) return <ProfileTabSkeleton rows={6} loadingLabel="Loading resume" />;
 
   return (
     <div className="space-y-8 pb-24">
