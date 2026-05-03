@@ -1,6 +1,7 @@
 import { Video, Clock, Info, Shield, Calendar, RefreshCw, HelpCircle, Mic, MicOff, Volume2, Camera } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState, useRef, useEffect, useCallback } from "react";
+import { apiFetch } from "@/lib/apiClient";
 
 type Msg = { role: "user" | "assistant"; content: string };
 type InterviewPhase = "info" | "setup" | "interview" | "completed";
