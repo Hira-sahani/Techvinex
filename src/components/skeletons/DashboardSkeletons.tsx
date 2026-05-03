@@ -148,18 +148,22 @@ type BenchmarkOpts = DashboardSkeletonOptions & {
 export const BenchmarkDashboardSkeleton = ({
   className,
   extraSlot,
+  loadingLabel = "Loading benchmark dashboard",
   statCount = 6,
   statCols = "grid-cols-2 md:grid-cols-3 lg:grid-cols-6",
   listRows = 5,
 }: BenchmarkOpts = {}) => (
-  <div className={cn("p-6 space-y-6", className)}>
-    <div className="space-y-2">
-      <Shimmer className="h-5 w-48" />
-      <Shimmer className="h-3 w-64" />
+  <div className={cn("p-6 space-y-6", className)} {...a11yLoadingProps(loadingLabel)}>
+    <SrLoading label={loadingLabel} />
+    <div aria-hidden="true" className="space-y-6">
+      <div className="space-y-2">
+        <Shimmer className="h-5 w-48" />
+        <Shimmer className="h-3 w-64" />
+      </div>
+      <SkeletonStatGrid count={statCount} cols={statCols} />
+      <SkeletonList rows={listRows} />
+      {extraSlot}
     </div>
-    <SkeletonStatGrid count={statCount} cols={statCols} />
-    <SkeletonList rows={listRows} />
-    {extraSlot}
   </div>
 );
 
