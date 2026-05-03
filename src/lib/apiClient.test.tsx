@@ -426,17 +426,10 @@ describe("apiFetch — Authorization header presence (valid-session contract)", 
 describe("apiFetch — retryOnUnauthorized", () => {
   let fetchMock: ReturnType<typeof vi.fn>;
   let originalFetch: typeof global.fetch;
-  const refreshSession = vi.fn();
+  const refreshSession = mocks.refreshSession;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // Augment the supabase mock with refreshSession for this suite.
-    // (The hoisted module mock returns a stable supabase object, so we
-    // patch via a getter on the auth namespace.)
-    (await import("@/integrations/supabase/client")).supabase.auth.refreshSession =
-      refreshSession as unknown as typeof import("@supabase/supabase-js").AuthClient.prototype.refreshSession;
-    refreshSession.mockReset();
-
     originalFetch = global.fetch;
   });
 
