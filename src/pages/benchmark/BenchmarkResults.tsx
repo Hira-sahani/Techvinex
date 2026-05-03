@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SkeletonList } from "@/components/skeletons/Skeleton";
 
 const BenchmarkResults = () => {
   const [results, setResults] = useState<any[]>([]);
