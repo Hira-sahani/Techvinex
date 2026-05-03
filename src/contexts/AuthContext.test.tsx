@@ -317,6 +317,74 @@ describe("AuthProvider regression", () => {
     });
   });
 
+  it("regression: after async init resolves, listener events update session/isLoggedIn correctly with no stale values", async () => {
+    const initialSession = buildFakeSession({
+      access_token: "tok-init",
+      user: { id: "u-init", email: "init@example.com" },
+    });
+    seedNextSession(mocks, initialSession);
+    const listener = captureNextAuthListener(mocks);
+
+    const SessionProbe = () => {
+      const { isLoggedIn, session, loading, user } = useAuth();
+      return (
+        <div>
+          <span data-testid="logged-in">{String(isLoggedIn)}</span>
+          <span data-testid="loading">{String(loading)}</span>
+          <span data-testid="access-token">{session?.access_token ?? "none"}</span>
+          <span data-testid="user-id">{user?.id ?? "none"}</span>
+        </div>
+      );
+    };
+
+    renderProvider(<SessionProbe />);
+
+    // Wait for async init to fully resolve before emitting listener events.
+    await waitFor(() => {
+      expect(screen.getByTestId("loading")).toHaveTextContent("false");
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("true");
+      expect(screen.getByTestId("access-token")).toHaveTextContent("tok-init");
+      expect(screen.getByTestId("user-id")).toHaveTextContent("u-init");
+    });
+
+    // SIGNED_IN with a different user — must replace stale init session.
+    listener.emit(
+      "SIGNED_IN",
+      buildFakeSession({
+        access_token: "tok-new-user",
+        user: { id: "u-new", email: "new@example.com" },
+      }),
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("access-token")).toHaveTextContent("tok-new-user");
+      expect(screen.getByTestId("user-id")).toHaveTextContent("u-new");
+    });
+    expect(screen.getByTestId("logged-in")).toHaveTextContent("true");
+
+    // TOKEN_REFRESHED — session updates, isLoggedIn stays true, no stale token.
+    listener.emit(
+      "TOKEN_REFRESHED",
+      buildFakeSession({
+        access_token: "tok-refreshed",
+        user: { id: "u-new", email: "new@example.com" },
+      }),
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("access-token")).toHaveTextContent("tok-refreshed");
+    });
+    expect(screen.getByTestId("logged-in")).toHaveTextContent("true");
+    expect(screen.getByTestId("user-id")).toHaveTextContent("u-new");
+
+    // SIGNED_OUT — session cleared, isLoggedIn flips false, no stale values.
+    listener.emit("SIGNED_OUT", null);
+    await waitFor(() => {
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("false");
+      expect(screen.getByTestId("access-token")).toHaveTextContent("none");
+      expect(screen.getByTestId("user-id")).toHaveTextContent("none");
+    });
+    expect(screen.getByTestId("loading")).toHaveTextContent("false");
+  });
+
   it("no UI flicker: loading flips exactly once during init (true → false), then never flips on listener events", async () => {
     seedNextSession(mocks, null);
     const listener = captureNextAuthListener(mocks);
