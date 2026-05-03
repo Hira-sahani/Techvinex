@@ -268,4 +268,23 @@ describe("AuthProvider regression", () => {
       expect(screen.getByTestId("loading")).toHaveTextContent("false");
     });
   });
+
+  it("regression: REAUTHENTICATED listener callback with null session keeps isLoggedIn=false and finalizes loading=false", async () => {
+    seedNextSession(mocks, null);
+    const listener = captureNextAuthListener(mocks);
+
+    renderProvider();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("loading")).toHaveTextContent("false");
+    });
+    expect(screen.getByTestId("logged-in")).toHaveTextContent("false");
+
+    listener.emit("REAUTHENTICATED", null);
+
+    await waitFor(() => {
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("false");
+      expect(screen.getByTestId("loading")).toHaveTextContent("false");
+    });
+  });
 });
