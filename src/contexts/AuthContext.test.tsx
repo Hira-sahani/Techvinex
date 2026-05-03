@@ -43,12 +43,41 @@ const Probe = () => {
   );
 };
 
+/**
+ * Probe that records every distinct value of `loading` it observes via a
+ * data attribute. Lets tests assert how many times `loading` transitioned,
+ * which catches UI-flicker regressions where loading flips back to true.
+ */
+const LoadingTrackerProbe = () => {
+  const { isLoggedIn, loading } = useAuth();
+  // Use a ref-style accumulator stored on window to survive across renders
+  // without needing to reach into React internals.
+  const w = window as unknown as { __loadingHistory?: boolean[] };
+  if (!w.__loadingHistory) w.__loadingHistory = [];
+  const history = w.__loadingHistory;
+  if (history.length === 0 || history[history.length - 1] !== loading) {
+    history.push(loading);
+  }
+  return (
+    <div>
+      <span data-testid="logged-in">{String(isLoggedIn)}</span>
+      <span data-testid="loading">{String(loading)}</span>
+      <span data-testid="loading-history">{history.join(",")}</span>
+    </div>
+  );
+};
+
 const renderProvider = (children: React.ReactNode = <Probe />) =>
   render(<AuthProvider>{children}</AuthProvider>);
+
+const resetLoadingHistory = () => {
+  (window as unknown as { __loadingHistory?: boolean[] }).__loadingHistory = [];
+};
 
 describe("AuthProvider regression", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    resetLoadingHistory();
   });
 
   it("mounts without throwing and renders its children", () => {
@@ -286,5 +315,40 @@ describe("AuthProvider regression", () => {
       expect(screen.getByTestId("logged-in")).toHaveTextContent("false");
       expect(screen.getByTestId("loading")).toHaveTextContent("false");
     });
+  });
+
+  it("no UI flicker: loading flips exactly once during init (true → false), then never flips on listener events", async () => {
+    seedNextSession(mocks, null);
+    const listener = captureNextAuthListener(mocks);
+
+    renderProvider(<LoadingTrackerProbe />);
+
+    // After init: history should be exactly [true, false]
+    await waitFor(() => {
+      expect(screen.getByTestId("loading")).toHaveTextContent("false");
+    });
+    expect(screen.getByTestId("loading-history")).toHaveTextContent("true,false");
+
+    // Subsequent listener events must NOT add another loading transition
+    listener.emit(
+      "SIGNED_IN",
+      buildFakeSession({ access_token: "tok-flicker", user: { id: "u-7" } }),
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("true");
+    });
+    expect(screen.getByTestId("loading-history")).toHaveTextContent("true,false");
+
+    listener.emit(
+      "TOKEN_REFRESHED",
+      buildFakeSession({ access_token: "tok-flicker-2", user: { id: "u-7" } }),
+    );
+    listener.emit("SIGNED_OUT", null);
+    await waitFor(() => {
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("false");
+    });
+
+    // Still only the original two entries — loading never flipped back to true.
+    expect(screen.getByTestId("loading-history")).toHaveTextContent("true,false");
   });
 });
