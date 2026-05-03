@@ -591,6 +591,66 @@ describe("AuthProvider regression", () => {
     }
   });
 
+  it("regression: SIGNED_OUT fully clears cached session/user; later events with null/empty payloads do not resurrect stale data", async () => {
+    const initialSession = buildFakeSession({
+      access_token: "tok-cached",
+      user: { id: "u-cached", email: "cached@example.com" },
+    });
+    seedNextSession(mocks, initialSession);
+    const listener = captureNextAuthListener(mocks);
+
+    const FullProbe = () => {
+      const { isLoggedIn, session, user } = useAuth();
+      return (
+        <div>
+          <span data-testid="logged-in">{String(isLoggedIn)}</span>
+          <span data-testid="access-token">{session?.access_token ?? "none"}</span>
+          <span data-testid="user-id">{user?.id ?? "none"}</span>
+          <span data-testid="user-email">{user?.email ?? "none"}</span>
+        </div>
+      );
+    };
+
+    renderProvider(<FullProbe />);
+
+    // Confirm logged-in cached state.
+    await waitFor(() => {
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("true");
+      expect(screen.getByTestId("access-token")).toHaveTextContent("tok-cached");
+      expect(screen.getByTestId("user-id")).toHaveTextContent("u-cached");
+      expect(screen.getByTestId("user-email")).toHaveTextContent("cached@example.com");
+    });
+
+    // SIGNED_OUT must fully clear session AND user.
+    listener.emit("SIGNED_OUT", null);
+    await waitFor(() => {
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("false");
+      expect(screen.getByTestId("access-token")).toHaveTextContent("none");
+      expect(screen.getByTestId("user-id")).toHaveTextContent("none");
+      expect(screen.getByTestId("user-email")).toHaveTextContent("none");
+    });
+
+    // Later listener events with null / malformed payloads must NOT
+    // resurrect the previously-cached user/session values.
+    listener.emit("TOKEN_REFRESHED", null);
+    listener.emit("USER_UPDATED", null);
+    listener.emit(
+      "INITIAL_SESSION" as string,
+      { access_token: "" } as unknown as never,
+    );
+    listener.emit("SIGNED_IN", null);
+
+    // Give React a tick to flush any erroneous state updates.
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId("logged-in")).toHaveTextContent("false");
+    expect(screen.getByTestId("access-token")).toHaveTextContent("none");
+    expect(screen.getByTestId("user-id")).toHaveTextContent("none");
+    expect(screen.getByTestId("user-email")).toHaveTextContent("none");
+  });
+
   it("no UI flicker: loading flips exactly once during init (true → false), then never flips on listener events", async () => {
     seedNextSession(mocks, null);
     const listener = captureNextAuthListener(mocks);
