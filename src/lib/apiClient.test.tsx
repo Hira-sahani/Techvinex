@@ -3,13 +3,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 const mocks = vi.hoisted(() => {
   const getSession = vi.fn();
   const invoke = vi.fn();
-  return { getSession, invoke };
+  const refreshSession = vi.fn();
+  return { getSession, invoke, refreshSession };
 });
 
 vi.mock("@/integrations/supabase/client", () => ({
   supabase: {
     auth: {
       getSession: mocks.getSession,
+      refreshSession: mocks.refreshSession,
     },
     functions: {
       invoke: mocks.invoke,
