@@ -514,8 +514,13 @@ describe("AuthProvider regression", () => {
     const listener = captureNextAuthListener(mocks);
 
     // Mock fetch to capture Authorization headers from authenticated calls.
-    const fetchMock = vi.fn(() =>
-      Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({}) }),
+    const fetchMock = vi.fn(
+      (_input: RequestInfo | URL, _init?: RequestInit) =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({}),
+        }) as unknown as Promise<Response>,
     );
     const originalFetch = global.fetch;
     global.fetch = fetchMock as unknown as typeof fetch;
