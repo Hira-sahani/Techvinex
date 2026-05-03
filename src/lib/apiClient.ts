@@ -131,6 +131,48 @@ function record401(
  */
 export type UnauthorizedHandler = (response: Response, input: RequestInfo | URL) => void | Promise<void>;
 
+// ---------------------------------------------------------------------------
+// Session-expired event bus (UI hook)
+// ---------------------------------------------------------------------------
+// AuthContext (or any UI component) subscribes via onSessionExpired() to
+// render a "session expired" surface (banner, modal, route guard message)
+// whenever apiFetch's unauthorized handler fires. This complements the
+// toast — the toast is transient, the UI hook lets the app render durable
+// state until the user dismisses or re-authenticates.
+
+export interface SessionExpiredEvent {
+  /** ISO timestamp of when the 401 was observed. */
+  timestamp: string;
+  /** URL of the request that triggered the expiry. */
+  endpoint: string;
+}
+
+type SessionExpiredListener = (event: SessionExpiredEvent) => void;
+const sessionExpiredListeners = new Set<SessionExpiredListener>();
+
+/**
+ * Subscribe to session-expired events. Returns an unsubscribe function.
+ * Used by AuthContext to flip an isSessionExpired flag that UI surfaces
+ * can read via useAuth().
+ */
+export function onSessionExpired(listener: SessionExpiredListener): () => void {
+  sessionExpiredListeners.add(listener);
+  return () => sessionExpiredListeners.delete(listener);
+}
+
+function emitSessionExpired(input: RequestInfo | URL) {
+  const event: SessionExpiredEvent = {
+    timestamp: new Date().toISOString(),
+    endpoint: urlOf(input),
+  };
+  for (const listener of sessionExpiredListeners) {
+    try {
+      listener(event);
+    } catch {
+      // Listener errors must not break the request flow.
+    }
+  }
+}
 
 /**
  * Resolve the right login route for the area the user is currently in,
@@ -144,7 +186,11 @@ function resolveLoginPath(pathname: string): string {
   return "/login";
 }
 
-let unauthorizedHandler: UnauthorizedHandler = async () => {
+let unauthorizedHandler: UnauthorizedHandler = async (_response, input) => {
+  // Notify subscribed UI (AuthContext) BEFORE signOut/redirect so it can
+  // render a session-expired surface even if the page is about to navigate.
+  emitSessionExpired(input);
+
   // Avoid duplicate toasts on a burst of 401s by reusing a stable id.
   toast.error("Your session has expired. Please sign in again.", {
     id: "session-expired",
