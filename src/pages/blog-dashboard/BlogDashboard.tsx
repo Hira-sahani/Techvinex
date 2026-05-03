@@ -30,7 +30,9 @@ const statusColors: Record<string, string> = {
 };
 
 const BlogDashboard = () => {
-  const { data: blogs = [], isLoading } = useBlogs(true);
+  const blogsQuery = useBlogs(true);
+  const blogs = blogsQuery.data ?? [];
+  const dashboardQuery = useQueryAsDashboardData(blogsQuery, {});
   const createBlog = useCreateBlog();
   const updateBlog = useUpdateBlog();
   const deleteBlog = useDeleteBlog();
