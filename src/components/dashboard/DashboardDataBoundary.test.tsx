@@ -44,7 +44,7 @@ describe("DashboardDataBoundary", () => {
     );
     expect(screen.getByText("Failed")).toBeInTheDocument();
     expect(screen.getByText("Boom")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: /retry/i }));
+    fireEvent.click(screen.getByRole("button", { name: /try again/i }));
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 
