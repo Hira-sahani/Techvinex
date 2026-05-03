@@ -1,12 +1,23 @@
-import { vi } from "vitest";
+import type { Mock } from "vitest";
 import { act } from "react";
 import type { Session, User } from "@supabase/supabase-js";
-import type { mocks } from "./mocks";
 
 /**
- * Build a fake Supabase Session for tests. Override any field as needed.
+ * Shape of the hoisted mocks object that test files create with vi.hoisted().
+ * Helpers accept any object matching this shape so they work across test files
+ * without coupling to a specific mock module.
  */
-export const buildFakeSession = (overrides: Partial<Session> & { user?: Partial<User> } = {}): Session => {
+export interface AuthMocks {
+  unsubscribe: Mock;
+  onAuthStateChange: Mock;
+  getSession: Mock;
+  signOut: Mock;
+}
+
+/** Build a fake Supabase Session for tests. Override any field as needed. */
+export const buildFakeSession = (
+  overrides: Partial<Session> & { user?: Partial<User> } = {},
+): Session => {
   const user = {
     id: "test-user-id",
     email: "test@example.com",
@@ -20,34 +31,29 @@ export const buildFakeSession = (overrides: Partial<Session> & { user?: Partial<
   } as unknown as Session;
 };
 
-/**
- * Tell the next call to getSession() to resolve with this session (or null).
- */
+/** Tell the next call to getSession() to resolve with this session (or null). */
 export const seedNextSession = (
-  m: typeof mocks,
+  mocks: AuthMocks,
   session: Session | null,
   error: Error | null = null,
 ) => {
-  m.getSession.mockResolvedValueOnce({ data: { session }, error });
+  mocks.getSession.mockResolvedValueOnce({ data: { session }, error });
 };
 
 /**
- * Capture the auth-state-change listener registered on the next mount,
- * so tests can fire SIGNED_IN / SIGNED_OUT / TOKEN_REFRESHED etc. directly.
- *
- * Returns a getter that yields the captured callback (or throws if it has
- * not been registered yet).
+ * Capture the auth-state-change listener registered on the NEXT mount and
+ * return helpers to inspect / fire events on it.
  */
-export const captureNextAuthListener = (m: typeof mocks) => {
+export const captureNextAuthListener = (mocks: AuthMocks) => {
   let captured: ((event: string, session: Session | null) => void) | null = null;
 
-  m.onAuthStateChange.mockImplementationOnce(((
+  mocks.onAuthStateChange.mockImplementationOnce(((
     cb: (event: string, session: Session | null) => void,
   ) => {
     captured = cb;
-    return { data: { subscription: { unsubscribe: m.unsubscribe } } };
+    return { data: { subscription: { unsubscribe: mocks.unsubscribe } } };
   }) as unknown as () => {
-    data: { subscription: { unsubscribe: typeof m.unsubscribe } };
+    data: { subscription: { unsubscribe: typeof mocks.unsubscribe } };
   });
 
   return {
@@ -55,13 +61,10 @@ export const captureNextAuthListener = (m: typeof mocks) => {
       if (!captured) throw new Error("Auth listener has not been registered yet");
       return captured;
     },
-    /** Fire an event on the captured listener inside React act(). */
+    /** Fire an event on the captured listener wrapped in React act(). */
     emit: (event: string, session: Session | null) => {
       if (!captured) throw new Error("Auth listener has not been registered yet");
       act(() => captured!(event, session));
     },
   };
 };
-
-// Re-export for convenience so consumers do not need a second import.
-export { vi };
