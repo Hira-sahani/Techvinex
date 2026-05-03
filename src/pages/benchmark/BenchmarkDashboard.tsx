@@ -71,6 +71,22 @@ const BenchmarkDashboard = () => {
 
   if (loading) return <BenchmarkDashboardSkeleton />;
 
+  if (stats.totalTasks === 0 && stats.totalResults === 0) {
+    return (
+      <div className="p-6">
+        <DashboardEmptyState
+          title="No benchmark activity yet"
+          description="Create benchmark tasks and run your first model evaluation to see scores, pass rates, and latency here."
+          actionLabel="Create task"
+          onAction={() => navigate("/benchmark/tasks")}
+          secondaryActionLabel="Run a test"
+          onSecondaryAction={() => navigate("/benchmark/run")}
+        />
+      </div>
+    );
+  }
+
+
   return (
     <div className="p-6 space-y-6">
       <div>
