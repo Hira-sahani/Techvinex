@@ -57,7 +57,7 @@ const BenchmarkResults = () => {
       </div>
 
       {loading ? (
-        <p className="text-xs text-muted-foreground">Loading...</p>
+        <SkeletonList rows={5} />
       ) : filtered.length === 0 ? (
         <Card className="p-8 text-center">
           <p className="text-sm text-muted-foreground">No results found</p>

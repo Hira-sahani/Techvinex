@@ -222,7 +222,7 @@ const BenchmarkTasks = () => {
       </div>
 
       {loading ? (
-        <p className="text-xs text-muted-foreground">Loading...</p>
+        <SkeletonList rows={5} />
       ) : tasks.length === 0 ? (
         <Card className="p-8 text-center">
           <p className="text-sm text-muted-foreground">No tasks yet. Create your first benchmark task!</p>

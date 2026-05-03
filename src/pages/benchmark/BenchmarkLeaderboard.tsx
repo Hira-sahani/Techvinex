@@ -116,7 +116,10 @@ const BenchmarkLeaderboard = () => {
       </div>
 
       {loading ? (
-        <p className="text-xs text-muted-foreground">Loading...</p>
+        <div className="space-y-3">
+          <SkeletonStatGrid count={4} cols="grid-cols-2 sm:grid-cols-4" />
+          <SkeletonTable rows={6} cols={5} />
+        </div>
       ) : entries.length === 0 ? (
         <Card className="p-8 text-center">
           <p className="text-sm text-muted-foreground">No benchmark data yet. Run some tests first!</p>
