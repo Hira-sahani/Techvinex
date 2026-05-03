@@ -232,6 +232,29 @@ async function handleUnauthorized(response: Response, input: RequestInfo | URL) 
   return handling401;
 }
 
+// In-flight de-duplication for refreshSession(): a burst of concurrent 401s
+// must share ONE refresh attempt. Without this, each retrying call would fire
+// its own refreshSession() — burning refresh tokens and risking Supabase
+// revoking the whole chain. Resolves to the new access token, or null if the
+// refresh failed.
+let refreshInFlight: Promise<string | null> | null = null;
+
+async function dedupedRefreshSession(): Promise<string | null> {
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
+    try {
+      const { data, error } = await supabase.auth.refreshSession();
+      if (error) return null;
+      return data.session?.access_token ?? null;
+    } catch {
+      return null;
+    }
+  })().finally(() => {
+    refreshInFlight = null;
+  }) as Promise<string | null>;
+  return refreshInFlight;
+}
+
 export interface ApiFetchOptions extends RequestInit {
   /**
    * If true, when the first attempt returns 401 we try to refresh the
