@@ -152,5 +152,10 @@ describe("apiFetch — concurrent 500 responses do not trigger session-expired f
       expect.anything(),
     );
     expect(busEvents).toHaveLength(0);
+
+    const newEvents = getRecentUnauthorizedEvents().slice(baselineEventCount);
+    for (const ev of newEvents) {
+      expect(ev.retryAttempted).toBe(false);
+    }
   });
 });
