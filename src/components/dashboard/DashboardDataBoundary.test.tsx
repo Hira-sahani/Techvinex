@@ -118,6 +118,53 @@ describe("DashboardDataBoundary", () => {
     expect(screen.getByTestId("content")).toHaveTextContent("x");
   });
 
+  it("renders empty state without action button when actionLabel is missing", () => {
+    const onAction = vi.fn();
+    render(
+      <DashboardDataBoundary
+        query={makeQuery<string[]>({ isEmpty: true, status: "empty", data: [] })}
+        skeleton={<Skeleton />}
+        empty={{ title: "Nothing here", description: "Add one", onAction }}
+      >
+        {renderContent}
+      </DashboardDataBoundary>,
+    );
+    expect(screen.getByText("Nothing here")).toBeInTheDocument();
+    expect(screen.getByText("Add one")).toBeInTheDocument();
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(onAction).not.toHaveBeenCalled();
+  });
+
+  it("renders empty state without action button when onAction is missing", () => {
+    render(
+      <DashboardDataBoundary
+        query={makeQuery<string[]>({ isEmpty: true, status: "empty", data: [] })}
+        skeleton={<Skeleton />}
+        empty={{ title: "Nothing here", description: "Add one", actionLabel: "Create" }}
+      >
+        {renderContent}
+      </DashboardDataBoundary>,
+    );
+    expect(screen.getByText("Nothing here")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /create/i })).toBeNull();
+  });
+
+  it("renders empty state with title/description only when no action props provided", () => {
+    render(
+      <DashboardDataBoundary
+        query={makeQuery<string[]>({ isEmpty: true, status: "empty", data: [] })}
+        skeleton={<Skeleton />}
+        empty={{ title: "All clear", description: "Nothing to show" }}
+      >
+        {renderContent}
+      </DashboardDataBoundary>,
+    );
+    expect(screen.getByText("All clear")).toBeInTheDocument();
+    expect(screen.getByText("Nothing to show")).toBeInTheDocument();
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.queryByTestId("content")).toBeNull();
+  });
+
   it("ignores empty config when not isEmpty", () => {
     render(
       <DashboardDataBoundary
