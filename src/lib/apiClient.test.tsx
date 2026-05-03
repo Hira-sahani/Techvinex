@@ -337,3 +337,86 @@ describe("apiFetch global 401 handling", () => {
     }
   });
 });
+
+describe("apiFetch — Authorization header presence (valid-session contract)", () => {
+  let fetchMock2: ReturnType<typeof vi.fn>;
+  let originalFetch2: typeof global.fetch;
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    fetchMock2 = vi.fn(
+      () =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({}),
+        }) as unknown as Promise<Response>,
+    );
+    originalFetch2 = global.fetch;
+    global.fetch = fetchMock2 as unknown as typeof fetch;
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch2;
+  });
+
+  const headers = (i: number) =>
+    new Headers((fetchMock2.mock.calls[i][1] as RequestInit).headers ?? {});
+
+  it("sends Authorization when a non-empty access_token is present", async () => {
+    mocks.getSession.mockResolvedValueOnce({
+      data: { session: { access_token: "valid-token-abc" } },
+      error: null,
+    });
+    await apiFetch("/x");
+    expect(headers(0).get("Authorization")).toBe("Bearer valid-token-abc");
+  });
+
+  it("does NOT send Authorization when session is null", async () => {
+    mocks.getSession.mockResolvedValueOnce({ data: { session: null }, error: null });
+    await apiFetch("/x");
+    expect(headers(0).get("Authorization")).toBeNull();
+  });
+
+  it("does NOT send Authorization when session.access_token is undefined", async () => {
+    mocks.getSession.mockResolvedValueOnce({
+      data: { session: { access_token: undefined } as unknown as { access_token: string } },
+      error: null,
+    });
+    await apiFetch("/x");
+    expect(headers(0).get("Authorization")).toBeNull();
+  });
+
+  it("does NOT send Authorization when session.access_token is an empty string", async () => {
+    mocks.getSession.mockResolvedValueOnce({
+      data: { session: { access_token: "" } },
+      error: null,
+    });
+    await apiFetch("/x");
+    expect(headers(0).get("Authorization")).toBeNull();
+  });
+
+  it("does NOT send Authorization when getSession returns an error with no session", async () => {
+    mocks.getSession.mockResolvedValueOnce({
+      data: { session: null },
+      error: { message: "boom" },
+    });
+    await apiFetch("/x");
+    expect(headers(0).get("Authorization")).toBeNull();
+  });
+
+  it("strips a caller-supplied Authorization when no current session exists", async () => {
+    mocks.getSession.mockResolvedValueOnce({ data: { session: null }, error: null });
+    await apiFetch("/x", { headers: { Authorization: "Bearer leftover" } });
+    expect(headers(0).get("Authorization")).toBeNull();
+  });
+
+  it("overrides a caller-supplied Authorization with the current session token", async () => {
+    mocks.getSession.mockResolvedValueOnce({
+      data: { session: { access_token: "fresh" } },
+      error: null,
+    });
+    await apiFetch("/x", { headers: { Authorization: "Bearer caller-supplied" } });
+    expect(headers(0).get("Authorization")).toBe("Bearer fresh");
+  });
+});
