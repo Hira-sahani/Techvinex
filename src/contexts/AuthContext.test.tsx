@@ -786,6 +786,101 @@ describe("AuthProvider regression", () => {
     }
   });
 
+  it("regression: after refresh failure, API client receives 401 when call is made without an Authorization header", async () => {
+    seedNextSession(
+      mocks,
+      buildFakeSession({
+        access_token: "tok-prefail",
+        user: { id: "u-401", email: "u401@example.com" },
+      }),
+    );
+    const listener = captureNextAuthListener(mocks);
+
+    // Simulated API: returns 200 only when a valid (non-empty, non-stale)
+    // bearer token is present; otherwise returns 401 Unauthorized.
+    const fetchMock = vi.fn(
+      (_input: RequestInfo | URL, init?: RequestInit) => {
+        const headers = (init?.headers ?? {}) as Record<string, string>;
+        const auth = headers.Authorization ?? "";
+        const validBearer = auth.startsWith("Bearer ") && auth.length > "Bearer ".length;
+        if (validBearer) {
+          return Promise.resolve({
+            ok: true,
+            status: 200,
+            json: () => Promise.resolve({ ok: true }),
+          }) as unknown as Promise<Response>;
+        }
+        return Promise.resolve({
+          ok: false,
+          status: 401,
+          json: () => Promise.resolve({ error: "unauthorized" }),
+        }) as unknown as Promise<Response>;
+      },
+    );
+    const originalFetch = global.fetch;
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const ApiConsumer = () => {
+      const { session } = useAuth();
+      const [lastStatus, setLastStatus] = useState<number | null>(null);
+      const callApi = async () => {
+        const headers: Record<string, string> = {};
+        if (session?.access_token) {
+          headers.Authorization = `Bearer ${session.access_token}`;
+        }
+        const res = await fetch("/api/me", { headers });
+        setLastStatus(res.status);
+      };
+      return (
+        <div>
+          <span data-testid="access-token">{session?.access_token ?? "none"}</span>
+          <span data-testid="last-status">{lastStatus === null ? "none" : String(lastStatus)}</span>
+          <button onClick={() => void callApi()}>Call API</button>
+        </div>
+      );
+    };
+
+    const { default: userEvent } = await import("@testing-library/user-event");
+    const { useState } = await import("react");
+    const user = userEvent.setup();
+
+    try {
+      render(
+        <AuthProvider>
+          <ApiConsumer />
+        </AuthProvider>,
+      );
+
+      // Baseline: logged in → call returns 200.
+      await waitFor(() => {
+        expect(screen.getByTestId("access-token")).toHaveTextContent("tok-prefail");
+      });
+      await user.click(screen.getByRole("button", { name: /call api/i }));
+      await waitFor(() => {
+        expect(screen.getByTestId("last-status")).toHaveTextContent("200");
+      });
+
+      // Refresh failure clears the session.
+      listener.emit("TOKEN_REFRESHED", null);
+      await waitFor(() => {
+        expect(screen.getByTestId("access-token")).toHaveTextContent("none");
+      });
+
+      // Next call: no Authorization header, API returns 401.
+      await user.click(screen.getByRole("button", { name: /call api/i }));
+      await waitFor(() => {
+        expect(screen.getByTestId("last-status")).toHaveTextContent("401");
+      });
+
+      // Hard guarantee: the failed call did NOT carry the old token.
+      const failedCallHeaders = (fetchMock.mock.calls[1][1] as RequestInit | undefined)
+        ?.headers as Record<string, string> | undefined;
+      expect(failedCallHeaders?.Authorization).toBeUndefined();
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
   it("no UI flicker: loading flips exactly once during init (true → false), then never flips on listener events", async () => {
     seedNextSession(mocks, null);
     const listener = captureNextAuthListener(mocks);
