@@ -706,6 +706,86 @@ describe("AuthProvider regression", () => {
     expect(screen.getByTestId("access-token")).toHaveTextContent("none");
   });
 
+  it("regression: after TOKEN_REFRESH_FAILED-equivalent event, authenticated API calls do not send the old bearer token", async () => {
+    seedNextSession(
+      mocks,
+      buildFakeSession({
+        access_token: "tok-old-stale",
+        user: { id: "u-fail-api", email: "fail-api@example.com" },
+      }),
+    );
+    const listener = captureNextAuthListener(mocks);
+
+    const fetchMock = vi.fn(
+      (_input: RequestInfo | URL, _init?: RequestInit) =>
+        Promise.resolve({
+          ok: true,
+          status: 200,
+          json: () => Promise.resolve({}),
+        }) as unknown as Promise<Response>,
+    );
+    const originalFetch = global.fetch;
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const ApiConsumer = () => {
+      const { session, isLoggedIn } = useAuth();
+      const callApi = () => {
+        const headers: Record<string, string> = {};
+        if (session?.access_token) {
+          headers.Authorization = `Bearer ${session.access_token}`;
+        }
+        return fetch("/api/me", { headers });
+      };
+      return (
+        <div>
+          <span data-testid="logged-in">{String(isLoggedIn)}</span>
+          <span data-testid="access-token">{session?.access_token ?? "none"}</span>
+          <button onClick={() => void callApi()}>Call API</button>
+        </div>
+      );
+    };
+
+    const { default: userEvent } = await import("@testing-library/user-event");
+    const user = userEvent.setup();
+
+    try {
+      renderProvider(<ApiConsumer />);
+
+      // Confirm initial logged-in state and a baseline call uses the old token.
+      await waitFor(() => {
+        expect(screen.getByTestId("access-token")).toHaveTextContent("tok-old-stale");
+      });
+      await user.click(screen.getByRole("button", { name: /call api/i }));
+      const baselineHeaders = (fetchMock.mock.calls[0][1] as RequestInit | undefined)
+        ?.headers as Record<string, string> | undefined;
+      expect(baselineHeaders?.Authorization).toBe("Bearer tok-old-stale");
+
+      // Simulate refresh failure: TOKEN_REFRESHED with null session.
+      listener.emit("TOKEN_REFRESHED", null);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("logged-in")).toHaveTextContent("false");
+        expect(screen.getByTestId("access-token")).toHaveTextContent("none");
+      });
+
+      // Subsequent authenticated API call MUST NOT include the old token.
+      // It should either run unauthenticated (no Authorization header) or
+      // with an empty value — never with the stale "Bearer tok-old-stale".
+      await user.click(screen.getByRole("button", { name: /call api/i }));
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      const postFailureHeaders = (fetchMock.mock.calls[1][1] as RequestInit | undefined)
+        ?.headers as Record<string, string> | undefined;
+
+      const auth = postFailureHeaders?.Authorization;
+      expect(auth).not.toBe("Bearer tok-old-stale");
+      expect(auth ?? "").not.toContain("tok-old-stale");
+      // Acceptable outcomes: header absent OR empty (call runs unauthenticated).
+      expect(auth === undefined || auth === "").toBe(true);
+    } finally {
+      global.fetch = originalFetch;
+    }
+  });
+
   it("no UI flicker: loading flips exactly once during init (true → false), then never flips on listener events", async () => {
     seedNextSession(mocks, null);
     const listener = captureNextAuthListener(mocks);
