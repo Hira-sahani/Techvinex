@@ -241,6 +241,7 @@ const AppLayout = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} forcedTheme="light">
+    <AppErrorBoundary>
     <AuthProvider>
     <UserProvider>
     <LangProvider>
@@ -255,6 +256,7 @@ const App = () => (
     </LangProvider>
     </UserProvider>
     </AuthProvider>
+    </AppErrorBoundary>
     </ThemeProvider>
   </QueryClientProvider>
 );
