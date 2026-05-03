@@ -7,7 +7,9 @@ const mockUseAuth = vi.fn();
 const mockUseMinimumLoading = vi.fn();
 const mockNavigate = vi.fn();
 const fromMock = vi.fn();
-const removeChannel = vi.fn();
+const mockedSupabaseFns = vi.hoisted(() => ({
+  removeChannel: vi.fn(),
+}));
 
 vi.mock("@/contexts/AuthContext", () => ({
   useAuth: () => mockUseAuth(),
@@ -31,7 +33,7 @@ vi.mock("@/integrations/supabase/client", () => ({
     channel: () => ({
       on: () => ({ on: () => ({ on: () => ({ subscribe: () => ({}) }) }) }),
     }),
-    removeChannel,
+    removeChannel: mockedSupabaseFns.removeChannel,
   },
 }));
 
@@ -45,14 +47,9 @@ vi.mock("@/components/dashboard/DashboardStats", () => ({ default: () => <div>Da
 vi.mock("@/components/dashboard/UpcomingInterviews", () => ({ default: () => <div>Upcoming Interviews</div> }));
 
 const createQuery = (table: string) => {
-  const state = { filters: [] as Array<{ column: string; value: unknown }> };
-
   const builder: any = {
     select: () => builder,
-    eq: (column: string, value: unknown) => {
-      state.filters.push({ column, value });
-      return builder;
-    },
+    eq: () => builder,
     maybeSingle: async () => {
       if (table === "profiles") {
         return { data: { full_name: "Aman Singh", email: "a@test.com" }, error: null };
