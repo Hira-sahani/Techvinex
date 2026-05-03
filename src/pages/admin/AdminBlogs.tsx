@@ -235,7 +235,20 @@ const AdminBlogs = () => {
           </div>
         ))}
         {filtered.length === 0 && (
-          <p className="text-center py-10 text-xs text-muted-foreground">No blogs found</p>
+          <div className="text-center py-10">
+            <p className="text-xs text-muted-foreground">No blogs found</p>
+            <div className="flex items-center justify-center gap-2 mt-3">
+              <Button size="sm" className="text-xs h-8 gap-1.5" onClick={() => { resetForm(); setShowForm(true); }}>
+                <Plus className="w-3 h-3" />
+                {blogs.length === 0 ? "Create first blog" : "New blog"}
+              </Button>
+              {(search || statusFilter !== "all") && (
+                <Button variant="ghost" size="sm" className="text-xs h-8" onClick={() => { setSearch(""); setStatusFilter("all"); }}>
+                  Clear filters
+                </Button>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>
