@@ -16,7 +16,7 @@ export interface AuthMocks {
 
 /** Build a fake Supabase Session for tests. Override any field as needed. */
 export const buildFakeSession = (
-  overrides: Partial<Session> & { user?: Partial<User> } = {},
+  overrides: { access_token?: string; refresh_token?: string; user?: Record<string, unknown> } = {},
 ): Session => {
   const user = {
     id: "test-user-id",
@@ -24,10 +24,9 @@ export const buildFakeSession = (
     ...(overrides.user ?? {}),
   } as unknown as User;
   return {
-    access_token: "test-access-token",
-    refresh_token: "test-refresh-token",
+    access_token: overrides.access_token ?? "test-access-token",
+    refresh_token: overrides.refresh_token ?? "test-refresh-token",
     user,
-    ...overrides,
   } as unknown as Session;
 };
 
