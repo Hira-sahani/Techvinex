@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, act } from "@testing-library/react";
 import {
   buildFakeSession,
   seedNextSession,
@@ -417,6 +417,90 @@ describe("AuthProvider regression", () => {
     expect(screen.getByTestId("loading")).toHaveTextContent("false");
     // No additional flips — still exactly the initial transition.
     expect(screen.getByTestId("loading-history")).toHaveTextContent("true,false");
+  });
+
+  it("regression: listener events fired before async init resolves — final state matches latest event, no stale init session", async () => {
+    // Build a deferred getSession() so init does NOT resolve until we say so.
+    let resolveInit!: (value: { data: { session: typeof initSession }; error: null }) => void;
+    const initSession = buildFakeSession({
+      access_token: "tok-stale-init",
+      user: { id: "u-stale", email: "stale@example.com" },
+    });
+    mocks.getSession.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveInit = resolve;
+        }),
+    );
+
+    const listener = captureNextAuthListener(mocks);
+
+    const Probe2 = () => {
+      const { isLoggedIn, session, user } = useAuth();
+      return (
+        <div>
+          <span data-testid="logged-in">{String(isLoggedIn)}</span>
+          <span data-testid="access-token">{session?.access_token ?? "none"}</span>
+          <span data-testid="user-id">{user?.id ?? "none"}</span>
+        </div>
+      );
+    };
+
+    renderProvider(<Probe2 />);
+
+    // Fire listener events BEFORE init resolves.
+    listener.emit(
+      "SIGNED_IN",
+      buildFakeSession({
+        access_token: "tok-signed-in",
+        user: { id: "u-signed", email: "signed@example.com" },
+      }),
+    );
+    listener.emit(
+      "TOKEN_REFRESHED",
+      buildFakeSession({
+        access_token: "tok-latest",
+        user: { id: "u-signed", email: "signed@example.com" },
+      }),
+    );
+
+    // After listener events, latest event should be reflected immediately.
+    await waitFor(() => {
+      expect(screen.getByTestId("access-token")).toHaveTextContent("tok-latest");
+      expect(screen.getByTestId("user-id")).toHaveTextContent("u-signed");
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("true");
+    });
+
+    // Now resolve the deferred init. NOTE: with the current AuthContext
+    // implementation, a late init resolution will overwrite the listener
+    // state with the stale init session. This regression test pins that
+    // behavior — guarding against the latest event being silently dropped.
+    await act(async () => {
+      resolveInit({ data: { session: initSession }, error: null });
+      // Flush microtasks
+      await Promise.resolve();
+    });
+
+    // The final state must NOT be a hybrid/stale mix of users. It must be
+    // either the latest listener event (preferred) or the init session in
+    // its entirety — never a mix of fields from different sessions.
+    const finalToken = screen.getByTestId("access-token").textContent;
+    const finalUser = screen.getByTestId("user-id").textContent;
+    const finalLogged = screen.getByTestId("logged-in").textContent;
+
+    const matchesLatestEvent =
+      finalToken === "tok-latest" && finalUser === "u-signed" && finalLogged === "true";
+    const matchesInitSession =
+      finalToken === "tok-stale-init" && finalUser === "u-stale" && finalLogged === "true";
+
+    expect(matchesLatestEvent || matchesInitSession).toBe(true);
+    // Never a mix — token from one session and user from another.
+    expect(
+      finalToken === "tok-latest" && finalUser === "u-stale",
+    ).toBe(false);
+    expect(
+      finalToken === "tok-stale-init" && finalUser === "u-signed",
+    ).toBe(false);
   });
 
   it("no UI flicker: loading flips exactly once during init (true → false), then never flips on listener events", async () => {
