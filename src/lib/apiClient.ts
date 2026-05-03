@@ -93,9 +93,9 @@ function record401(
     endpoint: urlOf(input),
     method: (init.method ?? "GET").toUpperCase(),
     requestId:
-      response.headers.get("x-request-id") ??
-      response.headers.get("X-Request-Id") ??
-      null,
+      (response.headers && typeof response.headers.get === "function"
+        ? response.headers.get("x-request-id") ?? response.headers.get("X-Request-Id")
+        : null) ?? null,
     status: response.status,
     retryAttempted,
     hadSession,
