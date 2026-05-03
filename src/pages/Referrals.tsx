@@ -2,7 +2,8 @@ import { useState, useEffect, useMemo } from "react";
 import SidebarNav from "@/components/SidebarNav";
 import TopStatusBar from "@/components/TopStatusBar";
 
-import { UserPlus, Copy, Gift, Share2, Mail, MessageCircle, Link2, CheckCircle2, ArrowRight, Users, DollarSign, Send, Loader2 } from "lucide-react";
+import { UserPlus, Copy, Gift, Share2, Mail, MessageCircle, Link2, CheckCircle2, ArrowRight, Users, DollarSign, Send } from "lucide-react";
+import { Shimmer } from "@/components/skeletons/Skeleton";
 import { ReferralsPageSkeleton } from "@/components/skeletons/PageSkeletons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -171,7 +172,7 @@ const Referrals = () => {
               onKeyDown={(e) => e.key === "Enter" && handleInvite()}
             />
             <Button size="sm" onClick={handleInvite} disabled={sending || !inviteEmail.includes("@")} className="gap-1.5">
-              {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+              {sending ? <Shimmer className="h-3.5 w-3.5 rounded-sm" /> : <Send size={14} />}
               Invite
             </Button>
           </div>
