@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Users, Briefcase, FileText, DollarSign, CheckCircle, Clock, ArrowUpRight, ArrowDownRight } from "lucide-react";
 import {
@@ -7,8 +7,8 @@ import {
   LineChart, Line,
 } from "recharts";
 import { AdminOverviewSkeleton } from "@/components/skeletons/DashboardSkeletons";
-import { DashboardEmptyState } from "@/components/dashboard/DashboardStates";
-import { useNavigate } from "react-router-dom";
+import { DashboardDataBoundary } from "@/components/dashboard/DashboardDataBoundary";
+import { useDashboardData } from "@/hooks/useDashboardData";
 
 /* ── Shared chart config ── */
 const GRID = { stroke: "hsl(var(--border))", strokeOpacity: 0.4, strokeDasharray: "none" };
