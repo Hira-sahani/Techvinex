@@ -86,20 +86,24 @@ type EmployerOpts = DashboardSkeletonOptions & {
 export const EmployerDashboardSkeleton = ({
   className,
   extraSlot,
+  loadingLabel = "Loading employer dashboard",
   statCount = 4,
   statCols,
   columns = [4, 4, 5],
   showChart = true,
   chartHeight = 120,
 }: EmployerOpts = {}) => (
-  <div className={cn("space-y-6 max-w-6xl", className)}>
-    <SkeletonHeader />
-    <SkeletonStatGrid count={statCount} cols={statCols} />
-    <div className={cn("grid gap-6", `lg:grid-cols-${columns.length}`)}>
-      {columns.map((rows, i) => <SkeletonList key={i} rows={rows} />)}
+  <div className={cn("space-y-6 max-w-6xl", className)} {...a11yLoadingProps(loadingLabel)}>
+    <SrLoading label={loadingLabel} />
+    <div aria-hidden="true" className="space-y-6">
+      <SkeletonHeader />
+      <SkeletonStatGrid count={statCount} cols={statCols} />
+      <div className={cn("grid gap-6", `lg:grid-cols-${columns.length}`)}>
+        {columns.map((rows, i) => <SkeletonList key={i} rows={rows} />)}
+      </div>
+      {showChart && <SkeletonChart height={chartHeight} />}
+      {extraSlot}
     </div>
-    {showChart && <SkeletonChart height={chartHeight} />}
-    {extraSlot}
   </div>
 );
 
