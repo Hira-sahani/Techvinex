@@ -561,5 +561,36 @@ describe("DashboardDataBoundary", () => {
       expect(screen.getByRole("button", { name: "Add" })).toBeInTheDocument();
       expect(screen.queryByTestId("sk")).toBeNull();
     });
+
+    it("regression: 'Add' button calls onAction when empty state is shown (click + Enter)", async () => {
+      const user = userEvent.setup();
+      const onAction = vi.fn();
+      render(
+        <DashboardDataBoundary
+          query={makeQuery<string[]>({ isEmpty: true, status: "empty", data: [] })}
+          skeleton={<Skeleton />}
+          empty={{
+            title: "No items yet",
+            description: "Add your first item",
+            actionLabel: "Add",
+            onAction,
+          }}
+        >
+          {renderContent}
+        </DashboardDataBoundary>,
+      );
+
+      const btn = screen.getByRole("button", { name: "Add" });
+      expect(onAction).not.toHaveBeenCalled();
+
+      // Click triggers callback
+      fireEvent.click(btn);
+      expect(onAction).toHaveBeenCalledTimes(1);
+
+      // Keyboard activation (Enter) also triggers callback
+      btn.focus();
+      await user.keyboard("{Enter}");
+      expect(onAction).toHaveBeenCalledTimes(2);
+    });
   });
 });
