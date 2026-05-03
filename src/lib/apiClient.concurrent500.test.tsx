@@ -24,16 +24,30 @@ vi.mock("sonner", () => ({
   },
 }));
 
-import { apiFetch } from "./apiClient";
+import {
+  apiFetch,
+  onSessionExpired,
+  getRecentUnauthorizedEvents,
+  type SessionExpiredEvent,
+} from "./apiClient";
+
+const SESSION_EXPIRED_MSG = "Your session has expired. Please sign in again.";
 
 describe("apiFetch — concurrent 500 responses do not trigger session-expired flow", () => {
   let fetchMock: ReturnType<typeof vi.fn>;
   let originalFetch: typeof global.fetch;
+  let busEvents: SessionExpiredEvent[];
+  let unsubscribe: () => void;
+  let baselineEventCount: number;
 
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.getSession.mockResolvedValue({ data: { session: null }, error: null });
     mocks.signOut.mockResolvedValue({ error: null });
+
+    busEvents = [];
+    unsubscribe = onSessionExpired((e) => busEvents.push(e));
+    baselineEventCount = getRecentUnauthorizedEvents().length;
 
     fetchMock = vi.fn(
       () =>
@@ -42,6 +56,7 @@ describe("apiFetch — concurrent 500 responses do not trigger session-expired f
           status: 500,
           json: () => Promise.resolve({ error: "Internal Server Error" }),
           text: () => Promise.resolve("Internal Server Error"),
+          headers: new Headers(),
         }) as unknown as Promise<Response>,
     );
     originalFetch = global.fetch;
@@ -49,6 +64,7 @@ describe("apiFetch — concurrent 500 responses do not trigger session-expired f
   });
 
   afterEach(() => {
+    unsubscribe();
     global.fetch = originalFetch;
   });
 
@@ -56,39 +72,75 @@ describe("apiFetch — concurrent 500 responses do not trigger session-expired f
     const results = await Promise.allSettled(
       Array.from({ length: 10 }, (_, i) => apiFetch(`/api/something/${i}`)),
     );
-
-    // Flush microtasks in case any handlers were void-fired.
     await Promise.resolve();
     await Promise.resolve();
     await Promise.resolve();
 
-    // All 10 requests reached fetch.
     expect(fetchMock).toHaveBeenCalledTimes(10);
-
-    // Either resolved with the 500 Response or rejected — but in NO case should
-    // the 401-only session-expired side effects have fired.
     expect(results).toHaveLength(10);
 
     expect(mocks.toastError).not.toHaveBeenCalledWith(
-      "Your session has expired. Please sign in again.",
+      SESSION_EXPIRED_MSG,
       expect.anything(),
     );
     expect(mocks.signOut).not.toHaveBeenCalled();
   });
 
-  it("regression: a mix of 500 responses across multiple bursts never triggers signOut", async () => {
-    await Promise.allSettled([apiFetch("/a"), apiFetch("/b"), apiFetch("/c")]);
+  it("regression: 500 responses do NOT emit session-expired bus events", async () => {
+    await Promise.allSettled(
+      Array.from({ length: 10 }, (_, i) =>
+        apiFetch(`/api/x/${i}`, { retryOnUnauthorized: true }),
+      ),
+    );
+    await Promise.resolve();
     await Promise.resolve();
     await Promise.resolve();
 
+    // The session-expired UI hook MUST NOT fire for 500s, regardless of
+    // whether the caller opted into retryOnUnauthorized.
+    expect(busEvents).toHaveLength(0);
+  });
+
+  it("regression: 500 responses do NOT record any UnauthorizedEvent in telemetry", async () => {
+    await Promise.allSettled(
+      Array.from({ length: 5 }, (_, i) =>
+        apiFetch(`/api/y/${i}`, { retryOnUnauthorized: true }),
+      ),
+    );
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // Telemetry ring buffer is dedicated to 401s — non-401s must not appear.
+    const newEvents = getRecentUnauthorizedEvents().slice(baselineEventCount);
+    expect(newEvents).toHaveLength(0);
+
+    // Even with retryOnUnauthorized=true, a 500 must NOT trigger a replay —
+    // exactly one fetch per request.
+    expect(fetchMock).toHaveBeenCalledTimes(5);
+  });
+
+  it("regression: retryOnUnauthorized=true does NOT replay a 500 response", async () => {
+    const res = await apiFetch("/api/single", { retryOnUnauthorized: true });
+
+    expect(res.status).toBe(500);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(busEvents).toHaveLength(0);
+    expect(getRecentUnauthorizedEvents().slice(baselineEventCount)).toHaveLength(0);
+    expect(mocks.signOut).not.toHaveBeenCalled();
+  });
+
+  it("regression: a mix of 500 responses across multiple bursts never triggers signOut or bus", async () => {
+    await Promise.allSettled([apiFetch("/a"), apiFetch("/b"), apiFetch("/c")]);
+    await Promise.resolve();
     await Promise.allSettled([apiFetch("/d"), apiFetch("/e")]);
     await Promise.resolve();
     await Promise.resolve();
 
     expect(mocks.signOut).not.toHaveBeenCalled();
     expect(mocks.toastError).not.toHaveBeenCalledWith(
-      "Your session has expired. Please sign in again.",
+      SESSION_EXPIRED_MSG,
       expect.anything(),
     );
+    expect(busEvents).toHaveLength(0);
   });
 });
