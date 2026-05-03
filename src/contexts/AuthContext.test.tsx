@@ -169,10 +169,10 @@ describe("AuthProvider regression", () => {
 
   it("regression: invoking the auth listener callback updates isLoggedIn and loading", async () => {
     let capturedCallback: ((event: string, session: unknown) => void) | null = null;
-    mocks.onAuthStateChange.mockImplementationOnce((cb: (event: string, session: unknown) => void) => {
+    mocks.onAuthStateChange.mockImplementationOnce(((cb: (event: string, session: unknown) => void) => {
       capturedCallback = cb;
       return { data: { subscription: { unsubscribe: mocks.unsubscribe } } };
-    });
+    }) as unknown as () => { data: { subscription: { unsubscribe: typeof mocks.unsubscribe } } });
 
     render(
       <AuthProvider>
