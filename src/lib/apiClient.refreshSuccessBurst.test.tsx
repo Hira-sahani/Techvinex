@@ -106,8 +106,9 @@ describe("apiClient — mixed burst with successful refresh", () => {
     // Refresh must dedupe to a single attempt across the 5 concurrent retriers.
     expect(mocks.refreshSession).toHaveBeenCalledTimes(1);
 
-    // signOut must NOT fire — every retrier successfully replayed.
-    expect(mocks.signOut).not.toHaveBeenCalled();
+    // signOut deduped to 1 — fired only by the /no-retry/* handler burst,
+    // never by /retry/* (those replays succeeded).
+    expect(mocks.signOut).toHaveBeenCalledTimes(1);
 
     // 500 endpoints: never on bus, never in telemetry.
     capture.expectNoBusEmissionsFor("/srv/");
