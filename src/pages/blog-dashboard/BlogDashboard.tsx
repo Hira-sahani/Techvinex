@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import JetraLoader from "@/components/JetraLoader";
+import { BlogDashboardSkeleton } from "@/components/skeletons/DashboardSkeletons";
 import RichTextEditor from "@/components/blog-dashboard/RichTextEditor";
 import BlogImageUpload from "@/components/blog-dashboard/BlogImageUpload";
 
@@ -114,7 +114,7 @@ const BlogDashboard = () => {
     draft: blogs.filter(b => b.status === "draft").length,
   }), [blogs]);
 
-  if (isLoading) return <JetraLoader />;
+  if (isLoading) return <BlogDashboardSkeleton />;
 
   return (
     <div className="min-h-screen bg-background">
