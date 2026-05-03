@@ -47,6 +47,8 @@ function urlOf(input: RequestInfo | URL): string {
 describe("apiClient — scalability: large mixed 500/401 concurrent burst", () => {
   let originalFetch: typeof global.fetch;
   let capture: UnauthorizedCapture;
+  let sinkEvents: UnauthorizedEvent[];
+  let unsubSink: (() => void) | null = null;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -60,11 +62,14 @@ describe("apiClient — scalability: large mixed 500/401 concurrent burst", () =
       error: { message: "fail" },
     });
     originalFetch = global.fetch;
+    sinkEvents = [];
+    unsubSink = addTelemetrySink((e) => sinkEvents.push(e));
     capture = createUnauthorizedCapture();
   });
 
   afterEach(() => {
     capture.dispose();
+    unsubSink?.();
     global.fetch = originalFetch;
   });
 
