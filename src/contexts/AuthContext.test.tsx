@@ -43,8 +43,36 @@ const Probe = () => {
   );
 };
 
+/**
+ * Probe that records every distinct value of `loading` it observes via a
+ * data attribute. Lets tests assert how many times `loading` transitioned,
+ * which catches UI-flicker regressions where loading flips back to true.
+ */
+const LoadingTrackerProbe = () => {
+  const { isLoggedIn, loading } = useAuth();
+  // Use a ref-style accumulator stored on window to survive across renders
+  // without needing to reach into React internals.
+  const w = window as unknown as { __loadingHistory?: boolean[] };
+  if (!w.__loadingHistory) w.__loadingHistory = [];
+  const history = w.__loadingHistory;
+  if (history.length === 0 || history[history.length - 1] !== loading) {
+    history.push(loading);
+  }
+  return (
+    <div>
+      <span data-testid="logged-in">{String(isLoggedIn)}</span>
+      <span data-testid="loading">{String(loading)}</span>
+      <span data-testid="loading-history">{history.join(",")}</span>
+    </div>
+  );
+};
+
 const renderProvider = (children: React.ReactNode = <Probe />) =>
   render(<AuthProvider>{children}</AuthProvider>);
+
+const resetLoadingHistory = () => {
+  (window as unknown as { __loadingHistory?: boolean[] }).__loadingHistory = [];
+};
 
 describe("AuthProvider regression", () => {
   beforeEach(() => {
