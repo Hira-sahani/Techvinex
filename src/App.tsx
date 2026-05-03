@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { UserProvider } from "@/contexts/UserContext";
 import { LangProvider } from "@/contexts/LangContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { ThemeProvider } from "next-themes";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AuthRedirectHandler from "@/components/AuthRedirectHandler";
@@ -240,6 +241,7 @@ const AppLayout = () => {
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false} forcedTheme="light">
+    <AppErrorBoundary>
     <AuthProvider>
     <UserProvider>
     <LangProvider>
@@ -254,6 +256,7 @@ const App = () => (
     </LangProvider>
     </UserProvider>
     </AuthProvider>
+    </AppErrorBoundary>
     </ThemeProvider>
   </QueryClientProvider>
 );
