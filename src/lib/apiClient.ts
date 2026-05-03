@@ -67,6 +67,23 @@ async function handleUnauthorized(response: Response, input: RequestInfo | URL) 
   return handling401;
 }
 
+export interface ApiFetchOptions extends RequestInit {
+  /**
+   * If true, when the first attempt returns 401 we try to refresh the
+   * Supabase session ONCE and, on success, replay the request with the
+   * fresh token. The replay goes through apiFetch again (with retry
+   * disabled to prevent loops), which re-reads getSession at call time —
+   * so the stale Authorization header from the first attempt can never
+   * be reused.
+   *
+   * If the refresh fails or the replay still returns 401, the global
+   * unauthorized handler runs (sign-out + redirect to login).
+   *
+   * Defaults to false to preserve existing call sites' behaviour.
+   */
+  retryOnUnauthorized?: boolean;
+}
+
 /**
  * Thin authenticated fetch wrapper used across the app.
  *
@@ -83,12 +100,14 @@ async function handleUnauthorized(response: Response, input: RequestInfo | URL) 
  */
 export async function apiFetch(
   input: RequestInfo | URL,
-  init: RequestInit = {},
+  init: ApiFetchOptions = {},
 ): Promise<Response> {
+  const { retryOnUnauthorized, ...fetchInit } = init;
+
   const { data } = await supabase.auth.getSession();
   const accessToken = data.session?.access_token;
 
-  const headers = new Headers(init.headers ?? {});
+  const headers = new Headers(fetchInit.headers ?? {});
   if (accessToken) {
     headers.set("Authorization", `Bearer ${accessToken}`);
   } else {
@@ -97,13 +116,48 @@ export async function apiFetch(
     headers.delete("Authorization");
   }
 
-  const response = await fetch(input, { ...init, headers });
+  const response = await fetch(input, { ...fetchInit, headers });
 
-  if (response.status === 401) {
-    // Fire-and-forget: don't block the caller from inspecting the response.
-    void handleUnauthorized(response, input);
+  if (response.status !== 401) return response;
+
+  // --- 401 path ---
+  if (retryOnUnauthorized) {
+    // Try to refresh the session ONCE. On success, replay the request
+    // through apiFetch (which re-reads getSession), guaranteeing the
+    // stale token from the first attempt is never reused.
+    let refreshed: string | null = null;
+    try {
+      const { data: refreshData, error } = await supabase.auth.refreshSession();
+      if (!error) {
+        refreshed = refreshData.session?.access_token ?? null;
+      }
+    } catch {
+      refreshed = null;
+    }
+
+    if (refreshed) {
+      // Strip any Authorization the caller may have supplied so the
+      // replay can only ever carry the freshly refreshed token (set
+      // by the inner apiFetch from the live session).
+      const replayHeaders = new Headers(fetchInit.headers ?? {});
+      replayHeaders.delete("Authorization");
+      replayHeaders.delete("authorization");
+
+      const replay = await apiFetch(input, {
+        ...fetchInit,
+        headers: replayHeaders,
+        retryOnUnauthorized: false, // hard cap: never loop
+      });
+      if (replay.status !== 401) return replay;
+      // Replay still 401 — fall through to the unauthorized handler.
+      void handleUnauthorized(replay, input);
+      return replay;
+    }
+    // Refresh failed — fall through to the unauthorized handler.
   }
 
+  // Fire-and-forget: don't block the caller from inspecting the response.
+  void handleUnauthorized(response, input);
   return response;
 }
 
