@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import type { FunctionInvokeOptions, FunctionsResponse } from "@supabase/functions-js";
 
 /**
  * Thin authenticated fetch wrapper used across the app.
@@ -26,4 +27,42 @@ export async function apiFetch(
   }
 
   return fetch(input, { ...init, headers });
+}
+
+/**
+ * Authenticated wrapper around supabase.functions.invoke that reads the
+ * current session AT CALL TIME and explicitly sets (or strips) the
+ * Authorization header so a stale Bearer token from an old session can
+ * never slip through after a refresh failure / sign-out.
+ *
+ * If there is no active session, any caller-supplied Authorization header
+ * is stripped and the invocation runs unauthenticated. The edge function
+ * is responsible for rejecting unauthenticated calls when needed.
+ */
+export async function apiInvoke<T = unknown>(
+  functionName: string,
+  options: FunctionInvokeOptions = {},
+): Promise<FunctionsResponse<T>> {
+  const { data } = await supabase.auth.getSession();
+  const accessToken = data.session?.access_token;
+
+  // Normalise caller-supplied headers into a plain object so we can
+  // deterministically remove any Authorization variant.
+  const incoming = new Headers((options.headers as HeadersInit | undefined) ?? {});
+  incoming.delete("Authorization");
+  incoming.delete("authorization");
+
+  const headers: Record<string, string> = {};
+  incoming.forEach((value, key) => {
+    headers[key] = value;
+  });
+
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
+  }
+
+  return supabase.functions.invoke<T>(functionName, {
+    ...options,
+    headers,
+  });
 }
