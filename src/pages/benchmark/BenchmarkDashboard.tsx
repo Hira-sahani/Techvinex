@@ -109,7 +109,10 @@ const BenchmarkDashboard = () => {
       <Card className="p-4">
         <h2 className="text-sm font-semibold mb-3">Recent Results</h2>
         {recentResults.length === 0 ? (
-          <p className="text-xs text-muted-foreground">No results yet. Run your first benchmark test!</p>
+          <div className="flex items-center justify-between gap-3 py-2">
+            <p className="text-xs text-muted-foreground">No results yet. Run your first benchmark test.</p>
+            <button onClick={() => navigate("/benchmark/run")} className="text-xs font-medium text-primary hover:underline">Run test →</button>
+          </div>
         ) : (
           <div className="space-y-2">
             {recentResults.map((r) => (
