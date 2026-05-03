@@ -8,9 +8,9 @@ import { TableCell, TableRow } from "@/components/ui/table";
 export const Shimmer = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={cn(
-      "relative overflow-hidden rounded-md bg-muted/60",
+      "relative overflow-hidden rounded-md bg-muted",
       "before:absolute before:inset-0 before:-translate-x-full",
-      "before:bg-gradient-to-r before:from-transparent before:via-foreground/[0.06] before:to-transparent",
+      "before:bg-gradient-to-r before:from-transparent before:via-foreground/[0.18] before:to-transparent",
       "before:animate-shimmer motion-reduce:before:animate-none",
       className,
     )}
