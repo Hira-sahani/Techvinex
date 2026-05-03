@@ -4,6 +4,124 @@ import { toast } from "sonner";
 type FunctionInvokeOptions = Parameters<typeof supabase.functions.invoke>[1];
 type FunctionsResponse<T> = Awaited<ReturnType<typeof supabase.functions.invoke<T>>>;
 
+// ---------------------------------------------------------------------------
+// Telemetry: centralized 401 event reporting
+// ---------------------------------------------------------------------------
+
+export type UnauthorizedReason =
+  | "initial_401"
+  | "refresh_failed"
+  | "replay_still_401";
+
+export interface UnauthorizedEvent {
+  /** Stable id for this 401 occurrence (UUID-ish, generated client-side). */
+  eventId: string;
+  /** ISO timestamp when the event was recorded. */
+  timestamp: string;
+  /** Best-effort URL string of the request that 401'd. */
+  endpoint: string;
+  /** HTTP method, defaults to GET when not specified by caller. */
+  method: string;
+  /** Server-supplied request id, if any (X-Request-Id / X-Request-ID). */
+  requestId: string | null;
+  /** HTTP status from the failing response (always 401 for these events). */
+  status: number;
+  /** Whether the caller asked us to retry once on 401. */
+  retryAttempted: boolean;
+  /** Whether a Bearer token was attached to the failing request. */
+  hadSession: boolean;
+  /** Why the global handler was triggered (or why it wasn't). */
+  reason: UnauthorizedReason;
+  /** Current page path, useful for correlating with user reports. */
+  pagePath: string | null;
+}
+
+export type TelemetrySink = (event: UnauthorizedEvent) => void;
+
+const RING_BUFFER_LIMIT = 50;
+const recentEvents: UnauthorizedEvent[] = [];
+const sinks = new Set<TelemetrySink>();
+
+/** Default sink: structured console.warn so logs are searchable in devtools. */
+const defaultConsoleSink: TelemetrySink = (event) => {
+  // eslint-disable-next-line no-console
+  console.warn("[apiFetch] 401", event);
+};
+sinks.add(defaultConsoleSink);
+
+/** Subscribe an extra telemetry sink (e.g. Sentry, PostHog, custom logger). */
+export function addTelemetrySink(sink: TelemetrySink): () => void {
+  sinks.add(sink);
+  return () => sinks.delete(sink);
+}
+
+/** Replace the default console sink (mostly useful in tests). */
+export function clearTelemetrySinks() {
+  sinks.clear();
+}
+
+/** Read the in-memory ring buffer of recent 401 events (for debugging). */
+export function getRecentUnauthorizedEvents(): readonly UnauthorizedEvent[] {
+  return recentEvents.slice();
+}
+
+function makeEventId(): string {
+  // crypto.randomUUID is widely available; fall back to a timestamp-rand id.
+  const c = (globalThis as unknown as { crypto?: Crypto }).crypto;
+  if (c?.randomUUID) return c.randomUUID();
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
+function urlOf(input: RequestInfo | URL): string {
+  if (typeof input === "string") return input;
+  if (input instanceof URL) return input.toString();
+  // Request
+  return (input as Request).url ?? String(input);
+}
+
+function record401(
+  response: Response,
+  input: RequestInfo | URL,
+  init: RequestInit,
+  reason: UnauthorizedReason,
+  retryAttempted: boolean,
+  hadSession: boolean,
+): UnauthorizedEvent {
+  const event: UnauthorizedEvent = {
+    eventId: makeEventId(),
+    timestamp: new Date().toISOString(),
+    endpoint: urlOf(input),
+    method: (init.method ?? "GET").toUpperCase(),
+    requestId:
+      (response.headers && typeof response.headers.get === "function"
+        ? response.headers.get("x-request-id") ?? response.headers.get("X-Request-Id")
+        : null) ?? null,
+    status: response.status,
+    retryAttempted,
+    hadSession,
+    reason,
+    pagePath:
+      typeof window !== "undefined" && window.location?.pathname
+        ? window.location.pathname
+        : null,
+  };
+
+  recentEvents.push(event);
+  if (recentEvents.length > RING_BUFFER_LIMIT) {
+    recentEvents.splice(0, recentEvents.length - RING_BUFFER_LIMIT);
+  }
+
+  for (const sink of sinks) {
+    try {
+      sink(event);
+    } catch {
+      // Sinks must never break the request flow.
+    }
+  }
+
+  return event;
+}
+
 /**
  * Global handler invoked whenever an authenticated apiFetch call returns 401.
  * Default behaviour signs the user out and surfaces a "session expired" toast,
@@ -12,6 +130,7 @@ type FunctionsResponse<T> = Awaited<ReturnType<typeof supabase.functions.invoke<
  * real Supabase client.
  */
 export type UnauthorizedHandler = (response: Response, input: RequestInfo | URL) => void | Promise<void>;
+
 
 /**
  * Resolve the right login route for the area the user is currently in,
@@ -120,6 +239,8 @@ export async function apiFetch(
 
   if (response.status !== 401) return response;
 
+  const hadSession = !!accessToken;
+
   // --- 401 path ---
   if (retryOnUnauthorized) {
     // Try to refresh the session ONCE. On success, replay the request
@@ -136,6 +257,9 @@ export async function apiFetch(
     }
 
     if (refreshed) {
+      // Telemetry: initial 401 that we're about to retry.
+      record401(response, input, fetchInit, "initial_401", true, hadSession);
+
       // Strip any Authorization the caller may have supplied so the
       // replay can only ever carry the freshly refreshed token (set
       // by the inner apiFetch from the live session).
@@ -149,14 +273,19 @@ export async function apiFetch(
         retryOnUnauthorized: false, // hard cap: never loop
       });
       if (replay.status !== 401) return replay;
-      // Replay still 401 — fall through to the unauthorized handler.
+      // Replay still 401 — record + fall through to the unauthorized handler.
+      record401(replay, input, fetchInit, "replay_still_401", true, hadSession);
       void handleUnauthorized(replay, input);
       return replay;
     }
-    // Refresh failed — fall through to the unauthorized handler.
+    // Refresh failed — record + fall through to the unauthorized handler.
+    record401(response, input, fetchInit, "refresh_failed", true, hadSession);
+    void handleUnauthorized(response, input);
+    return response;
   }
 
-  // Fire-and-forget: don't block the caller from inspecting the response.
+  // No retry requested — record the initial 401 and trigger the handler.
+  record401(response, input, fetchInit, "initial_401", false, hadSession);
   void handleUnauthorized(response, input);
   return response;
 }
