@@ -171,7 +171,7 @@ const Referrals = () => {
               onKeyDown={(e) => e.key === "Enter" && handleInvite()}
             />
             <Button size="sm" onClick={handleInvite} disabled={sending || !inviteEmail.includes("@")} className="gap-1.5">
-              {sending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+              {sending ? <Shimmer className="h-3.5 w-3.5 rounded-sm" /> : <Send size={14} />}
               Invite
             </Button>
           </div>
