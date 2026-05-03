@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { ProfileTabSkeleton } from "@/components/skeletons/PageSkeletons";
 
 const roleTypes = ["Contract", "Full-time", "Part-time", "Freelance"];
 const workModes = ["Remote", "Hybrid", "On-site"];
@@ -65,6 +66,8 @@ const ProfileWorkPrefsTab = () => {
     setEditMode(false);
     toast.success("Work preferences saved.");
   };
+
+  if (loading) return <ProfileTabSkeleton rows={3} loadingLabel="Loading work preferences" />;
 
   return (
     <div className="space-y-6 max-w-xl pb-24">

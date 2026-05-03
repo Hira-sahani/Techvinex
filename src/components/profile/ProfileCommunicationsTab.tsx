@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { ProfileTabSkeleton } from "@/components/skeletons/PageSkeletons";
 
 interface CommsForm {
   emailNotifs: boolean;
@@ -79,6 +80,8 @@ const ProfileCommunicationsTab = () => {
     { label: "Referral Updates", desc: "Updates on your referral status and earnings", key: "referralUpdates" as const },
     { label: "Marketing Emails", desc: "Promotional content and platform updates", key: "marketingEmails" as const },
   ];
+
+  if (loading) return <ProfileTabSkeleton rows={4} loadingLabel="Loading communication preferences" />;
 
   return (
     <div className="space-y-6 max-w-xl pb-24">
