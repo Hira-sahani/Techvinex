@@ -95,6 +95,21 @@ describe("apiClient — stress: 50 concurrent 401s with retryOnUnauthorized=fals
     // synchronous burst (single in-flight `handling401` window).
     expect(mocks.signOut).toHaveBeenCalledTimes(1);
     expect(mocks.toastError).toHaveBeenCalledTimes(1);
+
+    // No success/info toast may EVER fire from the unauthorized path —
+    // there should be no positive feedback for a refresh that never
+    // happened (and didn't happen because retryOnUnauthorized=false).
+    expect(mocks.toastSuccess).not.toHaveBeenCalled();
+    expect(mocks.toastMessage).not.toHaveBeenCalled();
+    // The single error toast must be the session-expired notice — not a
+    // refresh-attempt error or any other transient surface.
+    for (const call of mocks.toastError.mock.calls) {
+      const [m, o] = call as [string, { id?: string } | undefined];
+      expect(m).toMatch(/session has expired/i);
+      expect(o?.id).toBe("session-expired");
+      expect(m).not.toMatch(/refresh/i);
+      expect(m).not.toMatch(/retry/i);
+    }
     // The dedupe toast carries the stable id so additional surfaces would
     // overwrite (not stack) — verify the call shape.
     const [msg, opts] = mocks.toastError.mock.calls[0] as [string, { id?: string }];
