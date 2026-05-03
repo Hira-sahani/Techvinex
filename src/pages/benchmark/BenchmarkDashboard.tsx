@@ -7,6 +7,7 @@ import { BenchmarkDashboardSkeleton } from "@/components/skeletons/DashboardSkel
 import { DashboardEmptyState } from "@/components/dashboard/DashboardStates";
 
 const BenchmarkDashboard = () => {
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     totalTasks: 0,
     totalResults: 0,
