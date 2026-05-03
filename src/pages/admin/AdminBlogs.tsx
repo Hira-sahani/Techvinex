@@ -92,7 +92,7 @@ const AdminBlogs = () => {
     draft: blogs.filter(b => b.status === "draft").length,
   }), [blogs]);
 
-  if (isLoading) return <JetraLoader />;
+  if (isLoading) return <AdminBlogsSkeleton />;
 
   if (showForm) {
     return (

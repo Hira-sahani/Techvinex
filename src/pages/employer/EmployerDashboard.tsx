@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Target, Users, UserCheck, Award, ArrowRight, TrendingUp, Clock, Activity, AlertTriangle, Sparkles } from "lucide-react";
 import { useEmployerJobs, useEmployerCandidates, useEmployerInterviews } from "@/hooks/useEmployerData";
-import JetraLoaderInline from "@/components/JetraLoaderInline";
+import { EmployerDashboardSkeleton } from "@/components/skeletons/DashboardSkeletons";
 import { Button } from "@/components/ui/button";
 
 const EmployerDashboard = () => {
@@ -47,9 +47,7 @@ const EmployerDashboard = () => {
     return daysSince > 14 && !hasHire;
   });
 
-  if (isLoading) {
-    return <div className="flex items-center justify-center py-20"><JetraLoaderInline /></div>;
-  }
+  if (isLoading) return <EmployerDashboardSkeleton />;
 
   return (
     <div className="space-y-6 max-w-6xl">
