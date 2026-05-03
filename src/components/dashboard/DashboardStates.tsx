@@ -12,6 +12,8 @@ type DashboardStateCardProps = {
   secondaryActionLabel?: string;
   onSecondaryAction?: () => void;
   className?: string;
+  role?: "status" | "alert";
+  ariaLabel?: string;
 };
 
 export const DashboardStateCard = ({
@@ -23,9 +25,16 @@ export const DashboardStateCard = ({
   secondaryActionLabel,
   onSecondaryAction,
   className,
+  role,
+  ariaLabel,
 }: DashboardStateCardProps) => (
-  <div className={cn("rounded-xl border border-border bg-card p-8 sm:p-10 text-center animate-in fade-in-0 duration-200", className)}>
-    <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
+  <div
+    role={role}
+    aria-label={ariaLabel}
+    aria-live={role === "alert" ? "assertive" : role === "status" ? "polite" : undefined}
+    className={cn("rounded-xl border border-border bg-card p-8 sm:p-10 text-center animate-in fade-in-0 duration-200", className)}
+  >
+    <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground" aria-hidden="true">
       <Icon className="h-5 w-5" />
     </div>
     <h2 className="text-base font-semibold text-foreground">{title}</h2>
@@ -34,7 +43,7 @@ export const DashboardStateCard = ({
       <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
         {actionLabel && onAction && (
           <Button size="sm" onClick={onAction} className="gap-1.5">
-            <RefreshCw className="h-3.5 w-3.5" />
+            <RefreshCw className="h-3.5 w-3.5" aria-hidden="true" />
             {actionLabel}
           </Button>
         )}
@@ -66,6 +75,8 @@ export const DashboardErrorState = ({
     actionLabel={onRetry ? "Try again" : undefined}
     onAction={onRetry}
     className={className}
+    role="alert"
+    ariaLabel={title}
   />
 );
 
@@ -95,5 +106,7 @@ export const DashboardEmptyState = ({
     secondaryActionLabel={secondaryActionLabel}
     onSecondaryAction={onSecondaryAction}
     className={className}
+    role="status"
+    ariaLabel={title}
   />
 );

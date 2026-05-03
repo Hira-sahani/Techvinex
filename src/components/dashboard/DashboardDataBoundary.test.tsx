@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { DashboardDataBoundary } from "./DashboardDataBoundary";
 import type { UseDashboardDataResult } from "@/hooks/useDashboardData";
 
@@ -219,5 +220,89 @@ describe("DashboardDataBoundary", () => {
     expect(screen.getByTestId("sk")).toBeInTheDocument();
     expect(screen.queryByText("Nothing here")).toBeNull();
     expect(screen.queryByRole("button", { name: /create/i })).toBeNull();
+  });
+
+  describe("accessibility", () => {
+    it("error state exposes role='alert' with aria-label and live region", () => {
+      render(
+        <DashboardDataBoundary
+          query={makeQuery<string[]>({ isError: true, status: "error", error: new Error("Boom"), refetch: vi.fn(async () => {}) })}
+          skeleton={<Skeleton />}
+          errorConfig={{ title: "Failed to load" }}
+        >
+          {renderContent}
+        </DashboardDataBoundary>,
+      );
+      const alert = screen.getByRole("alert");
+      expect(alert).toHaveAttribute("aria-label", "Failed to load");
+      expect(alert).toHaveAttribute("aria-live", "assertive");
+    });
+
+    it("empty state exposes role='status' with aria-label and polite live region", () => {
+      render(
+        <DashboardDataBoundary
+          query={makeQuery<string[]>({ isEmpty: true, status: "empty", data: [] })}
+          skeleton={<Skeleton />}
+          empty={{ title: "Nothing here", description: "Add one", actionLabel: "Create", onAction: vi.fn() }}
+        >
+          {renderContent}
+        </DashboardDataBoundary>,
+      );
+      const status = screen.getByRole("status");
+      expect(status).toHaveAttribute("aria-label", "Nothing here");
+      expect(status).toHaveAttribute("aria-live", "polite");
+    });
+
+    it("error retry button is keyboard reachable and activates via Enter", async () => {
+      const user = userEvent.setup();
+      const refetch = vi.fn(async () => {});
+      render(
+        <DashboardDataBoundary
+          query={makeQuery<string[]>({ isError: true, status: "error", error: new Error("Boom"), refetch })}
+          skeleton={<Skeleton />}
+        >
+          {renderContent}
+        </DashboardDataBoundary>,
+      );
+      await user.tab();
+      const btn = screen.getByRole("button", { name: "Try again" });
+      expect(btn).toHaveFocus();
+      await user.keyboard("{Enter}");
+      expect(refetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("empty state primary and secondary actions are keyboard reachable in order", async () => {
+      const user = userEvent.setup();
+      const onAction = vi.fn();
+      const onSecondaryAction = vi.fn();
+      render(
+        <DashboardDataBoundary
+          query={makeQuery<string[]>({ isEmpty: true, status: "empty", data: [] })}
+          skeleton={<Skeleton />}
+          empty={{
+            title: "No data",
+            description: "Try again later",
+            actionLabel: "Refresh",
+            onAction,
+            secondaryActionLabel: "Manage",
+            onSecondaryAction,
+          }}
+        >
+          {renderContent}
+        </DashboardDataBoundary>,
+      );
+      const primary = screen.getByRole("button", { name: "Refresh" });
+      const secondary = screen.getByRole("button", { name: "Manage" });
+
+      await user.tab();
+      expect(primary).toHaveFocus();
+      await user.keyboard(" ");
+      expect(onAction).toHaveBeenCalledTimes(1);
+
+      await user.tab();
+      expect(secondary).toHaveFocus();
+      await user.keyboard("{Enter}");
+      expect(onSecondaryAction).toHaveBeenCalledTimes(1);
+    });
   });
 });
