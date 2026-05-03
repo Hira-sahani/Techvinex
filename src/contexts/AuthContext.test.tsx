@@ -130,4 +130,22 @@ describe("AuthProvider regression", () => {
     });
     expect(screen.getByTestId("user-email")).toHaveTextContent("none");
   });
+
+  it("regression: when getSession returns a non-null session, isLoggedIn becomes true and loading becomes false", async () => {
+    const fakeUser = { id: "u-2", email: "loggedin@example.com" } as unknown as import("@supabase/supabase-js").User;
+    const fakeSession = { user: fakeUser, access_token: "tok-2" } as unknown as import("@supabase/supabase-js").Session;
+
+    mocks.getSession.mockResolvedValueOnce({ data: { session: fakeSession }, error: null });
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("true");
+      expect(screen.getByTestId("loading")).toHaveTextContent("false");
+    });
+  });
 });
