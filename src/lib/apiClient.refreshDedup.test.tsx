@@ -110,9 +110,15 @@ describe("apiFetch — concurrent refreshSession de-duplication", () => {
   });
 
   it("a NEW burst after the previous one settled triggers a fresh refresh", async () => {
-    mocks.refreshSession.mockResolvedValue({
-      data: { session: { access_token: "tok-fresh" } },
-      error: null,
+    mocks.refreshSession.mockImplementation(async () => {
+      mocks.getSession.mockResolvedValue({
+        data: { session: { access_token: "tok-fresh" } },
+        error: null,
+      });
+      return {
+        data: { session: { access_token: "tok-fresh" } },
+        error: null,
+      };
     });
 
     fetchMock = vi.fn((_input: RequestInfo | URL, init?: RequestInit) => {
