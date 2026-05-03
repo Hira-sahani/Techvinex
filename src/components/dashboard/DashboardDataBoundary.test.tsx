@@ -48,6 +48,19 @@ describe("DashboardDataBoundary", () => {
     expect(refetch).toHaveBeenCalledTimes(1);
   });
 
+  it("error retry button label is 'Try again' (not 'Retry')", () => {
+    render(
+      <DashboardDataBoundary
+        query={makeQuery<string[]>({ isError: true, status: "error", error: new Error("x"), refetch: vi.fn(async () => {}) })}
+        skeleton={<Skeleton />}
+      >
+        {renderContent}
+      </DashboardDataBoundary>,
+    );
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^retry$/i })).toBeNull();
+  });
+
   it("renders empty state with action when isEmpty and empty config provided", () => {
     const onAction = vi.fn();
     render(
