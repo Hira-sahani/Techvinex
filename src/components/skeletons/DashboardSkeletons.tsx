@@ -118,20 +118,24 @@ type AdminOpts = DashboardSkeletonOptions & {
 export const AdminOverviewSkeleton = ({
   className,
   extraSlot,
+  loadingLabel = "Loading admin overview",
   statCount = 6,
   statCols = "grid-cols-2 sm:grid-cols-3 xl:grid-cols-6",
   chartCount = 2,
   tableRows = 5,
   tableCols = 4,
 }: AdminOpts = {}) => (
-  <div className={cn("space-y-6", className)}>
-    <SkeletonHeader />
-    <SkeletonStatGrid count={statCount} cols={statCols} />
-    <div className={cn("grid grid-cols-1 gap-3", chartCount >= 2 && "lg:grid-cols-2")}>
-      {Array.from({ length: chartCount }).map((_, i) => <SkeletonChart key={i} />)}
+  <div className={cn("space-y-6", className)} {...a11yLoadingProps(loadingLabel)}>
+    <SrLoading label={loadingLabel} />
+    <div aria-hidden="true" className="space-y-6">
+      <SkeletonHeader />
+      <SkeletonStatGrid count={statCount} cols={statCols} />
+      <div className={cn("grid grid-cols-1 gap-3", chartCount >= 2 && "lg:grid-cols-2")}>
+        {Array.from({ length: chartCount }).map((_, i) => <SkeletonChart key={i} />)}
+      </div>
+      <SkeletonTable rows={tableRows} cols={tableCols} />
+      {extraSlot}
     </div>
-    <SkeletonTable rows={tableRows} cols={tableCols} />
-    {extraSlot}
   </div>
 );
 
