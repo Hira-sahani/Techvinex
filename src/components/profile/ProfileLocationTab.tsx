@@ -184,8 +184,8 @@ const ProfileLocationTab = () => {
       </div>
 
       {editMode && (
-        <Button type="button" onClick={handleSave} disabled={loading || saving || !hasChanges} className="w-full">
-          {loading ? <span className="inline-flex items-center gap-2"><span className="loader-cluster gap-1" role="status" aria-label="Loading">{[0, 0.1, 0.2, 0.3, 0.4, 0.5].map((d, i) => (<span key={i} className="loader-dot loader-dot--sm" style={{ animationDelay: `${d}s` }} />))}</span> Loading...</span> : saving ? "Saving..." : hasChanges ? "Save Changes" : "Saved"}
+        <Button type="button" onClick={handleSave} disabled={saving || !hasChanges} className="w-full">
+          {saving ? "Saving..." : hasChanges ? "Save Changes" : "Saved"}
         </Button>
       )}
     </div>
