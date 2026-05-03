@@ -116,3 +116,114 @@ describe("apiFetch (real API wrapper)", () => {
     expect(headersOf(1).get("Authorization")).toBe("Bearer tok-new");
   });
 });
+
+describe("apiInvoke (supabase.functions.invoke wrapper)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.invoke.mockResolvedValue({ data: { ok: true }, error: null });
+  });
+
+  const headersOfInvoke = (callIndex: number): Record<string, string> => {
+    const opts = mocks.invoke.mock.calls[callIndex][1] as { headers?: Record<string, string> };
+    return opts?.headers ?? {};
+  };
+
+  it("attaches a Bearer Authorization header when a session exists", async () => {
+    mocks.getSession.mockResolvedValueOnce({
+      data: { session: { access_token: "tok-live" } },
+      error: null,
+    });
+
+    await apiInvoke("my-fn", { body: { x: 1 } });
+
+    expect(mocks.invoke).toHaveBeenCalledTimes(1);
+    expect(mocks.invoke.mock.calls[0][0]).toBe("my-fn");
+    expect(headersOfInvoke(0).Authorization).toBe("Bearer tok-live");
+  });
+
+  it("regression: after refresh failure (session is null), wrapper does NOT attach the stale Bearer token", async () => {
+    mocks.getSession.mockResolvedValueOnce({
+      data: { session: { access_token: "tok-stale" } },
+      error: null,
+    });
+    await apiInvoke("my-fn");
+    expect(headersOfInvoke(0).Authorization).toBe("Bearer tok-stale");
+
+    mocks.getSession.mockResolvedValueOnce({
+      data: { session: null },
+      error: null,
+    });
+    await apiInvoke("my-fn");
+
+    const headers = headersOfInvoke(1);
+    expect(headers.Authorization).toBeUndefined();
+    expect(headers.authorization).toBeUndefined();
+    const serialized = JSON.stringify(headers);
+    expect(serialized).not.toContain("tok-stale");
+  });
+
+  it("regression: strips caller-supplied Authorization header when there is no session", async () => {
+    mocks.getSession.mockResolvedValueOnce({
+      data: { session: null },
+      error: null,
+    });
+
+    await apiInvoke("my-fn", {
+      headers: {
+        Authorization: "Bearer caller-supplied-stale-token",
+        "X-Custom": "keep-me",
+      },
+    });
+
+    const headers = headersOfInvoke(0);
+    expect(headers.Authorization).toBeUndefined();
+    expect(headers.authorization).toBeUndefined();
+    expect(headers["x-custom"] ?? headers["X-Custom"]).toBe("keep-me");
+  });
+
+  it("regression: caller-supplied Authorization is overridden by current session token (no stale leak via headers)", async () => {
+    mocks.getSession.mockResolvedValueOnce({
+      data: { session: { access_token: "tok-fresh" } },
+      error: null,
+    });
+
+    await apiInvoke("my-fn", {
+      headers: { Authorization: "Bearer tok-stale-from-caller" },
+    });
+
+    const headers = headersOfInvoke(0);
+    expect(headers.Authorization).toBe("Bearer tok-fresh");
+    expect(JSON.stringify(headers)).not.toContain("tok-stale-from-caller");
+  });
+
+  it("regression: each invocation re-reads the session (no in-wrapper caching)", async () => {
+    mocks.getSession.mockResolvedValueOnce({
+      data: { session: { access_token: "tok-old" } },
+      error: null,
+    });
+    mocks.getSession.mockResolvedValueOnce({
+      data: { session: { access_token: "tok-new" } },
+      error: null,
+    });
+
+    await apiInvoke("my-fn");
+    await apiInvoke("my-fn");
+
+    expect(mocks.getSession).toHaveBeenCalledTimes(2);
+    expect(headersOfInvoke(0).Authorization).toBe("Bearer tok-old");
+    expect(headersOfInvoke(1).Authorization).toBe("Bearer tok-new");
+  });
+
+  it("forwards body and other options to supabase.functions.invoke", async () => {
+    mocks.getSession.mockResolvedValueOnce({
+      data: { session: { access_token: "tok" } },
+      error: null,
+    });
+
+    await apiInvoke("my-fn", { body: { hello: "world" }, method: "POST" });
+
+    const opts = mocks.invoke.mock.calls[0][1] as Record<string, unknown>;
+    expect(opts.body).toEqual({ hello: "world" });
+    expect(opts.method).toBe("POST");
+  });
+});
