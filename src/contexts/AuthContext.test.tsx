@@ -316,4 +316,39 @@ describe("AuthProvider regression", () => {
       expect(screen.getByTestId("loading")).toHaveTextContent("false");
     });
   });
+
+  it("no UI flicker: loading flips exactly once during init (true → false), then never flips on listener events", async () => {
+    seedNextSession(mocks, null);
+    const listener = captureNextAuthListener(mocks);
+
+    renderProvider(<LoadingTrackerProbe />);
+
+    // After init: history should be exactly [true, false]
+    await waitFor(() => {
+      expect(screen.getByTestId("loading")).toHaveTextContent("false");
+    });
+    expect(screen.getByTestId("loading-history")).toHaveTextContent("true,false");
+
+    // Subsequent listener events must NOT add another loading transition
+    listener.emit(
+      "SIGNED_IN",
+      buildFakeSession({ access_token: "tok-flicker", user: { id: "u-7" } }),
+    );
+    await waitFor(() => {
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("true");
+    });
+    expect(screen.getByTestId("loading-history")).toHaveTextContent("true,false");
+
+    listener.emit(
+      "TOKEN_REFRESHED",
+      buildFakeSession({ access_token: "tok-flicker-2", user: { id: "u-7" } }),
+    );
+    listener.emit("SIGNED_OUT", null);
+    await waitFor(() => {
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("false");
+    });
+
+    // Still only the original two entries — loading never flipped back to true.
+    expect(screen.getByTestId("loading-history")).toHaveTextContent("true,false");
+  });
 });
