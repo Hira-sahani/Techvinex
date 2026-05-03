@@ -1,5 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
+import {
+  buildFakeSession,
+  seedNextSession,
+  captureNextAuthListener,
+} from "./__tests__/helpers";
 
 // vi.hoisted runs before any vi.mock factory and before module imports, so
 // these handles are safe to reference inside the factory AND in the tests
@@ -38,6 +43,9 @@ const Probe = () => {
   );
 };
 
+const renderProvider = (children: React.ReactNode = <Probe />) =>
+  render(<AuthProvider>{children}</AuthProvider>);
+
 describe("AuthProvider regression", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -45,22 +53,14 @@ describe("AuthProvider regression", () => {
 
   it("mounts without throwing and renders its children", () => {
     expect(() =>
-      render(
-        <AuthProvider>
-          <div data-testid="child">child rendered</div>
-        </AuthProvider>,
-      ),
+      renderProvider(<div data-testid="child">child rendered</div>),
     ).not.toThrow();
 
     expect(screen.getByTestId("child")).toHaveTextContent("child rendered");
   });
 
   it("subscribes to auth state changes and exposes context to consumers", async () => {
-    render(
-      <AuthProvider>
-        <Probe />
-      </AuthProvider>,
-    );
+    renderProvider();
 
     expect(mocks.onAuthStateChange).toHaveBeenCalledTimes(1);
     expect(mocks.getSession).toHaveBeenCalledTimes(1);
@@ -74,22 +74,17 @@ describe("AuthProvider regression", () => {
   });
 
   it("unsubscribes from the auth listener on unmount (no leaked subscription)", () => {
-    const { unmount } = render(
-      <AuthProvider>
-        <div />
-      </AuthProvider>,
-    );
+    const { unmount } = renderProvider(<div />);
     expect(mocks.unsubscribe).not.toHaveBeenCalled();
     unmount();
     expect(mocks.unsubscribe).toHaveBeenCalledTimes(1);
   });
 
   it("regression: triggering logout from a consumer signs out and clears user/session in context", async () => {
-    const fakeUser = { id: "u-1", email: "test@example.com" } as unknown as import("@supabase/supabase-js").User;
-    const fakeSession = { user: fakeUser, access_token: "tok" } as unknown as import("@supabase/supabase-js").Session;
-
-    // Start the session as logged-in for this test only
-    mocks.getSession.mockResolvedValueOnce({ data: { session: fakeSession }, error: null });
+    seedNextSession(
+      mocks,
+      buildFakeSession({ user: { id: "u-1", email: "test@example.com" } }),
+    );
 
     const Consumer = () => {
       const { isLoggedIn, user, logout } = useAuth();
@@ -105,26 +100,18 @@ describe("AuthProvider regression", () => {
     const { default: userEvent } = await import("@testing-library/user-event");
     const user = userEvent.setup();
 
-    render(
-      <AuthProvider>
-        <Consumer />
-      </AuthProvider>,
-    );
+    renderProvider(<Consumer />);
 
-    // After getSession resolves, the consumer reflects the logged-in state
     await waitFor(() => {
       expect(screen.getByTestId("logged-in")).toHaveTextContent("true");
     });
     expect(screen.getByTestId("user-email")).toHaveTextContent("test@example.com");
     expect(mocks.signOut).not.toHaveBeenCalled();
 
-    // Trigger logout from the consumer
     await user.click(screen.getByRole("button", { name: /sign out/i }));
 
-    // signOut was invoked
     expect(mocks.signOut).toHaveBeenCalledTimes(1);
 
-    // Context cleared after signOut resolves
     await waitFor(() => {
       expect(screen.getByTestId("logged-in")).toHaveTextContent("false");
     });
@@ -132,16 +119,15 @@ describe("AuthProvider regression", () => {
   });
 
   it("regression: when getSession returns a non-null session, isLoggedIn becomes true and loading becomes false", async () => {
-    const fakeUser = { id: "u-2", email: "loggedin@example.com" } as unknown as import("@supabase/supabase-js").User;
-    const fakeSession = { user: fakeUser, access_token: "tok-2" } as unknown as import("@supabase/supabase-js").Session;
-
-    mocks.getSession.mockResolvedValueOnce({ data: { session: fakeSession }, error: null });
-
-    render(
-      <AuthProvider>
-        <Probe />
-      </AuthProvider>,
+    seedNextSession(
+      mocks,
+      buildFakeSession({
+        access_token: "tok-2",
+        user: { id: "u-2", email: "loggedin@example.com" },
+      }),
     );
+
+    renderProvider();
 
     await waitFor(() => {
       expect(screen.getByTestId("logged-in")).toHaveTextContent("true");
@@ -150,16 +136,9 @@ describe("AuthProvider regression", () => {
   });
 
   it("regression: when getSession returns an error, isLoggedIn stays false and loading becomes false", async () => {
-    mocks.getSession.mockResolvedValueOnce({
-      data: { session: null },
-      error: { name: "AuthError", message: "boom" } as unknown as Error,
-    });
+    seedNextSession(mocks, null, { name: "AuthError", message: "boom" } as unknown as Error);
 
-    render(
-      <AuthProvider>
-        <Probe />
-      </AuthProvider>,
-    );
+    renderProvider();
 
     await waitFor(() => {
       expect(screen.getByTestId("loading")).toHaveTextContent("false");
@@ -168,27 +147,17 @@ describe("AuthProvider regression", () => {
   });
 
   it("regression: invoking the auth listener callback updates isLoggedIn and loading", async () => {
-    let capturedCallback: ((event: string, session: unknown) => void) | null = null;
-    mocks.onAuthStateChange.mockImplementationOnce(((cb: (event: string, session: unknown) => void) => {
-      capturedCallback = cb;
-      return { data: { subscription: { unsubscribe: mocks.unsubscribe } } };
-    }) as unknown as () => { data: { subscription: { unsubscribe: typeof mocks.unsubscribe } } });
+    const listener = captureNextAuthListener(mocks);
 
-    render(
-      <AuthProvider>
-        <Probe />
-      </AuthProvider>,
+    renderProvider();
+
+    listener.emit(
+      "SIGNED_IN",
+      buildFakeSession({
+        access_token: "tok-3",
+        user: { id: "u-3", email: "listener@example.com" },
+      }),
     );
-
-    expect(typeof capturedCallback).toBe("function");
-
-    const fakeUser = { id: "u-3", email: "listener@example.com" } as unknown as import("@supabase/supabase-js").User;
-    const fakeSession = { user: fakeUser, access_token: "tok-3" } as unknown as import("@supabase/supabase-js").Session;
-
-    const { act } = await import("react");
-    act(() => {
-      capturedCallback!("SIGNED_IN", fakeSession);
-    });
 
     await waitFor(() => {
       expect(screen.getByTestId("logged-in")).toHaveTextContent("true");
@@ -199,48 +168,32 @@ describe("AuthProvider regression", () => {
   it("regression: repeated mount/unmount cycles do not leak subscriptions or duplicate listeners", () => {
     const CYCLES = 5;
     for (let i = 0; i < CYCLES; i++) {
-      const { unmount } = render(
-        <AuthProvider>
-          <div />
-        </AuthProvider>,
-      );
+      const { unmount } = renderProvider(<div />);
       unmount();
     }
 
-    // Each mount registers exactly one listener; each unmount tears it down.
     expect(mocks.onAuthStateChange).toHaveBeenCalledTimes(CYCLES);
     expect(mocks.unsubscribe).toHaveBeenCalledTimes(CYCLES);
   });
 
   it("regression: SIGNED_OUT listener callback clears isLoggedIn and finalizes loading", async () => {
-    // Start logged in via getSession so we can verify the SIGNED_OUT transition.
-    const fakeUser = { id: "u-4", email: "out@example.com" } as unknown as import("@supabase/supabase-js").User;
-    const fakeSession = { user: fakeUser, access_token: "tok-4" } as unknown as import("@supabase/supabase-js").Session;
-    mocks.getSession.mockResolvedValueOnce({ data: { session: fakeSession }, error: null });
-
-    let capturedCallback: ((event: string, session: unknown) => void) | null = null;
-    mocks.onAuthStateChange.mockImplementationOnce(((cb: (event: string, session: unknown) => void) => {
-      capturedCallback = cb;
-      return { data: { subscription: { unsubscribe: mocks.unsubscribe } } };
-    }) as unknown as () => { data: { subscription: { unsubscribe: typeof mocks.unsubscribe } } });
-
-    render(
-      <AuthProvider>
-        <Probe />
-      </AuthProvider>,
+    seedNextSession(
+      mocks,
+      buildFakeSession({
+        access_token: "tok-4",
+        user: { id: "u-4", email: "out@example.com" },
+      }),
     );
+    const listener = captureNextAuthListener(mocks);
+
+    renderProvider();
 
     await waitFor(() => {
       expect(screen.getByTestId("logged-in")).toHaveTextContent("true");
       expect(screen.getByTestId("loading")).toHaveTextContent("false");
     });
 
-    expect(typeof capturedCallback).toBe("function");
-
-    const { act } = await import("react");
-    act(() => {
-      capturedCallback!("SIGNED_OUT", null);
-    });
+    listener.emit("SIGNED_OUT", null);
 
     await waitFor(() => {
       expect(screen.getByTestId("logged-in")).toHaveTextContent("false");
@@ -249,17 +202,12 @@ describe("AuthProvider regression", () => {
   });
 
   it("regression: TOKEN_REFRESHED updates session/access token without toggling isLoggedIn", async () => {
-    const fakeUser = { id: "u-5", email: "refresh@example.com" } as unknown as import("@supabase/supabase-js").User;
-    const initialSession = { user: fakeUser, access_token: "tok-old" } as unknown as import("@supabase/supabase-js").Session;
-    const refreshedSession = { user: fakeUser, access_token: "tok-new" } as unknown as import("@supabase/supabase-js").Session;
-
-    mocks.getSession.mockResolvedValueOnce({ data: { session: initialSession }, error: null });
-
-    let capturedCallback: ((event: string, session: unknown) => void) | null = null;
-    mocks.onAuthStateChange.mockImplementationOnce(((cb: (event: string, session: unknown) => void) => {
-      capturedCallback = cb;
-      return { data: { subscription: { unsubscribe: mocks.unsubscribe } } };
-    }) as unknown as () => { data: { subscription: { unsubscribe: typeof mocks.unsubscribe } } });
+    const fakeUser = { id: "u-5", email: "refresh@example.com" };
+    seedNextSession(
+      mocks,
+      buildFakeSession({ access_token: "tok-old", user: fakeUser }),
+    );
+    const listener = captureNextAuthListener(mocks);
 
     const TokenProbe = () => {
       const { isLoggedIn, session, loading } = useAuth();
@@ -272,29 +220,21 @@ describe("AuthProvider regression", () => {
       );
     };
 
-    render(
-      <AuthProvider>
-        <TokenProbe />
-      </AuthProvider>,
-    );
+    renderProvider(<TokenProbe />);
 
-    // Initial logged-in state with the old token
     await waitFor(() => {
       expect(screen.getByTestId("logged-in")).toHaveTextContent("true");
       expect(screen.getByTestId("access-token")).toHaveTextContent("tok-old");
       expect(screen.getByTestId("loading")).toHaveTextContent("false");
     });
 
-    // Track isLoggedIn changes to ensure no incorrect toggling occurs
     const loggedInBeforeRefresh = screen.getByTestId("logged-in").textContent;
 
-    expect(typeof capturedCallback).toBe("function");
-    const { act } = await import("react");
-    act(() => {
-      capturedCallback!("TOKEN_REFRESHED", refreshedSession);
-    });
+    listener.emit(
+      "TOKEN_REFRESHED",
+      buildFakeSession({ access_token: "tok-new", user: fakeUser }),
+    );
 
-    // After refresh: token updated, still logged in, still not loading
     await waitFor(() => {
       expect(screen.getByTestId("access-token")).toHaveTextContent("tok-new");
     });
