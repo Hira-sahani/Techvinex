@@ -420,3 +420,165 @@ describe("apiFetch — Authorization header presence (valid-session contract)", 
     expect(headers(0).get("Authorization")).toBe("Bearer fresh");
   });
 });
+
+describe("apiFetch — retryOnUnauthorized", () => {
+  let fetchMock: ReturnType<typeof vi.fn>;
+  let originalFetch: typeof global.fetch;
+  const refreshSession = vi.fn();
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Augment the supabase mock with refreshSession for this suite.
+    // (The hoisted module mock returns a stable supabase object, so we
+    // patch via a getter on the auth namespace.)
+    (await import("@/integrations/supabase/client")).supabase.auth.refreshSession =
+      refreshSession as unknown as typeof import("@supabase/supabase-js").AuthClient.prototype.refreshSession;
+    refreshSession.mockReset();
+
+    originalFetch = global.fetch;
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  const headersOf = (i: number): Headers =>
+    new Headers((fetchMock.mock.calls[i][1] as RequestInit).headers ?? {});
+
+  it("on 401, refreshes the session ONCE and replays with the fresh token", async () => {
+    // First getSession call -> stale token; second (during replay) -> fresh token.
+    mocks.getSession
+      .mockResolvedValueOnce({ data: { session: { access_token: "stale" } }, error: null })
+      .mockResolvedValueOnce({ data: { session: { access_token: "fresh" } }, error: null });
+    refreshSession.mockResolvedValueOnce({
+      data: { session: { access_token: "fresh" } },
+      error: null,
+    });
+
+    let call = 0;
+    fetchMock = vi.fn(() => {
+      call += 1;
+      const status = call === 1 ? 401 : 200;
+      return Promise.resolve({
+        ok: status === 200,
+        status,
+        json: () => Promise.resolve({}),
+      }) as unknown as Promise<Response>;
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const res = await apiFetch("/api/me", { retryOnUnauthorized: true });
+
+    expect(res.status).toBe(200);
+    expect(refreshSession).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(headersOf(0).get("Authorization")).toBe("Bearer stale");
+    // Replay must use the fresh token, never the stale one.
+    expect(headersOf(1).get("Authorization")).toBe("Bearer fresh");
+  });
+
+  it("regression: replay never reuses the stale Authorization header even when the caller provided one", async () => {
+    mocks.getSession
+      .mockResolvedValueOnce({ data: { session: { access_token: "stale" } }, error: null })
+      .mockResolvedValueOnce({ data: { session: { access_token: "fresh" } }, error: null });
+    refreshSession.mockResolvedValueOnce({
+      data: { session: { access_token: "fresh" } },
+      error: null,
+    });
+
+    let call = 0;
+    fetchMock = vi.fn(() => {
+      call += 1;
+      const status = call === 1 ? 401 : 200;
+      return Promise.resolve({ ok: status === 200, status, json: () => Promise.resolve({}) }) as unknown as Promise<Response>;
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await apiFetch("/api/me", {
+      retryOnUnauthorized: true,
+      headers: { Authorization: "Bearer caller-stale", "X-Trace": "abc" },
+    });
+
+    expect(headersOf(1).get("Authorization")).toBe("Bearer fresh");
+    // Other caller headers survive.
+    expect(headersOf(1).get("X-Trace")).toBe("abc");
+    // Hard guarantee: the stale literal does not appear anywhere on replay.
+    let serialized = "";
+    headersOf(1).forEach((v, k) => { serialized += `${k}:${v};`; });
+    expect(serialized).not.toContain("caller-stale");
+    expect(serialized).not.toContain("stale");
+  });
+
+  it("does NOT loop: at most one retry attempt even if replay also returns 401", async () => {
+    const handler = vi.fn();
+    setUnauthorizedHandler(handler);
+
+    mocks.getSession.mockResolvedValue({ data: { session: { access_token: "tok" } }, error: null });
+    refreshSession.mockResolvedValueOnce({
+      data: { session: { access_token: "still-bad" } },
+      error: null,
+    });
+
+    fetchMock = vi.fn(() =>
+      Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({}) }) as unknown as Promise<Response>,
+    );
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const res = await apiFetch("/api/me", { retryOnUnauthorized: true });
+
+    expect(res.status).toBe(401);
+    expect(fetchMock).toHaveBeenCalledTimes(2); // original + 1 replay, no more
+    expect(refreshSession).toHaveBeenCalledTimes(1);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(handler).toHaveBeenCalledTimes(1);
+
+    setUnauthorizedHandler(() => {});
+  });
+
+  it("when refresh itself fails, falls through to the unauthorized handler without replay", async () => {
+    const handler = vi.fn();
+    setUnauthorizedHandler(handler);
+
+    mocks.getSession.mockResolvedValueOnce({
+      data: { session: { access_token: "stale" } },
+      error: null,
+    });
+    refreshSession.mockResolvedValueOnce({
+      data: { session: null },
+      error: { message: "refresh_token_not_found" },
+    });
+
+    fetchMock = vi.fn(() =>
+      Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({}) }) as unknown as Promise<Response>,
+    );
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    const res = await apiFetch("/api/me", { retryOnUnauthorized: true });
+
+    expect(res.status).toBe(401);
+    expect(fetchMock).toHaveBeenCalledTimes(1); // no replay
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(handler).toHaveBeenCalledTimes(1);
+
+    setUnauthorizedHandler(() => {});
+  });
+
+  it("default behaviour (no retryOnUnauthorized) still does not retry", async () => {
+    mocks.getSession.mockResolvedValueOnce({
+      data: { session: { access_token: "tok" } },
+      error: null,
+    });
+    setUnauthorizedHandler(() => {});
+
+    fetchMock = vi.fn(() =>
+      Promise.resolve({ ok: false, status: 401, json: () => Promise.resolve({}) }) as unknown as Promise<Response>,
+    );
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    await apiFetch("/api/me");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(refreshSession).not.toHaveBeenCalled();
+  });
+});
