@@ -1,6 +1,6 @@
 import { useEmployerBilling } from "@/hooks/useEmployerData";
 import { IndianRupee, CheckCircle2, Clock, AlertCircle } from "lucide-react";
-import JetraLoaderInline from "@/components/JetraLoaderInline";
+import { EmployerListSkeleton } from "@/components/skeletons/EmployerSkeletons";
 
 const EmployerBilling = () => {
   const { data: billing = [], isLoading } = useEmployerBilling();
@@ -18,7 +18,7 @@ const EmployerBilling = () => {
   const formatCurrency = (n: number) => "₹" + n.toLocaleString("en-IN");
 
   if (isLoading) {
-    return <div className="flex items-center justify-center py-20"><JetraLoaderInline /></div>;
+    return <EmployerListSkeleton />;
   }
 
   return (

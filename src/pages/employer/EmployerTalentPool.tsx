@@ -4,7 +4,7 @@ import { Search, Star, Sparkles, UserCheck, Mail, Phone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import JetraLoaderInline from "@/components/JetraLoaderInline";
+import { EmployerListSkeleton } from "@/components/skeletons/EmployerSkeletons";
 
 const EmployerTalentPool = () => {
   const { data: candidates = [], isLoading, updateCandidate } = useEmployerCandidates();
@@ -37,7 +37,7 @@ const EmployerTalentPool = () => {
   };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center py-20"><JetraLoaderInline /></div>;
+    return <EmployerListSkeleton />;
   }
 
   return (

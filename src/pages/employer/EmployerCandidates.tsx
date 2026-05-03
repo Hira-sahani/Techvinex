@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import JetraLoaderInline from "@/components/JetraLoaderInline";
+import { EmployerListSkeleton } from "@/components/skeletons/EmployerSkeletons";
 
 interface AIScoreResult {
   candidate_id: string;
@@ -107,7 +107,7 @@ const EmployerCandidates = () => {
   const getJobTitle = (jobId: string) => jobs.find(j => j.id === jobId)?.title || "—";
 
   if (isLoading) {
-    return <div className="flex items-center justify-center py-20"><JetraLoaderInline /></div>;
+    return <EmployerListSkeleton />;
   }
 
   return (

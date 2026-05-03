@@ -2,7 +2,7 @@ import { useEmployerInterviews } from "@/hooks/useEmployerData";
 import { Calendar, Clock, CheckCircle2, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import JetraLoaderInline from "@/components/JetraLoaderInline";
+import { EmployerListSkeleton } from "@/components/skeletons/EmployerSkeletons";
 
 const EmployerInterviews = () => {
   const { data: interviews = [], isLoading, updateInterview } = useEmployerInterviews();
@@ -26,7 +26,7 @@ const EmployerInterviews = () => {
   const past = interviews.filter(i => i.status !== "scheduled");
 
   if (isLoading) {
-    return <div className="flex items-center justify-center py-20"><JetraLoaderInline /></div>;
+    return <EmployerListSkeleton />;
   }
 
   return (
