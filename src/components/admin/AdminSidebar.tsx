@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Users, FileText, UserCheck, BarChart3,
-  ScrollText, Bell, DollarSign, Settings, LogOut, Brain, Globe, Moon, Sun, PenLine, FlaskConical,
+  ScrollText, Bell, DollarSign, Settings, LogOut, Brain, Globe, Moon, Sun, PenLine, FlaskConical, KeyRound,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,7 @@ const navItems = [
   { label: "Payments", path: "/admin/payments", icon: DollarSign },
   { label: "Blog", path: "/admin/blogs", icon: PenLine },
   { label: "Benchmark", path: "/benchmark/dashboard", icon: FlaskConical },
+  { label: "Secrets", path: "/admin/secrets", icon: KeyRound },
   { label: "Settings", path: "/admin/settings", icon: Settings },
 ];
 
