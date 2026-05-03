@@ -1,22 +1,25 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 
-// Mock the supabase client BEFORE importing AuthProvider so the module picks
-// up the mock when it pulls supabase from "@/integrations/supabase/client".
-const unsubscribe = vi.fn();
-const onAuthStateChange = vi.fn(() => ({
-  data: { subscription: { unsubscribe } },
-}));
-const getSession = vi.fn(() =>
-  Promise.resolve({ data: { session: null }, error: null }),
-);
-const signOut = vi.fn(() => Promise.resolve({ error: null }));
+vi.mock("@/integrations/supabase/client", () => {
+  const unsubscribe = vi.fn();
+  const onAuthStateChange = vi.fn(() => ({
+    data: { subscription: { unsubscribe } },
+  }));
+  const getSession = vi.fn(() =>
+    Promise.resolve({ data: { session: null }, error: null }),
+  );
+  const signOut = vi.fn(() => Promise.resolve({ error: null }));
+  return {
+    supabase: { auth: { onAuthStateChange, getSession, signOut } },
+    __mocks: { unsubscribe, onAuthStateChange, getSession, signOut },
+  };
+});
 
-vi.mock("@/integrations/supabase/client", () => ({
-  supabase: {
-    auth: { onAuthStateChange, getSession, signOut },
-  },
-}));
+// Pull mock handles back out for assertions.
+import * as supabaseClient from "@/integrations/supabase/client";
+const { unsubscribe, onAuthStateChange, getSession } =
+  (supabaseClient as unknown as { __mocks: { unsubscribe: ReturnType<typeof vi.fn>; onAuthStateChange: ReturnType<typeof vi.fn>; getSession: ReturnType<typeof vi.fn> } }).__mocks;
 
 import { AuthProvider, useAuth } from "./AuthContext";
 
