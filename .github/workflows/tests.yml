@@ -25,6 +25,20 @@ jobs:
       - name: Run AuthContext tests with coverage
         run: bunx vitest run --coverage src/contexts/AuthContext.test.tsx
 
+      # Dedicated flicker-regression gate. Runs only the loading-transition
+      # flicker tests with -t (test-name filter). If any of these fail, CI
+      # fails loudly with a clear "flicker regression" signal in the logs.
+      - name: Flicker regression gate (loading transitions)
+        run: |
+          set -e
+          echo "::group::Flicker regression gate"
+          if ! bunx vitest run src/contexts/AuthContext.test.tsx \
+                -t "no UI flicker|without flicker"; then
+            echo "::error title=Loading flicker regression::AuthContext loading-transition flicker regression detected. The 'loading' state flipped more than once per listener event. See test output above."
+            exit 1
+          fi
+          echo "::endgroup::"
+
       - name: Upload coverage report
         if: always()
         uses: actions/upload-artifact@v4
