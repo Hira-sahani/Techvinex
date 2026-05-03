@@ -10,6 +10,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { BlogDashboardSkeleton } from "@/components/skeletons/DashboardSkeletons";
+import { DashboardDataBoundary } from "@/components/dashboard/DashboardDataBoundary";
+import { useQueryAsDashboardData } from "@/hooks/useQueryAsDashboardData";
 import RichTextEditor from "@/components/blog-dashboard/RichTextEditor";
 import BlogImageUpload from "@/components/blog-dashboard/BlogImageUpload";
 
@@ -28,7 +30,9 @@ const statusColors: Record<string, string> = {
 };
 
 const BlogDashboard = () => {
-  const { data: blogs = [], isLoading } = useBlogs(true);
+  const blogsQuery = useBlogs(true);
+  const blogs = blogsQuery.data ?? [];
+  const dashboardQuery = useQueryAsDashboardData(blogsQuery, {});
   const createBlog = useCreateBlog();
   const updateBlog = useUpdateBlog();
   const deleteBlog = useDeleteBlog();
