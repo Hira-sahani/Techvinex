@@ -54,10 +54,7 @@ describe("createUnauthorizedCapture — shape & messages", () => {
         fn();
         messages[key] = "<no error>";
       } catch (e) {
-        messages[key] = (e as Error).message
-          .split("\n")[0]
-          .replace(/\s+\d+\s*$/, "")
-          .trim();
+        messages[key] = (e as Error).message.split(":")[0].trim();
       }
     };
 
