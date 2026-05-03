@@ -336,6 +336,32 @@ describe("DashboardDataBoundary", () => {
       expect(refetch).toHaveBeenCalledTimes(1);
     });
 
+    it("regression: 'Try again' button is keyboard accessible (Tab focus, Enter + Space) and triggers refetch", async () => {
+      const user = userEvent.setup();
+      const refetch = vi.fn(async () => {});
+      render(
+        <DashboardDataBoundary
+          query={makeQuery<string[]>({ isError: true, status: "error", error: new Error("Boom"), refetch })}
+          skeleton={<Skeleton />}
+        >
+          {renderContent}
+        </DashboardDataBoundary>,
+      );
+
+      const btn = screen.getByRole("button", { name: "Try again" });
+      expect(btn).toBeEnabled();
+      expect(btn).not.toHaveAttribute("tabindex", "-1");
+
+      await user.tab();
+      expect(btn).toHaveFocus();
+
+      await user.keyboard("{Enter}");
+      expect(refetch).toHaveBeenCalledTimes(1);
+
+      await user.keyboard(" ");
+      expect(refetch).toHaveBeenCalledTimes(2);
+    });
+
     it("empty state primary and secondary actions are keyboard reachable in order", async () => {
       const user = userEvent.setup();
       const onAction = vi.fn();
