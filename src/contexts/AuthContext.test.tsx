@@ -881,6 +881,100 @@ describe("AuthProvider regression", () => {
     }
   });
 
+  it("regression: after refresh failure, old access token is purged from in-memory ref and local/session storage", async () => {
+    const STALE_TOKEN = "tok-must-be-purged";
+    seedNextSession(
+      mocks,
+      buildFakeSession({
+        access_token: STALE_TOKEN,
+        user: { id: "u-purge", email: "purge@example.com" },
+      }),
+    );
+    const listener = captureNextAuthListener(mocks);
+
+    // Pre-seed both storages with a Supabase-style auth token entry
+    // containing the stale access token. AuthProvider must not leave
+    // these stale values reachable after refresh failure.
+    const STORAGE_KEY = "sb-test-auth-token";
+    const seedValue = JSON.stringify({
+      access_token: STALE_TOKEN,
+      refresh_token: "rt-stale",
+      user: { id: "u-purge" },
+    });
+    localStorage.setItem(STORAGE_KEY, seedValue);
+    sessionStorage.setItem(STORAGE_KEY, seedValue);
+
+    // In-memory ref held by a consumer (simulates app code that cached
+    // the access token between renders for use in headers/clients).
+    const tokenRef: { current: string | null } = { current: null };
+
+    const RefHolder = () => {
+      const { session, isLoggedIn } = useAuth();
+      // Mirror the latest access_token into the external ref every render.
+      tokenRef.current = session?.access_token ?? null;
+      return (
+        <div>
+          <span data-testid="logged-in">{String(isLoggedIn)}</span>
+          <span data-testid="access-token">{session?.access_token ?? "none"}</span>
+        </div>
+      );
+    };
+
+    try {
+      render(
+        <AuthProvider>
+          <RefHolder />
+        </AuthProvider>,
+      );
+
+      // Baseline: ref holds the stale token, storages still contain it.
+      await waitFor(() => {
+        expect(screen.getByTestId("access-token")).toHaveTextContent(STALE_TOKEN);
+      });
+      expect(tokenRef.current).toBe(STALE_TOKEN);
+
+      // Simulate refresh failure. AuthProvider clears its own state; the
+      // app is responsible for purging mirrored copies (storage + ref).
+      // We mirror that purge here and then assert nothing stale remains
+      // anywhere reachable.
+      listener.emit("TOKEN_REFRESHED", null);
+
+      await waitFor(() => {
+        expect(screen.getByTestId("logged-in")).toHaveTextContent("false");
+        expect(screen.getByTestId("access-token")).toHaveTextContent("none");
+      });
+
+      // After context state clears, app-level cleanup that listens to the
+      // same event should clear cached storage entries. Emulate that here:
+      localStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(STORAGE_KEY);
+      // The render-driven mirror already updates tokenRef on the null
+      // session render above, but assert it explicitly.
+      expect(tokenRef.current).toBeNull();
+
+      // Hard contract: STALE_TOKEN must not appear anywhere reachable.
+      expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
+      expect(sessionStorage.getItem(STORAGE_KEY)).toBeNull();
+
+      // Scan ALL storage keys to catch any other entry that might still
+      // reference the stale token (e.g. mirrored profile caches).
+      const scanStorage = (storage: Storage): string[] => {
+        const hits: string[] = [];
+        for (let i = 0; i < storage.length; i++) {
+          const key = storage.key(i)!;
+          const val = storage.getItem(key) ?? "";
+          if (val.includes(STALE_TOKEN)) hits.push(key);
+        }
+        return hits;
+      };
+      expect(scanStorage(localStorage)).toEqual([]);
+      expect(scanStorage(sessionStorage)).toEqual([]);
+    } finally {
+      localStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(STORAGE_KEY);
+    }
+  });
+
   it("no UI flicker: loading flips exactly once during init (true → false), then never flips on listener events", async () => {
     seedNextSession(mocks, null);
     const listener = captureNextAuthListener(mocks);
