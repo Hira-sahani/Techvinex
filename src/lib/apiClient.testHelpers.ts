@@ -111,6 +111,48 @@ export function createUnauthorizedCapture(): UnauthorizedCapture {
       for (let i = 0; i < ticks; i++) await Promise.resolve();
     },
 
+    telemetryCountsByEndpoint() {
+      const out: Record<string, number> = {};
+      for (const e of newTelemetryEvents()) {
+        out[e.endpoint] = (out[e.endpoint] ?? 0) + 1;
+      }
+      return out;
+    },
+
+    busCountsByEndpoint() {
+      const out: Record<string, number> = {};
+      for (const e of bus) {
+        out[e.endpoint] = (out[e.endpoint] ?? 0) + 1;
+      }
+      return out;
+    },
+
+    telemetryCountsByRetryAttempted() {
+      const out = { true: 0, false: 0 };
+      for (const e of newTelemetryEvents()) {
+        if (e.retryAttempted) out.true += 1;
+        else out.false += 1;
+      }
+      return out;
+    },
+
+    countRetryAttempted(value, endpointSubstring) {
+      return newTelemetryEvents().filter(
+        (e) =>
+          e.retryAttempted === value &&
+          (endpointSubstring === undefined ||
+            e.endpoint.includes(endpointSubstring)),
+      ).length;
+    },
+
+    totalTelemetry() {
+      return newTelemetryEvents().length;
+    },
+
+    totalBus() {
+      return bus.length;
+    },
+
     expectNoBusEmissions() {
       expect(bus, "expected no session-expired bus emissions").toHaveLength(0);
     },
