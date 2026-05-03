@@ -36,6 +36,32 @@ export interface UnauthorizedCapture {
   /** Drain microtasks so void-handled unauthorized handlers can finish. */
   drain(ticks?: number): Promise<void>;
 
+  // ---- Counts ----
+
+  /** Map of endpoint -> count of telemetry events for that endpoint. */
+  telemetryCountsByEndpoint(): Record<string, number>;
+
+  /** Map of endpoint -> count of bus events for that endpoint. */
+  busCountsByEndpoint(): Record<string, number>;
+
+  /**
+   * Counts of telemetry events bucketed by retryAttempted value.
+   * Returns { true: number, false: number }.
+   */
+  telemetryCountsByRetryAttempted(): { true: number; false: number };
+
+  /**
+   * Count of telemetry events with retryAttempted === value, optionally
+   * filtered by an endpoint substring.
+   */
+  countRetryAttempted(value: boolean, endpointSubstring?: string): number;
+
+  /** Total telemetry events captured. */
+  totalTelemetry(): number;
+
+  /** Total bus events captured. */
+  totalBus(): number;
+
   // ---- Assertions ----
 
   /** Assert NO bus events were emitted at all. */
