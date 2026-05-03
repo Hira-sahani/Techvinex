@@ -211,4 +211,40 @@ describe("AuthProvider regression", () => {
     expect(mocks.onAuthStateChange).toHaveBeenCalledTimes(CYCLES);
     expect(mocks.unsubscribe).toHaveBeenCalledTimes(CYCLES);
   });
+
+  it("regression: SIGNED_OUT listener callback clears isLoggedIn and finalizes loading", async () => {
+    // Start logged in via getSession so we can verify the SIGNED_OUT transition.
+    const fakeUser = { id: "u-4", email: "out@example.com" } as unknown as import("@supabase/supabase-js").User;
+    const fakeSession = { user: fakeUser, access_token: "tok-4" } as unknown as import("@supabase/supabase-js").Session;
+    mocks.getSession.mockResolvedValueOnce({ data: { session: fakeSession }, error: null });
+
+    let capturedCallback: ((event: string, session: unknown) => void) | null = null;
+    mocks.onAuthStateChange.mockImplementationOnce(((cb: (event: string, session: unknown) => void) => {
+      capturedCallback = cb;
+      return { data: { subscription: { unsubscribe: mocks.unsubscribe } } };
+    }) as unknown as () => { data: { subscription: { unsubscribe: typeof mocks.unsubscribe } } });
+
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("true");
+      expect(screen.getByTestId("loading")).toHaveTextContent("false");
+    });
+
+    expect(typeof capturedCallback).toBe("function");
+
+    const { act } = await import("react");
+    act(() => {
+      capturedCallback!("SIGNED_OUT", null);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId("logged-in")).toHaveTextContent("false");
+      expect(screen.getByTestId("loading")).toHaveTextContent("false");
+    });
+  });
 });
