@@ -448,4 +448,56 @@ describe("DashboardDataBoundary", () => {
       expect(container.firstChild).toMatchSnapshot();
     });
   });
+
+  describe("skeleton passthrough", () => {
+    it("renders the provided skeleton node verbatim with its className and data attributes", () => {
+      const CustomSkeleton = (
+        <div
+          data-testid="custom-skeleton"
+          data-variant="dashboard"
+          aria-label="Loading dashboard"
+          className="h-40 w-full rounded-lg bg-muted animate-pulse"
+        >
+          <span className="sr-only">Loading…</span>
+        </div>
+      );
+
+      render(
+        <DashboardDataBoundary
+          query={makeQuery<string[]>({ isLoading: true, status: "loading" })}
+          skeleton={CustomSkeleton}
+        >
+          {renderContent}
+        </DashboardDataBoundary>,
+      );
+
+      const node = screen.getByTestId("custom-skeleton");
+      expect(node).toBeInTheDocument();
+      expect(node).toHaveClass("h-40", "w-full", "rounded-lg", "bg-muted", "animate-pulse");
+      expect(node).toHaveAttribute("data-variant", "dashboard");
+      expect(node).toHaveAttribute("aria-label", "Loading dashboard");
+      expect(node).toHaveTextContent("Loading…");
+    });
+
+    it("forwards a functional component skeleton with its props preserved", () => {
+      const Sk = ({ label, rows }: { label: string; rows: number }) => (
+        <div data-testid="fn-skeleton" data-rows={rows}>
+          {label}
+        </div>
+      );
+
+      render(
+        <DashboardDataBoundary
+          query={makeQuery<string[]>({ isLoading: true, status: "loading" })}
+          skeleton={<Sk label="Loading rows" rows={5} />}
+        >
+          {renderContent}
+        </DashboardDataBoundary>,
+      );
+
+      const node = screen.getByTestId("fn-skeleton");
+      expect(node).toHaveTextContent("Loading rows");
+      expect(node).toHaveAttribute("data-rows", "5");
+    });
+  });
 });
