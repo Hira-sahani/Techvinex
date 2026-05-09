@@ -45,3 +45,18 @@ jobs:
         with:
           name: coverage
           path: coverage/
+
+  google-verification-guard:
+    name: Google Search Console verification guard
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+      - name: Build production bundle
+        run: bunx vite build
+      - name: Verify Google verification file in build output
+        run: node scripts/verify-google-site.mjs
