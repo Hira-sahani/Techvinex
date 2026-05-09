@@ -7,7 +7,12 @@
 
 import {
   admin, log, verifyHmac, withIdempotency, rateLimit, guarded,
+  setRateStore, PgRateStore,
 } from "../_shared/abuse-prevention.ts";
+
+// Use Postgres-backed distributed store so counters are shared across
+// edge instances (Redis substitute in this stack).
+setRateStore(new PgRateStore());
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
