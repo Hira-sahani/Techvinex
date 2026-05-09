@@ -1,7 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Users, FileText, UserCheck, BarChart3,
-  ScrollText, Bell, DollarSign, Settings, LogOut, Brain, Globe, Moon, Sun, PenLine, FlaskConical, KeyRound,
+  ScrollText, Bell, DollarSign, Settings, LogOut, Brain, Globe, Moon, Sun, PenLine, FlaskConical, KeyRound, Webhook,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
