@@ -59,7 +59,12 @@ const AdminSecrets = () => {
     setSaving(true);
     const { error } = await supabase.functions.invoke("admin-secrets", {
       method: "POST",
-      body: { key: form.key, value: form.value, description: form.description || null },
+      body: {
+        key: form.key,
+        value: form.value,
+        description: form.description || null,
+        action: editing ? "rotate" : "create",
+      },
     });
     setSaving(false);
     if (error) return toast.error(error.message);
