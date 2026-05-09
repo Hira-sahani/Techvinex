@@ -660,6 +660,48 @@ export type Database = {
         }
         Relationships: []
       }
+      idempotency_keys: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          key: string
+          request_hash: string | null
+          response_body: Json | null
+          response_status: number | null
+          scope: string
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          key: string
+          request_hash?: string | null
+          response_body?: Json | null
+          response_status?: number | null
+          scope: string
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          key?: string
+          request_hash?: string | null
+          response_body?: Json | null
+          response_status?: number | null
+          scope?: string
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       job_analytics: {
         Row: {
           created_at: string
@@ -1188,6 +1230,78 @@ export type Database = {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
+        }
+        Relationships: []
+      }
+      webhook_deliveries: {
+        Row: {
+          body_preview: string | null
+          created_at: string
+          endpoint_name: string
+          headers: Json | null
+          id: string
+          reason: string | null
+          status_code: number | null
+          verified: boolean
+        }
+        Insert: {
+          body_preview?: string | null
+          created_at?: string
+          endpoint_name: string
+          headers?: Json | null
+          id?: string
+          reason?: string | null
+          status_code?: number | null
+          verified?: boolean
+        }
+        Update: {
+          body_preview?: string | null
+          created_at?: string
+          endpoint_name?: string
+          headers?: Json | null
+          id?: string
+          reason?: string | null
+          status_code?: number | null
+          verified?: boolean
+        }
+        Relationships: []
+      }
+      webhook_endpoints: {
+        Row: {
+          algorithm: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          secret_key_name: string
+          signature_header: string
+          tolerance_seconds: number
+          updated_at: string
+        }
+        Insert: {
+          algorithm?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          secret_key_name: string
+          signature_header?: string
+          tolerance_seconds?: number
+          updated_at?: string
+        }
+        Update: {
+          algorithm?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          secret_key_name?: string
+          signature_header?: string
+          tolerance_seconds?: number
+          updated_at?: string
         }
         Relationships: []
       }
