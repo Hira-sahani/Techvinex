@@ -218,7 +218,7 @@ const AdminSecrets = () => {
       <StepUpReauth
         open={reauthOpen}
         onOpenChange={setReauthOpen}
-        onVerified={confirmDelete}
+        onVerified={() => { void confirmDelete(); }}
         title="Confirm secret deletion"
         description={pendingDelete ? `Re-enter your password to delete ${pendingDelete.key}.` : ""}
       />
