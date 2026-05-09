@@ -147,10 +147,29 @@ class MemoryStore implements RateStore {
   }
 }
 
+/**
+ * Postgres-backed distributed RateStore.
+ * Atomic via the `rate_limit_hit(_key, _window_ms)` SQL function.
+ * Use this when multiple edge instances must share counters
+ * (acts as the Redis substitute in this stack).
+ */
+export class PgRateStore implements RateStore {
+  async hit(key: string, windowMs: number) {
+    const { data, error } = await admin().rpc("rate_limit_hit", {
+      _key: key,
+      _window_ms: windowMs,
+    });
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    return { count: Number(row?.current_count ?? 0), resetMs: Number(row?.reset_ms ?? windowMs) };
+  }
+}
+
 let _store: RateStore = new MemoryStore();
 export const setRateStore = (s: RateStore) => { _store = s; };
 export const getRateStore = () => _store;
-// To swap to Redis later: implement RateStore against Upstash REST and call setRateStore(...).
+// Swap to distributed: setRateStore(new PgRateStore())
+// Swap to Redis later: implement RateStore against Upstash REST and call setRateStore(...).
 
 export interface RateLimitConfig {
   route: string;
