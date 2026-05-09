@@ -214,6 +214,14 @@ const AdminSecrets = () => {
           </div>
         )}
       </div>
+
+      <StepUpReauth
+        open={reauthOpen}
+        onOpenChange={setReauthOpen}
+        onVerified={confirmDelete}
+        title="Confirm secret deletion"
+        description={pendingDelete ? `Re-enter your password to delete ${pendingDelete.key}.` : ""}
+      />
     </div>
   );
 };
