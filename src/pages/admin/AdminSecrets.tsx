@@ -10,6 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2, Eye, EyeOff, KeyRound, Copy, Lock } from "lucide-react";
 import { toast } from "sonner";
+import StepUpReauth from "@/components/security/StepUpReauth";
 
 type SecretRow = {
   id: string;
@@ -31,6 +32,8 @@ const AdminSecrets = () => {
   const [editing, setEditing] = useState<SecretRow | null>(null);
   const [form, setForm] = useState({ key: "", value: "", description: "" });
   const [saving, setSaving] = useState(false);
+  const [reauthOpen, setReauthOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<SecretRow | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -86,11 +89,17 @@ const AdminSecrets = () => {
     setRevealed((s) => ({ ...s, [r.id]: data.value }));
   };
 
-  const remove = async (r: SecretRow) => {
-    if (!confirm(`Delete ${r.key}? This cannot be undone.`)) return;
-    const { error } = await supabase.functions.invoke(`admin-secrets?id=${r.id}`, { method: "DELETE" });
+  const remove = (r: SecretRow) => {
+    setPendingDelete(r);
+    setReauthOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!pendingDelete) return;
+    const { error } = await supabase.functions.invoke(`admin-secrets?id=${pendingDelete.id}`, { method: "DELETE" });
     if (error) return toast.error(error.message);
     toast.success("Deleted");
+    setPendingDelete(null);
     load();
   };
 
@@ -205,6 +214,14 @@ const AdminSecrets = () => {
           </div>
         )}
       </div>
+
+      <StepUpReauth
+        open={reauthOpen}
+        onOpenChange={setReauthOpen}
+        onVerified={() => { void confirmDelete(); }}
+        title="Confirm secret deletion"
+        description={pendingDelete ? `Re-enter your password to delete ${pendingDelete.key}.` : ""}
+      />
     </div>
   );
 };

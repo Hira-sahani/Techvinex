@@ -1,29 +1,9 @@
-// Generic HMAC-verified webhook receiver.
-// Path:  /webhook-receiver?endpoint=<name>
-// Looks up the endpoint in `webhook_endpoints`, fetches its secret from
-// `public.secrets` (decrypted via admin-secrets convention), verifies HMAC,
-// records delivery in `webhook_deliveries`, and supports idempotency via
-// the `Idempotency-Key` header.
+// Generic HMAC-verified webhook receiver. Default-deny via guard().
+// Webhooks are unauthenticated by Supabase JWT — auth = HMAC signature.
+import { guard, guardJson } from "../_shared/guard.ts";
+import { admin, log, verifyHmac, withIdempotency, guarded } from "../_shared/abuse-prevention.ts";
 
-import {
-  admin, log, verifyHmac, withIdempotency, rateLimit, guarded,
-  setRateStore, PgRateStore,
-} from "../_shared/abuse-prevention.ts";
-
-// Use Postgres-backed distributed store so counters are shared across
-// edge instances (Redis substitute in this stack).
-setRateStore(new PgRateStore());
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, idempotency-key, x-signature, x-timestamp",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-};
-const json = (b: unknown, s = 200) => new Response(JSON.stringify(b), {
-  status: s, headers: { ...corsHeaders, "Content-Type": "application/json" },
-});
-
-// ---- Reuse decrypt logic ----
+// ---- Decrypt secrets stored in `secrets` table ----
 async function getKey(): Promise<CryptoKey> {
   const seed = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("secrets-v1::" + seed));
@@ -40,7 +20,6 @@ async function decrypt(payload: string): Promise<string> {
   const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64uDec(iv) }, key, b64uDec(ct));
   return new TextDecoder().decode(pt);
 }
-
 async function loadSecret(name: string): Promise<string | null> {
   const { data } = await admin().from("secrets").select("value").eq("key", name).maybeSingle();
   if (data?.value) {
@@ -49,75 +28,65 @@ async function loadSecret(name: string): Promise<string | null> {
   return Deno.env.get(name) ?? null;
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
-  if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
+Deno.serve((req) =>
+  guard(req, {
+    allowedMethods: ["POST"],
+    requireAuth: false,                 // signed by HMAC, not JWT
+    rateLimit: { key: "webhook", limit: 240, windowMs: 60_000, failOpen: true, bucketBy: "ip" },
+    rawBody: true,
+    maxBodyBytes: 1024 * 1024,          // 1 MB
+  }, async (ctx) => {
+    const url = new URL(req.url);
+    const endpointName = url.searchParams.get("endpoint");
+    if (!endpointName) return guardJson({ error: "endpoint_required" }, 400);
 
-  const url = new URL(req.url);
-  const endpointName = url.searchParams.get("endpoint");
-  if (!endpointName) return json({ error: "endpoint query param required" }, 400);
+    const db = admin();
+    const { data: ep } = await db.from("webhook_endpoints")
+      .select("name, secret_key_name, signature_header, algorithm, tolerance_seconds, is_active")
+      .eq("name", endpointName).maybeSingle();
 
-  // Per-route rate limit (in-memory; pluggable)
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  const rl = await rateLimit(
-    { route: `webhook:${endpointName}`, limit: 120, windowMs: 60_000, failOpen: true },
-    ip,
-  );
-  if (!rl.allowed) return json({ error: "rate_limited" }, 429);
+    const recordDelivery = (verified: boolean, status: number, reason: string, bodyPreview: string) =>
+      db.from("webhook_deliveries").insert({
+        endpoint_name: endpointName, verified, status_code: status, reason,
+        headers: Object.fromEntries(req.headers), body_preview: bodyPreview.slice(0, 1000),
+      }).then(() => {}, () => {});
 
-  const db = admin();
-  const { data: ep } = await db.from("webhook_endpoints")
-    .select("name, secret_key_name, signature_header, algorithm, tolerance_seconds, is_active")
-    .eq("name", endpointName).maybeSingle();
+    if (!ep || !ep.is_active) {
+      await recordDelivery(false, 404, "endpoint_not_found_or_inactive", "");
+      return guardJson({ error: "unknown_endpoint" }, 404);
+    }
 
-  const recordDelivery = (verified: boolean, status: number, reason: string, bodyPreview: string) =>
-    db.from("webhook_deliveries").insert({
-      endpoint_name: endpointName, verified, status_code: status, reason,
-      headers: Object.fromEntries(req.headers), body_preview: bodyPreview.slice(0, 1000),
-    }).then(() => {}, () => {});
+    const sigHeader = req.headers.get(ep.signature_header) ?? "";
+    const tsHeader = req.headers.get("x-timestamp");
+    const secret = await loadSecret(ep.secret_key_name);
+    if (!secret) {
+      await recordDelivery(false, 500, "secret_missing", ctx.rawBody);
+      return guardJson({ error: "endpoint_misconfigured" }, 500);
+    }
 
-  if (!ep || !ep.is_active) {
-    await recordDelivery(false, 404, "endpoint_not_found_or_inactive", "");
-    return json({ error: "unknown endpoint" }, 404);
-  }
+    const verification = await verifyHmac({
+      secret, payload: tsHeader ? `${tsHeader}.${ctx.rawBody}` : ctx.rawBody,
+      signatureHeader: sigHeader,
+      algorithm: (ep.algorithm as "sha256" | "sha512") ?? "sha256",
+      timestamp: tsHeader, toleranceSeconds: ep.tolerance_seconds,
+    });
+    if (!verification.ok) {
+      await recordDelivery(false, 401, verification.reason ?? "invalid_signature", ctx.rawBody);
+      log("warn", "webhook_rejected", { endpoint: endpointName, reason: verification.reason });
+      return guardJson({ error: "invalid_signature" }, 401);
+    }
 
-  const rawBody = await req.text();
-  const sigHeader = req.headers.get(ep.signature_header) ?? "";
-  const tsHeader = req.headers.get("x-timestamp");
+    const result = await withIdempotency(
+      `webhook:${endpointName}`, ctx.idempotencyKey,
+      async () => {
+        await guarded("webhook_handler", async () => {
+          log("info", "webhook_received", { endpoint: endpointName, bytes: ctx.rawBody.length });
+        }, { mode: "closed", timeoutMs: 5000 });
+        return { status: 200, body: { ok: true, endpoint: endpointName } };
+      },
+    );
 
-  const secret = await loadSecret(ep.secret_key_name);
-  if (!secret) {
-    await recordDelivery(false, 500, "secret_missing", rawBody);
-    return json({ error: "endpoint misconfigured" }, 500);
-  }
-
-  const verification = await verifyHmac({
-    secret, payload: tsHeader ? `${tsHeader}.${rawBody}` : rawBody,
-    signatureHeader: sigHeader,
-    algorithm: (ep.algorithm as "sha256" | "sha512") ?? "sha256",
-    timestamp: tsHeader, toleranceSeconds: ep.tolerance_seconds,
-  });
-  if (!verification.ok) {
-    await recordDelivery(false, 401, verification.reason ?? "invalid_signature", rawBody);
-    log("warn", "webhook_rejected", { endpoint: endpointName, reason: verification.reason });
-    return json({ error: "invalid signature" }, 401);
-  }
-
-  // Idempotency
-  const idemKey = req.headers.get("idempotency-key");
-  const result = await withIdempotency(
-    `webhook:${endpointName}`,
-    idemKey,
-    async () => {
-      // Process — kept generic. Real handlers can branch on endpointName.
-      // Wrapped in guarded() with fail-closed semantics for upstream calls.
-      await guarded("webhook_handler", async () => {
-        log("info", "webhook_received", { endpoint: endpointName, bytes: rawBody.length });
-      }, { mode: "closed", timeoutMs: 5000 });
-      return { status: 200, body: { ok: true, endpoint: endpointName } };
-    },
-  );
-
-  await recordDelivery(true, result.status, result.replayed ? "replayed" : "ok", rawBody);
-  return json(result.body, result.status);
-});
+    await recordDelivery(true, result.status, result.replayed ? "replayed" : "ok", ctx.rawBody);
+    return guardJson(result.body, result.status);
+  })
+);

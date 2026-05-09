@@ -18,6 +18,7 @@ import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 
 import OfflineBanner from "@/components/OfflineBanner";
 import JetraLoader from "@/components/JetraLoader";
+import IdleTimeout from "@/components/security/IdleTimeout";
 
 // Error boundary to handle dynamic import failures (common in preview)
 class LazyErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
@@ -253,6 +254,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <OfflineBanner />
+        <IdleTimeout />
         <BrowserRouter>
           <AppLayout />
         </BrowserRouter>

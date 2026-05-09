@@ -1,7 +1,6 @@
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+// AI Interview — Lovable AI Gateway streaming.
+// Auth: required (any signed-in user). Rate-limited per user.
+import { guard, z } from "../_shared/guard.ts";
 
 const LOVABLE_AI_URL = "https://api.lovable.dev/v1/chat/completions";
 
@@ -18,42 +17,39 @@ RULES:
 - Evaluate based on depth of knowledge, problem-solving approach, and communication
 - Do NOT use markdown formatting (no **, *, etc.) — speak naturally as this will be read aloud`;
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: corsHeaders });
-  }
+const bodySchema = z.object({
+  messages: z.array(z.object({
+    role: z.enum(["system", "user", "assistant"]),
+    content: z.string().max(8000),
+  })).min(1).max(40),
+  domain: z.string().max(100).optional(),
+});
 
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) {
-    return new Response(
-      JSON.stringify({ error: "LOVABLE_API_KEY is not configured" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-
-  try {
-    const { messages, domain } = await req.json();
-
-    if (!Array.isArray(messages)) {
-      return new Response(
-        JSON.stringify({ error: "messages array is required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+Deno.serve((req) =>
+  guard(req, {
+    allowedMethods: ["POST"],
+    requireAuth: true,
+    rateLimit: { key: "ai-interview", limit: 30, windowMs: 60_000 },
+    schema: bodySchema,
+    maxBodyBytes: 128 * 1024,
+  }, async (ctx) => {
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      return new Response(JSON.stringify({ error: "service_unavailable" }), {
+        status: 503,
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      });
     }
 
+    const { messages, domain } = ctx.body as z.infer<typeof bodySchema>;
     const systemMessage = {
       role: "system",
-      content: domain
-        ? SYSTEM_PROMPT.replace("technical skills", `${domain} skills`)
-        : SYSTEM_PROMPT,
+      content: domain ? SYSTEM_PROMPT.replace("technical skills", `${domain} skills`) : SYSTEM_PROMPT,
     };
 
     const response = await fetch(LOVABLE_AI_URL, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-      },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_API_KEY}` },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [systemMessage, ...messages],
@@ -62,28 +58,20 @@ Deno.serve(async (req) => {
     });
 
     if (!response.ok) {
-      const errText = await response.text();
-      console.error("AI API error:", response.status, errText);
-      return new Response(
-        JSON.stringify({ error: `AI API error: ${response.status}` }),
-        { status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      const status = response.status === 429 ? 429 : response.status === 402 ? 402 : 502;
+      return new Response(JSON.stringify({ error: "upstream_error", status: response.status }), {
+        status,
+        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+      });
     }
 
-    // Stream through to client
     return new Response(response.body, {
       headers: {
-        ...corsHeaders,
+        "Access-Control-Allow-Origin": "*",
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
         Connection: "keep-alive",
       },
     });
-  } catch (error) {
-    console.error("Interview function error:", error);
-    return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
-  }
-});
+  })
+);
