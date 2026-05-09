@@ -258,15 +258,18 @@ export async function guard<TBody = unknown>(
     return json({ error: "idempotency_key_required", code: "IDEM" }, 400);
   }
 
+  const fp = await fingerprint(ip, req.headers.get("user-agent") ?? "", userId);
+
   const ctx: GuardCtx<TBody> = {
     req, userId, claims, roles,
     body: body as TBody, rawBody, idempotencyKey: idemKey, ip,
+    fingerprint: fp,
     db: admin(),
     audit: async (action, details = {}, targetId) => {
       try {
         await admin().from("audit_logs").insert({
           user_id: userId, action, target_type: "edge_function",
-          target_id: targetId ?? route, details: { ip, ...details },
+          target_id: targetId ?? route, details: { ip, fp, ...details },
         });
       } catch (e) { log("warn", "audit_insert_failed", { error: String(e) }); }
     },
