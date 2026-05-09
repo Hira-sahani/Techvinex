@@ -140,12 +140,13 @@ Deno.serve(async (req) => {
         .single();
       if (error) return json({ error: error.message }, 500);
 
+      const action = body.action === "rotate" ? "secret_rotate" : "secret_upsert";
       await admin.from("audit_logs").insert({
         user_id: userData.user.id,
-        action: "secret_upsert",
+        action,
         target_type: "secret",
         target_id: data.id,
-        details: { key },
+        details: { key, hint: data.hint },
       });
 
       return json({ secret: { ...data, masked_value: mask(value) } }, 200);
