@@ -71,6 +71,8 @@ export interface GuardCtx<TBody = unknown> {
   rawBody: string;
   idempotencyKey: string | null;
   ip: string;
+  /** Stable per-request fingerprint (sha256 of ip+ua+user) — useful for anomaly correlation. */
+  fingerprint: string;
   /** Use to record domain audit rows (allows + denies are auto-logged on the deny path). */
   audit: (action: string, details?: Record<string, unknown>, targetId?: string) => Promise<void>;
   /** Admin Supabase client (service role). Use sparingly — prefer scoped queries. */
@@ -99,12 +101,19 @@ async function getRoles(db: SupabaseClient, userId: string): Promise<AppRole[]> 
   return (data ?? []).map((r) => r.role as AppRole);
 }
 
+async function fingerprint(ip: string, ua: string, userId: string | null): Promise<string> {
+  const data = new TextEncoder().encode(`${ip}|${ua}|${userId ?? ""}`);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return [...new Uint8Array(digest)].slice(0, 12).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 async function recordDeny(opts: {
   userId: string | null;
   action: string;
   reason: string;
   route: string;
   ip: string;
+  fp?: string;
   details?: Record<string, unknown>;
 }) {
   try {
@@ -113,7 +122,7 @@ async function recordDeny(opts: {
       action: `deny:${opts.action}`,
       target_type: "edge_function",
       target_id: opts.route,
-      details: { reason: opts.reason, ip: opts.ip, ...opts.details },
+      details: { reason: opts.reason, ip: opts.ip, fp: opts.fp, ...opts.details },
     });
   } catch (e) {
     log("warn", "audit_insert_failed", { error: String(e) });
@@ -249,15 +258,18 @@ export async function guard<TBody = unknown>(
     return json({ error: "idempotency_key_required", code: "IDEM" }, 400);
   }
 
+  const fp = await fingerprint(ip, req.headers.get("user-agent") ?? "", userId);
+
   const ctx: GuardCtx<TBody> = {
     req, userId, claims, roles,
     body: body as TBody, rawBody, idempotencyKey: idemKey, ip,
+    fingerprint: fp,
     db: admin(),
     audit: async (action, details = {}, targetId) => {
       try {
         await admin().from("audit_logs").insert({
           user_id: userId, action, target_type: "edge_function",
-          target_id: targetId ?? route, details: { ip, ...details },
+          target_id: targetId ?? route, details: { ip, fp, ...details },
         });
       } catch (e) { log("warn", "audit_insert_failed", { error: String(e) }); }
     },
