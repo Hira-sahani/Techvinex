@@ -21,6 +21,7 @@ const navItems = [
   { label: "Blog", path: "/admin/blogs", icon: PenLine },
   { label: "Benchmark", path: "/benchmark/dashboard", icon: FlaskConical },
   { label: "Secrets", path: "/admin/secrets", icon: KeyRound },
+  { label: "Webhooks", path: "/admin/webhooks", icon: Webhook },
   { label: "Settings", path: "/admin/settings", icon: Settings },
 ];
 
