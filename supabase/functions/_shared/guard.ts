@@ -71,6 +71,8 @@ export interface GuardCtx<TBody = unknown> {
   rawBody: string;
   idempotencyKey: string | null;
   ip: string;
+  /** Stable per-request fingerprint (sha256 of ip+ua+user) — useful for anomaly correlation. */
+  fingerprint: string;
   /** Use to record domain audit rows (allows + denies are auto-logged on the deny path). */
   audit: (action: string, details?: Record<string, unknown>, targetId?: string) => Promise<void>;
   /** Admin Supabase client (service role). Use sparingly — prefer scoped queries. */
