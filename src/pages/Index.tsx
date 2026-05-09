@@ -15,7 +15,9 @@ const Index = () => {
     <div className="min-h-screen bg-background pb-20 md:pb-0">
       <Navbar />
       <HeroSection />
-      {isLoggedIn ? <DashboardSection /> : <SEOContent />}
+      {/* Always render SEO content so Googlebot sees H1 + sections, even before auth resolves */}
+      <SEOContent />
+      {isLoggedIn && <DashboardSection />}
       <ApexSection />
       <FeaturesSection />
       <CTASection />
