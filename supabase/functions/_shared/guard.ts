@@ -101,12 +101,19 @@ async function getRoles(db: SupabaseClient, userId: string): Promise<AppRole[]> 
   return (data ?? []).map((r) => r.role as AppRole);
 }
 
+async function fingerprint(ip: string, ua: string, userId: string | null): Promise<string> {
+  const data = new TextEncoder().encode(`${ip}|${ua}|${userId ?? ""}`);
+  const digest = await crypto.subtle.digest("SHA-256", data);
+  return [...new Uint8Array(digest)].slice(0, 12).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 async function recordDeny(opts: {
   userId: string | null;
   action: string;
   reason: string;
   route: string;
   ip: string;
+  fp?: string;
   details?: Record<string, unknown>;
 }) {
   try {
@@ -115,7 +122,7 @@ async function recordDeny(opts: {
       action: `deny:${opts.action}`,
       target_type: "edge_function",
       target_id: opts.route,
-      details: { reason: opts.reason, ip: opts.ip, ...opts.details },
+      details: { reason: opts.reason, ip: opts.ip, fp: opts.fp, ...opts.details },
     });
   } catch (e) {
     log("warn", "audit_insert_failed", { error: String(e) });
