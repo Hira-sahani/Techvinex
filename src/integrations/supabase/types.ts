@@ -1083,6 +1083,30 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limit_buckets: {
+        Row: {
+          bucket_key: string
+          count: number
+          expires_at: string
+          id: string
+          window_start: string
+        }
+        Insert: {
+          bucket_key: string
+          count?: number
+          expires_at: string
+          id?: string
+          window_start?: string
+        }
+        Update: {
+          bucket_key?: string
+          count?: number
+          expires_at?: string
+          id?: string
+          window_start?: string
+        }
+        Relationships: []
+      }
       referrals: {
         Row: {
           created_at: string
@@ -1316,6 +1340,13 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      rate_limit_hit: {
+        Args: { _key: string; _window_ms: number }
+        Returns: {
+          current_count: number
+          reset_ms: number
+        }[]
       }
     }
     Enums: {
