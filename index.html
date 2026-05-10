@@ -90,7 +90,37 @@
   </head>
 
   <body>
-    <div id="splash-screen"><div class="splash-dots"><span></span><span></span><span></span><span></span><span></span><span></span></div><p class="splash-text">Loading…</p></div>
+    <div id="splash-screen" role="status" aria-busy="true" aria-label="Loading">
+      <div class="splash-skeleton" aria-hidden="true">
+        <div class="row">
+          <div class="col">
+            <div class="skel" style="height:24px;width:192px"></div>
+            <div class="skel" style="height:12px;width:256px"></div>
+          </div>
+          <div class="skel" style="height:36px;width:36px;border-radius:9999px"></div>
+        </div>
+        <div class="grid4">
+          <div class="skel skel-card"></div>
+          <div class="skel skel-card"></div>
+          <div class="skel skel-card"></div>
+          <div class="skel skel-card"></div>
+        </div>
+        <div class="tabs">
+          <div class="skel" style="height:12px;width:64px"></div>
+          <div class="skel" style="height:12px;width:64px"></div>
+          <div class="skel" style="height:12px;width:64px"></div>
+          <div class="skel" style="height:12px;width:64px"></div>
+          <div class="skel" style="height:12px;width:64px"></div>
+        </div>
+        <div class="col">
+          <div class="skel skel-row"></div>
+          <div class="skel skel-row"></div>
+          <div class="skel skel-row"></div>
+          <div class="skel skel-row"></div>
+          <div class="skel skel-row"></div>
+        </div>
+      </div>
+    </div>
     <div id="root"></div>
     <noscript>
       <div style="max-width:840px;margin:24px auto;padding:24px;font-family:system-ui,sans-serif;color:#0f172a;">
