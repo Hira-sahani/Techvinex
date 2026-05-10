@@ -18,7 +18,7 @@ const SidebarNav = () => {
   const { loading } = useAuth();
 
   return (
-    <aside className="flex fixed left-0 top-0 bottom-0 w-16 flex-col items-center pt-4 pb-6 bg-background border-r border-border z-50">
+    <aside className="hidden md:flex fixed left-0 top-0 bottom-0 w-16 flex-col items-center pt-4 pb-6 bg-background border-r border-border z-50">
       <button
         onClick={() => navigate("/")}
         aria-label="Go to opportunities"
