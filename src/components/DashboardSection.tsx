@@ -270,7 +270,7 @@ const DashboardSection = () => {
                       <Linkedin size={14} className="text-muted-foreground mt-0.5" />
                     </div>
                     <p className="text-[11px] text-muted-foreground leading-snug">
-                      Connect your LinkedIn account to your Jetra X account
+                      Connect your LinkedIn account to your Techvinex X account
                     </p>
                   </div>
                   <div className="flex justify-end">

@@ -11,7 +11,7 @@ const CTASection = () => {
           Ready to shape the future?
         </h2>
         <p className="text-muted-foreground mb-8 max-w-lg mx-auto">
-          Join thousands of top professionals already earning on Jetra X. Start working today.
+          Join thousands of top professionals already earning on Techvinex X. Start working today.
         </p>
         <div className="flex items-center justify-center gap-4 flex-wrap">
           <Button

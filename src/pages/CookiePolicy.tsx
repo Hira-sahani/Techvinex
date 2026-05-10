@@ -33,7 +33,7 @@ const CookiePolicy = () => (
         </section>
         <section>
           <h2 className="text-lg font-semibold text-foreground mb-2">5. Contact Us</h2>
-          <p>If you have questions about our use of cookies, contact us at <span className="text-primary font-medium">privacy@jetrax.com</span>.</p>
+          <p>If you have questions about our use of cookies, contact us at <span className="text-primary font-medium">privacy@techvinexx.com</span>.</p>
         </section>
       </div>
     </div>

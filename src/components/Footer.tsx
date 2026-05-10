@@ -16,7 +16,7 @@ const footerLinks = {
     { label: "Press", to: "/#cta" },
     { label: "Sales", to: "/#cta" },
   ],
-  Jetra: [
+  Techvinex: [
     { label: "Careers", to: "/explore" },
     { label: "Security", to: "/privacy" },
     { label: "Blog", to: "/blog" },
@@ -64,7 +64,7 @@ const Footer = () => {
 
         <div className="border-t border-border pt-6 flex flex-col sm:flex-row items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <p className="text-xs text-muted-foreground">© 2026 Jetra</p>
+            <p className="text-xs text-muted-foreground">© 2026 Techvinex</p>
             <span className="text-xs text-muted-foreground">·</span>
             <p className="text-xs text-muted-foreground">San Francisco, CA</p>
           </div>

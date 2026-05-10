@@ -34,7 +34,7 @@ const AdminLogin = () => {
           <div className="mx-auto w-9 h-9 rounded-md bg-foreground flex items-center justify-center mb-3">
             <Shield className="w-4 h-4 text-background" />
           </div>
-          <h1 className="text-sm font-semibold text-foreground">Jetra Admin</h1>
+          <h1 className="text-sm font-semibold text-foreground">Techvinex Admin</h1>
           <p className="text-[10px] text-muted-foreground mt-0.5">Sign in to control center</p>
         </div>
         <div className="bg-card border border-border rounded-lg p-5">

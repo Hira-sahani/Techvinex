@@ -5,7 +5,7 @@ import { Shimmer, SkeletonCard, SkeletonList } from "@/components/skeletons/Skel
  * loader was previously shown. Replaces the old animated dots loader so the
  * user always sees a content-shaped shimmer instead of a spinner.
  */
-const JetraLoader = () => (
+const TechvinexLoader = () => (
   <div
     className="min-h-screen bg-background"
     role="status"
@@ -42,4 +42,4 @@ const JetraLoader = () => (
   </div>
 );
 
-export default JetraLoader;
+export default TechvinexLoader;

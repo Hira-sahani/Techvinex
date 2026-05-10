@@ -27,7 +27,7 @@ const EmployerLayout = () => {
             <div className="w-8 h-8 rounded-xl gradient-cta flex items-center justify-center">
               <Building2 className="w-4 h-4 text-primary-foreground" />
             </div>
-            <span className="font-bold text-foreground text-sm">Jetra X</span>
+            <span className="font-bold text-foreground text-sm">Techvinex X</span>
           </div>
           <button onClick={() => setMobileMenu(!mobileMenu)} className="p-2 text-foreground">
             {mobileMenu ? <X size={20} /> : <Menu size={20} />}

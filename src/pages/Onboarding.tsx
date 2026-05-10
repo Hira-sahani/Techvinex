@@ -335,7 +335,7 @@ const Onboarding = () => {
           </Button>
           {step === 3 && (
             <p className="text-[10px] text-muted-foreground text-center mt-2">
-              By completing this section, you confirm you've reviewed and agree with Jetra X's <span className="text-primary font-medium">Terms and Conditions</span>.
+              By completing this section, you confirm you've reviewed and agree with Techvinex X's <span className="text-primary font-medium">Terms and Conditions</span>.
             </p>
           )}
         </div>

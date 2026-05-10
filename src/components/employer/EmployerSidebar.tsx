@@ -38,7 +38,7 @@ const EmployerSidebar = () => {
           <Building2 className="w-5 h-5 text-primary-foreground" />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-bold text-foreground truncate">Jetra X</p>
+          <p className="text-sm font-bold text-foreground truncate">Techvinex X</p>
           <p className="text-xs text-muted-foreground truncate">{user?.email || "Employer"}</p>
         </div>
       </div>

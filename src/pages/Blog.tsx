@@ -19,7 +19,7 @@ const Blog = () => {
   useDocumentMeta({
     title: "Blog",
     description:
-      "Latest insights, research, and stories from the Jetra team on remote work, talent, and the future of employment.",
+      "Latest insights, research, and stories from the Techvinex team on remote work, talent, and the future of employment.",
     url: `${window.location.origin}/blog`,
   });
 
@@ -349,7 +349,7 @@ const ResearchContent = () => (
     <div className="space-y-10">
       <div>
         <h2 className="text-2xl font-semibold text-foreground mb-3">Data, evals, and post-training at the frontier</h2>
-        <p className="text-sm text-muted-foreground mb-6">Jetra is used by the top AI labs to produce specialized data at scale.</p>
+        <p className="text-sm text-muted-foreground mb-6">Techvinex is used by the top AI labs to produce specialized data at scale.</p>
       </div>
       {[
         { title: "Frontier data", desc: "When model capabilities reach their limits, progress depends on data quality. Our talent platform mobilizes deep subject-matter experts across professional and consumer domains to produce specialized data at scale." },
@@ -369,7 +369,7 @@ const ResearchContent = () => (
 const EnterpriseContent = () => (
   <main className="max-w-6xl mx-auto px-4 sm:px-6 pt-16 pb-24">
     <div className="text-center mb-12">
-      <p className="text-xs text-muted-foreground mb-2">Jetra · Enterprise</p>
+      <p className="text-xs text-muted-foreground mb-2">Techvinex · Enterprise</p>
       <h1 className="text-2xl text-muted-foreground/50 font-light mb-1">Missing layer:</h1>
       <h2 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">Your definition of "good"</h2>
       <p className="text-sm sm:text-base text-muted-foreground max-w-xl mx-auto mb-6">

@@ -3,7 +3,7 @@ import { MapPin, Briefcase, Users, CheckCircle2, ChevronLeft, ChevronRight, Link
 import { Progress } from "@/components/ui/progress";
 import { useRoles } from "@/hooks/useRoles";
 import PageDotLoader from "@/components/PageDotLoader";
-import JetraLoaderInline from "@/components/JetraLoaderInline";
+import TechvinexLoaderInline from "@/components/TechvinexLoaderInline";
 import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -111,7 +111,7 @@ const RoleDetail = () => {
 
             {loading ? (
               <div className="flex items-center justify-center py-8">
-                <JetraLoaderInline size="sm" />
+                <TechvinexLoaderInline size="sm" />
               </div>
             ) : (
               <div className="space-y-3">
@@ -178,9 +178,9 @@ const RoleDetail = () => {
           </div>
 
           <div className="mb-8">
-            <h2 className="text-base font-bold text-foreground mb-3">About Jetrax</h2>
+            <h2 className="text-base font-bold text-foreground mb-3">About Techvinexx</h2>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Jetrax partners with leading AI labs and enterprises to train frontier models using human expertise. You will work on projects that focus on training and enhancing AI systems. You will be paid competitively, collaborate with leading researchers, and help shape the next generation of AI systems in your area of expertise.
+              Techvinexx partners with leading AI labs and enterprises to train frontier models using human expertise. You will work on projects that focus on training and enhancing AI systems. You will be paid competitively, collaborate with leading researchers, and help shape the next generation of AI systems in your area of expertise.
             </p>
           </div>
 

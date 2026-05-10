@@ -500,7 +500,7 @@ const Earnings = () => {
               <textarea
                 value={productDescription}
                 onChange={(e) => setProductDescription(e.target.value)}
-                placeholder="I am a contractor for Jetra X."
+                placeholder="I am a contractor for Techvinex X."
                 className="w-full min-h-[80px] rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
               />
               <p className="text-xs text-muted-foreground">Provide a 1–2 sentence description. Make sure to note when you typically charge your customers (i.e. during checkout or 3 days later). This helps us better understand your business.</p>

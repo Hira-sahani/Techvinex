@@ -39,7 +39,7 @@ const AdminSidebar = () => {
             <span className="text-[10px] font-bold text-background">JX</span>
           </div>
           <div>
-            <p className="text-xs font-semibold text-foreground leading-none">Jetra X</p>
+            <p className="text-xs font-semibold text-foreground leading-none">Techvinex X</p>
             <p className="text-[9px] text-muted-foreground mt-0.5">Admin Console</p>
           </div>
         </div>

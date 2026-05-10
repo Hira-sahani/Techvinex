@@ -33,7 +33,7 @@ const Privacy = () => (
         </section>
         <section>
           <h2 className="text-lg font-semibold text-foreground mb-2">6. Contact Us</h2>
-          <p>If you have any questions about this Privacy Policy, please contact us at <span className="text-primary font-medium">privacy@jetrax.com</span>.</p>
+          <p>If you have any questions about this Privacy Policy, please contact us at <span className="text-primary font-medium">privacy@techvinexx.com</span>.</p>
         </section>
       </div>
     </div>

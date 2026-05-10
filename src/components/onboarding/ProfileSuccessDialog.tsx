@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 const slides = [
   {
     emoji: "🎉",
-    title: "Welcome to Jetra X!",
+    title: "Welcome to Techvinex X!",
     description: "Discover top-tier, fully remote AI roles tailored to your expertise. Get matched with high-impact opportunities at leading companies where your skills stand out.",
   },
   {

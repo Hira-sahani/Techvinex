@@ -2,9 +2,9 @@ import { useParams, useNavigate } from "react-router-dom";
 import { ArrowLeft, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRoles } from "@/hooks/useRoles";
-import JetraLoader from "@/components/JetraLoader";
+import TechvinexLoader from "@/components/TechvinexLoader";
 import { useState, useEffect } from "react";
-import JetraLoaderInline from "@/components/JetraLoaderInline";
+import TechvinexLoaderInline from "@/components/TechvinexLoaderInline";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -211,7 +211,7 @@ const ApplyRole = () => {
           user_id: user.id,
           role_id: role.id,
           role_title: role.title,
-          company: "Jetrax",
+          company: "Techvinexx",
           status: "submitted",
         });
         if (appError) {
@@ -264,7 +264,7 @@ const ApplyRole = () => {
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
-            <JetraLoaderInline />
+            <TechvinexLoaderInline />
           </div>
         ) : (
           <>

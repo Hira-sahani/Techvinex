@@ -1,9 +1,9 @@
-import JetraLoader from "@/components/JetraLoader";
+import TechvinexLoader from "@/components/TechvinexLoader";
 
 /**
- * Page-level loader. Renders the same skeleton placeholder as JetraLoader
+ * Page-level loader. Renders the same skeleton placeholder as TechvinexLoader
  * so users see content-shaped shimmer instead of a spinner.
  */
-const PageDotLoader = () => <JetraLoader />;
+const PageDotLoader = () => <TechvinexLoader />;
 
 export default PageDotLoader;

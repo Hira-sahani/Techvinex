@@ -18,7 +18,7 @@ import EmployerProtectedRoute from "@/components/employer/EmployerProtectedRoute
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 
 import OfflineBanner from "@/components/OfflineBanner";
-import JetraLoader from "@/components/JetraLoader";
+import TechvinexLoader from "@/components/TechvinexLoader";
 import IdleTimeout from "@/components/security/IdleTimeout";
 
 // Error boundary to handle dynamic import failures (common in preview)
@@ -133,7 +133,7 @@ const hideSplashScreen = () => {
   window.setTimeout(() => splash.remove(), 220);
 };
 
-const PageLoader = () => <JetraLoader />;
+const PageLoader = () => <TechvinexLoader />;
 
 const AppLayout = () => {
   const location = useLocation();
