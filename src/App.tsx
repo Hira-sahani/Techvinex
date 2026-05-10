@@ -152,6 +152,7 @@ const AppLayout = () => {
     <>
       <AuthRedirectHandler />
       {showTabs && <SidebarNav />}
+      {showTabs && <BottomTabBar />}
       <LazyErrorBoundary>
       <Suspense fallback={<PageLoader />}>
         <Routes>
