@@ -8,7 +8,6 @@ import { useNavigate } from "react-router-dom";
 import { countries } from "@/data/countries";
 
 import SidebarNav from "@/components/SidebarNav";
-import TopStatusBar from "@/components/TopStatusBar";
 import ProfileResumeTab from "@/components/profile/ProfileResumeTab";
 import ProfileLocationTab from "@/components/profile/ProfileLocationTab";
 import ProfileAvailabilityTab from "@/components/profile/ProfileAvailabilityTab";
@@ -32,7 +31,6 @@ const Profile = () => {
     <div className="min-h-screen bg-background">
       <SidebarNav />
       <div className="md:ml-16 pb-20">
-        <TopStatusBar currentStep={2} />
         <div className="px-4 sm:px-6 pt-4">
           <div className="max-w-4xl mx-auto">
             <h1 className="text-xl font-semibold text-foreground mb-4">Profile</h1>

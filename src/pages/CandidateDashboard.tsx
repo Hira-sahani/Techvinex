@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import SidebarNav from "@/components/SidebarNav";
-import TopStatusBar from "@/components/TopStatusBar";
 import ProfileDropdown from "@/components/ProfileDropdown";
 import NotificationBell from "@/components/NotificationBell";
 import { CandidateDashboardSkeleton } from "@/components/skeletons/DashboardSkeletons";
@@ -114,7 +113,6 @@ const CandidateDashboard = () => {
     <div className="min-h-screen bg-background">
       <SidebarNav />
       <div className="md:ml-16 pb-20">
-        <TopStatusBar currentStep={2} />
         <div className="px-4 sm:px-6 pt-4">
           <div className="max-w-5xl mx-auto animate-in fade-in-0 duration-200">
             <DashboardDataBoundary

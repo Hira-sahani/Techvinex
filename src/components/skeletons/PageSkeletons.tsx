@@ -1,5 +1,4 @@
 import SidebarNav from "@/components/SidebarNav";
-import TopStatusBar from "@/components/TopStatusBar";
 import { Shimmer, SkeletonCard, SkeletonList, SkeletonTable } from "./Skeleton";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +17,6 @@ export const EarningsPageSkeleton = ({ className }: { className?: string } = {})
     <Sr label="Loading earnings" />
     <SidebarNav />
     <div className="md:ml-16 pb-20" aria-hidden="true">
-      <TopStatusBar currentStep={2} />
       <div className="px-4 sm:px-6 pt-4 max-w-2xl mx-auto space-y-4">
         <div className="space-y-2">
           <Shimmer className="h-6 w-40" />
@@ -52,7 +50,6 @@ export const ReferralsPageSkeleton = ({ className }: { className?: string } = {}
     <Sr label="Loading referrals" />
     <SidebarNav />
     <div className="md:ml-16 pb-20" aria-hidden="true">
-      <TopStatusBar currentStep={2} />
       <div className="px-4 sm:px-6 pt-4 max-w-2xl mx-auto space-y-5">
         <div className="space-y-2">
           <Shimmer className="h-6 w-44" />
