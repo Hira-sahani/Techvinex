@@ -11,13 +11,22 @@ import { useAuth } from "@/contexts/AuthContext";
 const Index = () => {
   const { isLoggedIn } = useAuth();
 
+  if (isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-background pb-20 md:pb-0">
+        <Navbar />
+        <div className="pt-16">
+          <DashboardSection />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
       <Navbar />
       <HeroSection />
-      {/* Always render SEO content so Googlebot sees H1 + sections, even before auth resolves */}
       <SEOContent />
-      {isLoggedIn && <DashboardSection />}
       <ApexSection />
       <FeaturesSection />
       <CTASection />

@@ -227,9 +227,18 @@ const DashboardSection = () => {
 
   const tabData = getTabData();
 
+  const displayName =
+    (user?.user_metadata as any)?.full_name?.split(" ")[0] ||
+    (user?.user_metadata as any)?.name?.split(" ")[0] ||
+    user?.email?.split("@")[0] ||
+    "there";
+
   return (
     <section className="px-4 py-6">
       <div className="max-w-4xl mx-auto">
+        <h1 className="text-2xl sm:text-3xl font-bold text-foreground mb-5">
+          Welcome back, {displayName}!
+        </h1>
         {/* Important Tasks */}
         {taskCount > 0 && (
           <>
