@@ -91,8 +91,8 @@ const ProfileResumeTab = () => {
         };
         setForm(next);
         setInitialForm(next);
-        const hasSavedData = next.fullName || next.linkedinUrl || next.resumeName;
-        if (hasSavedData) setEditMode(false);
+        // Always keep form editable; Edit button removed
+
       }
       if (isMounted) setLoading(false);
     };
