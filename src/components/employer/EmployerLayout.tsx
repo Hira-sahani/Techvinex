@@ -1,3 +1,4 @@
+import BrandLogo from "@/components/BrandLogo";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import EmployerSidebar from "./EmployerSidebar";
 import { LayoutDashboard, Briefcase, Users, Calendar, BarChart3, CreditCard, Menu, X, Building2 } from "lucide-react";
@@ -24,10 +25,8 @@ const EmployerLayout = () => {
       <div className="flex-1 flex flex-col min-w-0">
         <header className="lg:hidden flex items-center justify-between px-4 py-3 border-b border-border bg-card">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl gradient-cta flex items-center justify-center">
-              <Building2 className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <span className="font-bold text-foreground text-sm">Techvinex X</span>
+            <BrandLogo size={32} className="h-8 w-8" />
+            <span className="font-bold text-foreground text-sm">Techvinex</span>
           </div>
           <button onClick={() => setMobileMenu(!mobileMenu)} className="p-2 text-foreground">
             {mobileMenu ? <X size={20} /> : <Menu size={20} />}

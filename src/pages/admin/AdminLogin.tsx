@@ -1,3 +1,4 @@
+import BrandLogo from "@/components/BrandLogo";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,8 +32,8 @@ const AdminLogin = () => {
       
       <div className="w-full max-w-sm">
         <div className="text-center mb-6">
-          <div className="mx-auto w-9 h-9 rounded-md bg-foreground flex items-center justify-center mb-3">
-            <Shield className="w-4 h-4 text-background" />
+          <div className="mx-auto mb-3 flex justify-center">
+            <BrandLogo size={48} className="h-12 w-12" />
           </div>
           <h1 className="text-sm font-semibold text-foreground">Techvinex Admin</h1>
           <p className="text-[10px] text-muted-foreground mt-0.5">Sign in to control center</p>

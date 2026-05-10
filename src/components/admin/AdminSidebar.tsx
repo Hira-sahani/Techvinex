@@ -1,3 +1,4 @@
+import BrandLogo from "@/components/BrandLogo";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Users, FileText, UserCheck, BarChart3,
@@ -35,11 +36,9 @@ const AdminSidebar = () => {
     <aside className="w-56 min-h-screen border-r border-border bg-card flex flex-col shrink-0">
       <div className="px-4 py-4 border-b border-border">
         <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded bg-foreground flex items-center justify-center">
-            <span className="text-[10px] font-bold text-background">JX</span>
-          </div>
+          <BrandLogo size={24} className="h-6 w-6" />
           <div>
-            <p className="text-xs font-semibold text-foreground leading-none">Techvinex X</p>
+            <p className="text-xs font-semibold text-foreground leading-none">Techvinex</p>
             <p className="text-[9px] text-muted-foreground mt-0.5">Admin Console</p>
           </div>
         </div>

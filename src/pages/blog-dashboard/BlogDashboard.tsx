@@ -1,3 +1,4 @@
+import BrandLogo from "@/components/BrandLogo";
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Search, Edit2, Trash2, Play, Pause, LogOut, Menu, X as XIcon } from "lucide-react";
@@ -126,9 +127,7 @@ const BlogDashboard = () => {
       <div className="sticky top-0 z-30 bg-background border-b border-border">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
-              <span className="text-white font-bold text-sm">X</span>
-            </div>
+            <BrandLogo size={32} className="h-8 w-8" />
             <span className="text-sm font-semibold text-foreground hidden sm:block">Atlas Dashboard</span>
           </div>
 
