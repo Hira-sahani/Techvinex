@@ -13,6 +13,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import AuthRedirectHandler from "@/components/AuthRedirectHandler";
 
 import SidebarNav from "@/components/SidebarNav";
+import BottomTabBar from "@/components/BottomTabBar";
 import EmployerProtectedRoute from "@/components/employer/EmployerProtectedRoute";
 import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 
