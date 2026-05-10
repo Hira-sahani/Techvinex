@@ -5,46 +5,74 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { CheckCircle, ArrowLeft, LogIn } from "lucide-react";
+import { CheckCircle, ArrowLeft, Eye, EyeOff, LogIn } from "lucide-react";
 
 const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
 const Login = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [emailError, setEmailError] = useState("");
-  const [sentMode, setSentMode] = useState<null | "login" | "signup">(null);
+  const [passwordError, setPasswordError] = useState("");
+  const [showCheckInbox, setShowCheckInbox] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
-  const validate = () => {
-    if (!email) { setEmailError("Please enter your email"); return false; }
-    if (!isValidEmail(email)) { setEmailError("Invalid email address"); return false; }
-    setEmailError("");
-    return true;
+  const validate = (mode: "login" | "signup") => {
+    let ok = true;
+    if (!email) { setEmailError("Please enter your email"); ok = false; }
+    else if (!isValidEmail(email)) { setEmailError("Invalid email address"); ok = false; }
+    else setEmailError("");
+    if (!password) { setPasswordError("Please enter your password"); ok = false; }
+    else if (mode === "signup" && password.length < 6) { setPasswordError("Password must be at least 6 characters"); ok = false; }
+    else setPasswordError("");
+    return ok;
   };
 
-  const sendMagicLink = async (mode: "login" | "signup") => {
-    if (!validate()) return;
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validate("login")) return;
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    setLoading(false);
+    if (error) {
+      if (/invalid|credentials/i.test(error.message)) setPasswordError("Invalid email or password");
+      else if (/confirm/i.test(error.message)) toast.error("Please confirm your email before logging in.");
+      else toast.error(error.message);
+      return;
+    }
+    toast.success("Logged in successfully!");
+    navigate("/");
+  };
+
+  const handleSignup = async () => {
+    if (!validate("signup")) return;
+    setLoading(true);
+    const { error } = await supabase.auth.signUp({
       email,
-      options: {
-        shouldCreateUser: mode === "signup",
-        emailRedirectTo: `${window.location.origin}/`,
-      },
+      password,
+      options: { emailRedirectTo: `${window.location.origin}/` },
     });
     setLoading(false);
     if (error) {
-      if (mode === "login" && /not.*found|signup.*disabled/i.test(error.message)) {
-        setEmailError("No account found. Please sign up first.");
-      } else if (mode === "signup" && /already|registered|exists/i.test(error.message)) {
-        setEmailError("This email is already registered. Please log in.");
-      } else {
-        toast.error(error.message);
-      }
+      if (/already|registered|exists/i.test(error.message)) setEmailError("This email is already registered. Please log in.");
+      else toast.error(error.message);
       return;
     }
-    setSentMode(mode);
+    setShowCheckInbox(true);
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) { toast.error("Please enter your email first"); return; }
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setLoading(false);
+    if (error) toast.error(error.message);
+    else setResetEmailSent(true);
   };
 
   const handleGoogle = async () => {
@@ -65,7 +93,8 @@ const Login = () => {
     }
   };
 
-  if (sentMode) {
+  if (resetEmailSent || showCheckInbox) {
+    const isReset = resetEmailSent;
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <div className="w-full max-w-sm bg-card border border-border rounded-lg p-5 flex flex-col items-center text-center">
@@ -73,11 +102,13 @@ const Login = () => {
             <CheckCircle className="w-4 h-4 text-green-600" />
           </div>
           <h1 className="text-sm font-semibold mb-1">Check your inbox</h1>
-          <p className="text-[10px] text-muted-foreground mb-4">
-            We've sent a {sentMode === "signup" ? "sign-up" : "login"} link to{" "}
-            <span className="text-foreground font-medium">{email}</span>.
+          <p className="text-[11px] text-muted-foreground mb-4">
+            {isReset ? "We've sent you a password reset link." : (
+              <>We've sent a confirmation link to <span className="text-foreground font-medium">{email}</span>.</>
+            )}
           </p>
-          <Button size="sm" className="w-full h-8 text-xs" onClick={() => setSentMode(null)}>
+          <Button size="sm" className="w-full h-9 text-xs"
+            onClick={() => { setResetEmailSent(false); setShowCheckInbox(false); }}>
             Got it
           </Button>
         </div>
@@ -98,11 +129,11 @@ const Login = () => {
             <LogIn className="w-4 h-4 text-background" />
           </div>
           <h1 className="text-sm font-semibold text-foreground">Continue to Techvinex</h1>
-          <p className="text-[10px] text-muted-foreground mt-0.5">Login or create your account</p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Login or create your account</p>
         </div>
 
         <div className="bg-card border border-border rounded-lg p-5">
-          <form onSubmit={(e) => { e.preventDefault(); sendMagicLink("login"); }} className="space-y-3">
+          <form onSubmit={handleLogin} className="space-y-3">
             <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-medium">Email address</Label>
@@ -120,6 +151,31 @@ const Login = () => {
               />
             </div>
 
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-medium">Password</Label>
+                {passwordError && <span className="text-[10px] text-destructive">{passwordError}</span>}
+              </div>
+              <div className="relative">
+                <Input
+                  type={passwordVisible ? "text" : "password"}
+                  value={password}
+                  autoComplete="current-password"
+                  onChange={(e) => { setPassword(e.target.value); setPasswordError(""); }}
+                  placeholder="••••••••"
+                  className={`h-10 text-sm pr-9 ${passwordError ? "border-destructive" : ""}`}
+                />
+                <button type="button" onClick={() => setPasswordVisible(!passwordVisible)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  {passwordVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <button type="button" onClick={handleForgotPassword}
+                className="text-[11px] text-primary hover:underline block text-right pt-0.5">
+                Forgot password?
+              </button>
+            </div>
+
             <Button
               type="submit"
               disabled={loading}
@@ -132,7 +188,7 @@ const Login = () => {
               type="button"
               variant="outline"
               disabled={loading}
-              onClick={() => sendMagicLink("signup")}
+              onClick={handleSignup}
               className="w-full h-11 text-sm font-medium"
             >
               Sign Up
