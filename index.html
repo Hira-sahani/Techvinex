@@ -15,32 +15,37 @@
     <style>
       #splash-screen {
         position: fixed; inset: 0; z-index: 9999;
-        display: flex; align-items: center; justify-content: center;
-        flex-direction: column; gap: 1rem;
         background: #ffffff;
+        overflow: hidden;
       }
-      .splash-dots {
-        display: flex; gap: 6px; align-items: center;
+      .splash-skeleton {
+        max-width: 56rem;
+        margin: 0 auto;
+        padding: 1.5rem 1rem 6rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
       }
-      .splash-dots span {
-        width: 10px; height: 10px; border-radius: 50%;
-        background: #7c3aed;
-        animation: splash-bounce 1.2s ease-in-out infinite;
+      .splash-skeleton .row { display: flex; gap: 0.75rem; align-items: center; justify-content: space-between; }
+      .splash-skeleton .col { display: flex; flex-direction: column; gap: 0.5rem; }
+      .splash-skeleton .grid4 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; }
+      @media (min-width: 640px) { .splash-skeleton .grid4 { grid-template-columns: repeat(4, 1fr); } }
+      .splash-skeleton .tabs { display: flex; gap: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e5e7eb; }
+      .skel {
+        position: relative; overflow: hidden;
+        background: #eef0f3; border-radius: 8px;
       }
-      .splash-dots span:nth-child(1) { animation-delay: 0s; }
-      .splash-dots span:nth-child(2) { animation-delay: 0.1s; }
-      .splash-dots span:nth-child(3) { animation-delay: 0.2s; }
-      .splash-dots span:nth-child(4) { animation-delay: 0.3s; }
-      .splash-dots span:nth-child(5) { animation-delay: 0.4s; }
-      .splash-dots span:nth-child(6) { animation-delay: 0.5s; }
-      @keyframes splash-bounce {
-        0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-        40% { transform: scale(1); opacity: 1; }
+      .skel::after {
+        content: ""; position: absolute; inset: 0;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent);
+        transform: translateX(-100%);
+        animation: skel-shimmer 1.4s infinite;
       }
-      .splash-text {
-        font-family: system-ui, sans-serif;
-        font-size: 0.85rem; color: #7c3aed; opacity: 0.7;
+      @keyframes skel-shimmer {
+        100% { transform: translateX(100%); }
       }
+      .skel-card { height: 78px; border-radius: 12px; }
+      .skel-row { height: 64px; border-radius: 12px; }
     </style>
     <meta name="description" content="Techvinex is an AI powered job and hiring platform connecting top professionals with leading companies. Discover jobs, AI matching, referrals and career growth." />
     <meta name="author" content="Techvinex" />
