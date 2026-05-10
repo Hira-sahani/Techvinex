@@ -34,11 +34,9 @@ const EmployerSidebar = () => {
   return (
     <aside className="hidden lg:flex flex-col w-64 min-h-screen bg-card border-r border-border">
       <div className="flex items-center gap-3 px-6 py-5 border-b border-border">
-        <div className="w-9 h-9 rounded-xl gradient-cta flex items-center justify-center">
-          <Building2 className="w-5 h-5 text-primary-foreground" />
-        </div>
+        <BrandLogo size={36} className="h-9 w-9" />
         <div className="min-w-0">
-          <p className="text-sm font-bold text-foreground truncate">Techvinex X</p>
+          <p className="text-sm font-bold text-foreground truncate">Techvinex</p>
           <p className="text-xs text-muted-foreground truncate">{user?.email || "Employer"}</p>
         </div>
       </div>

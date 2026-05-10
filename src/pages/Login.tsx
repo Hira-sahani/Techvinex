@@ -125,8 +125,8 @@ const Login = () => {
         </button>
 
         <div className="text-center mb-6">
-          <div className="mx-auto w-9 h-9 rounded-md bg-foreground flex items-center justify-center mb-3">
-            <LogIn className="w-4 h-4 text-background" />
+          <div className="mx-auto mb-3 flex justify-center">
+            <BrandLogo size={48} className="h-12 w-12" />
           </div>
           <h1 className="text-sm font-semibold text-foreground">Continue to Techvinex</h1>
           <p className="text-[11px] text-muted-foreground mt-0.5">Login or create your account</p>

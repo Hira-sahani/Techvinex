@@ -34,9 +34,7 @@ const BlogDashboardLogin = () => {
       <div className="w-full max-w-sm">
         {/* Logo */}
         <div className="flex justify-center mb-8">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
-            <span className="text-white font-bold text-xl">X</span>
-          </div>
+          <BrandLogo size={56} className="h-14 w-14" />
         </div>
         <h1 className="text-xl font-bold text-foreground text-center mb-1">Atlas Blog Dashboard</h1>
         <p className="text-xs text-muted-foreground text-center mb-6">Sign in to manage blog posts</p>
