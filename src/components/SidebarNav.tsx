@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
 import { BriefcaseBusiness, Target, LayoutDashboard, UserPlus, Wallet, User } from "lucide-react";
-import JetraLoaderInline from "@/components/JetraLoaderInline";
+import TechvinexLoaderInline from "@/components/TechvinexLoaderInline";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 
@@ -25,7 +25,7 @@ const SidebarNav = () => {
         className="flex h-9 w-9 items-center justify-center rounded-xl border border-border bg-card text-primary shadow-card transition-colors hover:bg-secondary mb-8"
       >
         {loading ? (
-          <JetraLoaderInline size="sm" />
+          <TechvinexLoaderInline size="sm" />
         ) : (
           <BriefcaseBusiness size={16} strokeWidth={2.2} aria-hidden="true" />
         )}

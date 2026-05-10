@@ -309,9 +309,9 @@ const Settings = () => {
           {privacyOpen && (
             <div className="bg-secondary/30 px-5 py-4 border-b border-border">
               <p className="text-xs text-muted-foreground leading-relaxed">
-                At Jetra X, we value your privacy. We collect minimal personal data necessary to provide our services.
+                At Techvinex X, we value your privacy. We collect minimal personal data necessary to provide our services.
                 Your information is encrypted and never shared with third parties without your consent.
-                You can request data deletion at any time by contacting support@jetrax.com.
+                You can request data deletion at any time by contacting support@techvinexx.com.
               </p>
             </div>
           )}
@@ -349,7 +349,7 @@ const Settings = () => {
                 <p className="text-xs text-muted-foreground leading-relaxed mb-2">
                   {t("settings.stillNeedHelp")}
                 </p>
-                <p className="text-xs text-foreground">📧 support@jetrax.com</p>
+                <p className="text-xs text-foreground">📧 support@techvinexx.com</p>
                 <p className="text-xs text-foreground">📞 +91 1800-XXX-XXXX</p>
                 <p className="text-xs text-muted-foreground mt-2">{t("settings.supportHours")}</p>
               </div>

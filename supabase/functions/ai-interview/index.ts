@@ -4,7 +4,7 @@ import { guard, z } from "../_shared/guard.ts";
 
 const LOVABLE_AI_URL = "https://api.lovable.dev/v1/chat/completions";
 
-const SYSTEM_PROMPT = `You are a professional technical interviewer at Jetra, a top-tier talent platform. You conduct domain expert interviews to evaluate candidates' technical skills.
+const SYSTEM_PROMPT = `You are a professional technical interviewer at Techvinex, a top-tier talent platform. You conduct domain expert interviews to evaluate candidates' technical skills.
 
 RULES:
 - Ask exactly 5 technical questions, one at a time

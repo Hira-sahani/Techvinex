@@ -2,7 +2,7 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
-import JetraLoader from "@/components/JetraLoader";
+import TechvinexLoader from "@/components/TechvinexLoader";
 
 const EmployerProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading: authLoading } = useAuth();
@@ -22,7 +22,7 @@ const EmployerProtectedRoute = ({ children }: { children: React.ReactNode }) => 
   }, [user, authLoading]);
 
   if (authLoading || hasAccess === null) {
-    return <JetraLoader />;
+    return <TechvinexLoader />;
   }
 
   if (!user || !hasAccess) return <Navigate to="/employer/login" replace />;

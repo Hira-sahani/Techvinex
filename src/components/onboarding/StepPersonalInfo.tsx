@@ -27,7 +27,7 @@ const StepPersonalInfo = ({ form, update, passwordError, passwordAlreadySet }: P
 
   return (
     <div className="text-center">
-      <h1 className="text-xl font-bold text-foreground mb-1">Welcome to Jetra X!</h1>
+      <h1 className="text-xl font-bold text-foreground mb-1">Welcome to Techvinex X!</h1>
       <p className="text-sm text-muted-foreground mb-8">
         Let's start your profile. Fill out a few quick details to get discovered by top employers and unlock better opportunities
       </p>

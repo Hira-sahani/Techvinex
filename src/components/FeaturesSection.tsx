@@ -14,7 +14,7 @@ const features = [
   {
     icon: Globe,
     title: "Fully Remote",
-    description: "Work from anywhere in the world. All roles on Jetra X are 100% remote.",
+    description: "Work from anywhere in the world. All roles on Techvinex X are 100% remote.",
   },
   {
     icon: DollarSign,
@@ -28,7 +28,7 @@ const FeaturesSection = () => {
     <section className="py-12 sm:py-20 px-3 sm:px-4 bg-secondary">
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-14">
-          <h2 className="text-3xl font-bold text-foreground mb-4">Why choose Jetra X?</h2>
+          <h2 className="text-3xl font-bold text-foreground mb-4">Why choose Techvinex X?</h2>
           <p className="text-muted-foreground max-w-lg mx-auto">
             The premier platform for AI professionals to find high-paying, remote opportunities.
           </p>

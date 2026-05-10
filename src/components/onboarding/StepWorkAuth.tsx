@@ -278,7 +278,7 @@ const StepWorkAuth = ({ form, update }: Props) => {
               className="mt-0.5"
             />
             <label htmlFor="diff-country" className="text-xs text-muted-foreground cursor-pointer leading-relaxed">
-              I will be physically working from a different country than {form.country || "India"} while performing services through Jetra X
+              I will be physically working from a different country than {form.country || "India"} while performing services through Techvinex X
             </label>
           </div>
 
@@ -296,7 +296,7 @@ const StepWorkAuth = ({ form, update }: Props) => {
               <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
                 By checking this box, you represent and warrant that:<br />
                 1. You have all necessary visas, permits, and/or legal rights to work from the country you have indicated.<br />
-                2. You will defend, indemnify, and hold harmless Jetra X from any claims, losses, or liabilities arising from your failure to maintain proper work authorization.
+                2. You will defend, indemnify, and hold harmless Techvinex X from any claims, losses, or liabilities arising from your failure to maintain proper work authorization.
               </p>
             </div>
           </div>
@@ -310,11 +310,11 @@ const StepWorkAuth = ({ form, update }: Props) => {
             />
             <div>
               <label htmlFor="agree-remain" className="text-xs text-foreground font-medium cursor-pointer">
-                I agree to remain working from {form.country || "India"}, and to notify Jetra X in writing prior to any change. *
+                I agree to remain working from {form.country || "India"}, and to notify Techvinex X in writing prior to any change. *
               </label>
               <p className="text-[10px] text-muted-foreground mt-1 leading-relaxed">
                 By checking this box, you agree to:<br />
-                1. Continue working only from the country specified above unless you have provided Jetra X with prior written notice of your intended change of work location.<br />
+                1. Continue working only from the country specified above unless you have provided Techvinex X with prior written notice of your intended change of work location.<br />
                 2. Obtain and maintain proper work authorization for any future country from which you intend to work before beginning work from that country.
               </p>
             </div>

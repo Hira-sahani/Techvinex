@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
  * sections where a full-page loader would be too heavy. Replaces the old
  * animated dots so the loading state always looks like a skeleton.
  */
-const JetraLoaderInline = ({ size = "md" }: { size?: "sm" | "md" }) => {
+const TechvinexLoaderInline = ({ size = "md" }: { size?: "sm" | "md" }) => {
   const isSm = size === "sm";
   return (
     <div
@@ -26,4 +26,4 @@ const JetraLoaderInline = ({ size = "md" }: { size?: "sm" | "md" }) => {
   );
 };
 
-export default JetraLoaderInline;
+export default TechvinexLoaderInline;

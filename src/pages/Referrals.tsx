@@ -36,8 +36,8 @@ const Referrals = () => {
   const [loading, setLoading] = useState(true);
 
   const referralCode = useMemo(() => {
-    if (user?.id) return "JETRAX-" + user.id.substring(0, 6).toUpperCase();
-    return "JETRAX-XXXXXX";
+    if (user?.id) return "TECHVINEXX-" + user.id.substring(0, 6).toUpperCase();
+    return "TECHVINEXX-XXXXXX";
   }, [user]);
 
   const referralLink = `${window.location.origin}/?ref=${referralCode}`;
@@ -100,13 +100,13 @@ const Referrals = () => {
   };
 
   const shareViaEmail = () => {
-    const subject = encodeURIComponent("Join me on Jetrax — earn while you work!");
-    const body = encodeURIComponent(`Hey! I've been using Jetrax and thought you'd be a great fit. Use my referral link to sign up:\n\n${referralLink}\n\nOr use code: ${referralCode}`);
+    const subject = encodeURIComponent("Join me on Techvinexx — earn while you work!");
+    const body = encodeURIComponent(`Hey! I've been using Techvinexx and thought you'd be a great fit. Use my referral link to sign up:\n\n${referralLink}\n\nOr use code: ${referralCode}`);
     window.open(`mailto:?subject=${subject}&body=${body}`, "_blank");
   };
 
   const shareViaWhatsApp = () => {
-    const text = encodeURIComponent(`Hey! Join me on Jetrax and explore remote opportunities. Sign up with my referral link: ${referralLink}`);
+    const text = encodeURIComponent(`Hey! Join me on Techvinexx and explore remote opportunities. Sign up with my referral link: ${referralLink}`);
     window.open(`https://wa.me/?text=${text}`, "_blank");
   };
 
@@ -114,8 +114,8 @@ const Referrals = () => {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: "Join Jetrax",
-          text: `Sign up on Jetrax with my referral code ${referralCode} and explore opportunities!`,
+          title: "Join Techvinexx",
+          text: `Sign up on Techvinexx with my referral code ${referralCode} and explore opportunities!`,
           url: referralLink,
         });
       } catch {}

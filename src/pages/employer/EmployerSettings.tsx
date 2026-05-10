@@ -11,7 +11,7 @@ const EmployerSettings = () => {
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
   const isDark = theme === "dark";
-  const [company, setCompany] = useState({ name: "Jetra X", industry: "Technology", size: "50-200", website: "" });
+  const [company, setCompany] = useState({ name: "Techvinex X", industry: "Technology", size: "50-200", website: "" });
   const [notifs, setNotifs] = useState({ newCandidates: true, interviewReminders: true, aiScoring: true, billing: true, weeklyDigest: false });
 
   const handleSave = () => {

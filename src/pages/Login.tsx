@@ -151,7 +151,7 @@ const Login = () => {
           <div className="mx-auto w-9 h-9 rounded-md bg-foreground flex items-center justify-center mb-3">
             <LogIn className="w-4 h-4 text-background" />
           </div>
-          <h1 className="text-sm font-semibold text-foreground">Continue to Jetra</h1>
+          <h1 className="text-sm font-semibold text-foreground">Continue to Techvinex</h1>
           <p className="text-[10px] text-muted-foreground mt-0.5">
             {mode === "login" ? "Sign in to your account" : "Create your account"}
           </p>

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import JetraLoader from "@/components/JetraLoader";
+import TechvinexLoader from "@/components/TechvinexLoader";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { CheckCircle, ShieldAlert } from "lucide-react";
@@ -89,7 +89,7 @@ const ResetPassword = () => {
 
   return (
     <div className="relative min-h-screen bg-muted/30 flex flex-col items-center justify-center px-4">
-      {loading && <JetraLoader />}
+      {loading && <TechvinexLoader />}
       <div className="w-full max-w-md bg-card rounded-2xl shadow-xl p-10">
         <div className="flex flex-col items-center mb-10">
           <div className="loader-cluster gap-1.5 mb-5" aria-hidden="true">
