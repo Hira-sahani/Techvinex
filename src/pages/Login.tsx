@@ -5,85 +5,46 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable/index";
-import { CheckCircle, ArrowLeft, Eye, EyeOff, LogIn } from "lucide-react";
+import { CheckCircle, ArrowLeft, LogIn } from "lucide-react";
 
 const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
-type Mode = "login" | "signup";
-
 const Login = () => {
   const navigate = useNavigate();
-  const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [passwordVisible, setPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [showCheckInbox, setShowCheckInbox] = useState(false);
-  const [resetEmailSent, setResetEmailSent] = useState(false);
   const [emailError, setEmailError] = useState("");
-  const [passwordError, setPasswordError] = useState("");
+  const [sentMode, setSentMode] = useState<null | "login" | "signup">(null);
 
   const validate = () => {
-    let ok = true;
-    if (!email) { setEmailError("Please enter your email"); ok = false; }
-    else if (!isValidEmail(email)) { setEmailError("Invalid email address"); ok = false; }
-    else setEmailError("");
-    if (!password) { setPasswordError("Please enter your password"); ok = false; }
-    else if (mode === "signup" && password.length < 6) { setPasswordError("Password must be at least 6 characters"); ok = false; }
-    else setPasswordError("");
-    return ok;
+    if (!email) { setEmailError("Please enter your email"); return false; }
+    if (!isValidEmail(email)) { setEmailError("Invalid email address"); return false; }
+    setEmailError("");
+    return true;
   };
 
-  const handleForgotPassword = async () => {
-    if (!email) { toast.error("Please enter your email first"); return; }
-    setLoading(true);
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-    setLoading(false);
-    if (error) toast.error(error.message);
-    else setResetEmailSent(true);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const sendMagicLink = async (mode: "login" | "signup") => {
     if (!validate()) return;
     setLoading(true);
-
-    if (mode === "login") {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
-      setLoading(false);
-      if (error) {
-        if (/invalid|credentials/i.test(error.message)) {
-          setPasswordError("Invalid email or password");
-        } else if (/confirm/i.test(error.message)) {
-          toast.error("Please confirm your email before logging in.");
-        } else {
-          toast.error(error.message);
-        }
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        shouldCreateUser: mode === "signup",
+        emailRedirectTo: `${window.location.origin}/`,
+      },
+    });
+    setLoading(false);
+    if (error) {
+      if (mode === "login" && /not.*found|signup.*disabled/i.test(error.message)) {
+        setEmailError("No account found. Please sign up first.");
+      } else if (mode === "signup" && /already|registered|exists/i.test(error.message)) {
+        setEmailError("This email is already registered. Please log in.");
       } else {
-        toast.success("Logged in successfully!");
-        navigate("/");
+        toast.error(error.message);
       }
-    } else {
-      const { error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: { emailRedirectTo: `${window.location.origin}/` },
-      });
-      setLoading(false);
-      if (error) {
-        if (/already|registered|exists/i.test(error.message)) {
-          setEmailError("This email is already registered. Please log in.");
-          setMode("login");
-        } else {
-          toast.error(error.message);
-        }
-      } else {
-        setShowCheckInbox(true);
-      }
+      return;
     }
+    setSentMode(mode);
   };
 
   const handleGoogle = async () => {
@@ -104,7 +65,7 @@ const Login = () => {
     }
   };
 
-  if (resetEmailSent) {
+  if (sentMode) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <div className="w-full max-w-sm bg-card border border-border rounded-lg p-5 flex flex-col items-center text-center">
@@ -112,27 +73,12 @@ const Login = () => {
             <CheckCircle className="w-4 h-4 text-green-600" />
           </div>
           <h1 className="text-sm font-semibold mb-1">Check your inbox</h1>
-          <p className="text-[10px] text-muted-foreground mb-4">We've sent you a password reset link.</p>
-          <Button size="sm" className="w-full h-8 text-xs" onClick={() => setResetEmailSent(false)}>Got it</Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (showCheckInbox) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <div className="w-full max-w-sm bg-card border border-border rounded-lg p-5 flex flex-col items-center text-center">
-          <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center mb-3">
-            <CheckCircle className="w-4 h-4 text-green-600" />
-          </div>
-          <h1 className="text-sm font-semibold mb-1">Confirm your email</h1>
           <p className="text-[10px] text-muted-foreground mb-4">
-            We've sent a confirmation link to <span className="text-foreground font-medium">{email}</span>. Click it to activate your account, then log in.
+            We've sent a {sentMode === "signup" ? "sign-up" : "login"} link to{" "}
+            <span className="text-foreground font-medium">{email}</span>.
           </p>
-          <Button size="sm" className="w-full h-8 text-xs"
-            onClick={() => { setShowCheckInbox(false); setMode("login"); setPassword(""); }}>
-            Back to login
+          <Button size="sm" className="w-full h-8 text-xs" onClick={() => setSentMode(null)}>
+            Got it
           </Button>
         </div>
       </div>
@@ -152,74 +98,55 @@ const Login = () => {
             <LogIn className="w-4 h-4 text-background" />
           </div>
           <h1 className="text-sm font-semibold text-foreground">Continue to Techvinex</h1>
-          <p className="text-[10px] text-muted-foreground mt-0.5">
-            {mode === "login" ? "Sign in to your account" : "Create your account"}
-          </p>
+          <p className="text-[10px] text-muted-foreground mt-0.5">Login or create your account</p>
         </div>
 
         <div className="bg-card border border-border rounded-lg p-5">
-          {/* Mode tabs */}
-          <div className="flex gap-1 mb-4 p-0.5 bg-muted/40 rounded-md">
-            {(["login", "signup"] as Mode[]).map((m) => (
-              <button key={m} type="button"
-                onClick={() => { setMode(m); setEmailError(""); setPasswordError(""); }}
-                className={`flex-1 h-7 text-[11px] font-medium rounded transition-colors ${
-                  mode === m ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                }`}>
-                {m === "login" ? "Log in" : "Sign up"}
-              </button>
-            ))}
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-3">
+          <form onSubmit={(e) => { e.preventDefault(); sendMagicLink("login"); }} className="space-y-3">
             <div className="space-y-1">
               <div className="flex items-center justify-between">
-                <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Email</Label>
+                <Label className="text-xs font-medium">Email address</Label>
                 {emailError && <span className="text-[10px] text-destructive">{emailError}</span>}
               </div>
-              <Input type="email" inputMode="email" autoComplete="email" value={email}
+              <Input
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                value={email}
                 onChange={(e) => { setEmail(e.target.value); setEmailError(""); }}
-                placeholder="your@email.com" required
-                className={`h-8 text-xs bg-muted/30 border-transparent focus-visible:border-border ${emailError ? "border-destructive" : ""}`} />
+                placeholder="your@email.com"
+                required
+                className={`h-10 text-sm ${emailError ? "border-destructive" : ""}`}
+              />
             </div>
 
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <Label className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Password</Label>
-                {passwordError && <span className="text-[10px] text-destructive">{passwordError}</span>}
-              </div>
-              <div className="relative">
-                <Input type={passwordVisible ? "text" : "password"} value={password}
-                  autoComplete={mode === "login" ? "current-password" : "new-password"}
-                  onChange={(e) => { setPassword(e.target.value); setPasswordError(""); }}
-                  placeholder="••••••••"
-                  className={`h-8 text-xs pr-8 bg-muted/30 border-transparent focus-visible:border-border ${passwordError ? "border-destructive" : ""}`} />
-                <button type="button" onClick={() => setPasswordVisible(!passwordVisible)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                  {passwordVisible ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
-                </button>
-              </div>
-              {mode === "login" && (
-                <button type="button" onClick={handleForgotPassword}
-                  className="text-[10px] text-primary hover:underline block text-right">
-                  Forgot password?
-                </button>
-              )}
-            </div>
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full h-11 text-sm font-medium bg-gradient-to-r from-primary to-primary/80 hover:opacity-90"
+            >
+              {loading ? "Please wait..." : "Login"}
+            </Button>
 
-            <Button type="submit" disabled={loading} size="sm" className="w-full h-8 text-xs mt-1">
-              {loading ? "Please wait..." : mode === "login" ? "Log in" : "Create account"}
+            <Button
+              type="button"
+              variant="outline"
+              disabled={loading}
+              onClick={() => sendMagicLink("signup")}
+              className="w-full h-11 text-sm font-medium"
+            >
+              Sign Up
             </Button>
           </form>
 
-          <div className="flex items-center gap-2 my-3">
+          <div className="flex items-center gap-2 my-4">
             <div className="flex-1 h-px bg-border" />
-            <span className="text-[10px] text-muted-foreground">Or continue with</span>
+            <span className="text-xs text-muted-foreground">Or continue with</span>
             <div className="flex-1 h-px bg-border" />
           </div>
 
-          <Button variant="outline" size="sm" className="w-full h-8 text-xs" disabled={loading} onClick={handleGoogle}>
-            <svg className="w-3.5 h-3.5 mr-1.5" viewBox="0 0 24 24">
+          <Button variant="outline" className="w-full h-11 text-sm" disabled={loading} onClick={handleGoogle}>
+            <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24">
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
               <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
               <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
@@ -229,8 +156,9 @@ const Login = () => {
           </Button>
         </div>
 
-        <p className="text-[10px] text-muted-foreground text-center mt-3">
-          By continuing, <a href="/terms" className="underline text-foreground">you agree to our Terms of Service</a>.
+        <p className="text-xs text-muted-foreground text-center mt-4">
+          By signing in, you agree to our{" "}
+          <a href="/terms" className="underline text-foreground">Worker Terms of Service</a>.
         </p>
       </div>
     </div>
