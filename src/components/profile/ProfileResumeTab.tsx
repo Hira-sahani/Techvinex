@@ -168,17 +168,10 @@ const ProfileResumeTab = () => {
 
   return (
     <div className="space-y-8 pb-24">
-      {/* Header with Edit button */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-sm font-semibold text-foreground">Resume</h3>
-          <p className="text-xs text-muted-foreground mt-1">This will be shown to companies to find you opportunities</p>
-        </div>
-        {!editMode && (
-          <Button variant="outline" size="sm" onClick={() => setEditMode(true)} className="gap-1.5 shrink-0">
-            <Pencil size={14} /> Edit
-          </Button>
-        )}
+      {/* Header */}
+      <div>
+        <h3 className="text-sm font-semibold text-foreground">Resume</h3>
+        <p className="text-xs text-muted-foreground mt-1">This will be shown to companies to find you opportunities</p>
       </div>
 
       {/* Form */}
