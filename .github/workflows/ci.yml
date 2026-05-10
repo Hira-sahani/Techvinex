@@ -1,0 +1,83 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        id: install
+        run: |
+          set -o pipefail
+          bun install 2>&1 | tee install.log
+
+      - name: Show install log on failure
+        if: failure() && steps.install.conclusion == 'failure'
+        run: |
+          echo "===== INSTALL FAILURE LOG ====="
+          cat install.log || true
+
+      - name: Typecheck
+        id: typecheck
+        run: |
+          set -o pipefail
+          bunx tsc --noEmit 2>&1 | tee typecheck.log
+
+      - name: Show typecheck log on failure
+        if: failure() && steps.typecheck.conclusion == 'failure'
+        run: |
+          echo "===== TYPECHECK FAILURE LOG ====="
+          cat typecheck.log || true
+
+      - name: Build
+        id: build
+        run: |
+          set -o pipefail
+          bun run build 2>&1 | tee build.log
+
+      - name: Show build log on failure
+        if: failure() && steps.build.conclusion == 'failure'
+        run: |
+          echo "===== BUILD FAILURE LOG ====="
+          cat build.log || true
+
+      - name: Tests
+        id: tests
+        if: hashFiles('vitest.config.ts', 'vitest.config.js', 'vite.config.ts', 'vite.config.js') != ''
+        run: |
+          set -o pipefail
+          if bunx --bun vitest --version >/dev/null 2>&1; then
+            bunx vitest run --reporter=verbose 2>&1 | tee tests.log
+          else
+            echo "vitest not installed, skipping"
+          fi
+
+      - name: Show test log on failure
+        if: failure() && steps.tests.conclusion == 'failure'
+        run: |
+          echo "===== TEST FAILURE LOG ====="
+          cat tests.log || true
+
+      - name: Upload logs as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-logs-${{ github.run_id }}
+          path: |
+            install.log
+            typecheck.log
+            build.log
+            tests.log
+          if-no-files-found: ignore
+          retention-days: 7
