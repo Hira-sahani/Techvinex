@@ -1,3 +1,4 @@
+import BrandLogo from "@/components/BrandLogo";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Users, FileText, UserCheck, BarChart3,

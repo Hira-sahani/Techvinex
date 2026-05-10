@@ -1,3 +1,4 @@
+import BrandLogo from "@/components/BrandLogo";
 import { useNavigate, useLocation } from "react-router-dom";
 import { LayoutDashboard, Users, Calendar, BarChart3, CreditCard, LogOut, Building2, Kanban, Star, Settings, MessageSquare, Bell, Target } from "lucide-react";
 import { toast } from "sonner";

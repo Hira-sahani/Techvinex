@@ -1,3 +1,4 @@
+import BrandLogo from "@/components/BrandLogo";
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import EmployerSidebar from "./EmployerSidebar";
 import { LayoutDashboard, Briefcase, Users, Calendar, BarChart3, CreditCard, Menu, X, Building2 } from "lucide-react";

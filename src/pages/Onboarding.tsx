@@ -1,3 +1,4 @@
+import BrandLogo from "@/components/BrandLogo";
 import { useEffect, useState } from "react";
 import { checkPasswordStrength, checkLeakedPassword } from "@/lib/passwordSecurity";
 import { useNavigate } from "react-router-dom";
