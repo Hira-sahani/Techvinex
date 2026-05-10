@@ -78,14 +78,14 @@ const Login = () => {
   const handleGoogle = async () => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/`,
-          queryParams: { prompt: "select_account" },
-        },
+      const { lovable } = await import("@/integrations/lovable/index");
+      const result = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+        extraParams: { prompt: "select_account" },
       });
-      if (error) toast.error("Google sign-in failed: " + error.message);
+      if (result.error) {
+        toast.error("Google sign-in failed: " + (result.error.message || String(result.error)));
+      }
     } catch (e) {
       toast.error("Google sign-in failed: " + (e instanceof Error ? e.message : String(e)));
     } finally {
