@@ -23,13 +23,25 @@ const BottomTabBar = () => {
             <button
               key={tab.label}
               onClick={() => navigate(tab.path)}
-              className={cn(
-                "flex flex-col items-center justify-center gap-0.5 flex-1 py-2 transition-colors",
-                isActive ? "text-primary" : "text-muted-foreground"
-              )}
+              className="relative flex flex-col items-center justify-center gap-1 flex-1 py-2"
             >
-              <tab.icon size={20} strokeWidth={isActive ? 2.5 : 1.5} />
-              <span className={cn("text-[10px]", isActive && "font-semibold")}>
+              {isActive && (
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-10 rounded-full bg-primary" />
+              )}
+              <span
+                className={cn(
+                  "flex items-center justify-center w-11 h-7 rounded-full transition-all",
+                  isActive ? "bg-primary/10 text-primary" : "text-muted-foreground"
+                )}
+              >
+                <tab.icon size={20} strokeWidth={isActive ? 2.5 : 1.75} />
+              </span>
+              <span
+                className={cn(
+                  "text-[10px] leading-none transition-colors",
+                  isActive ? "text-primary font-semibold" : "text-muted-foreground"
+                )}
+              >
                 {tab.label}
               </span>
             </button>
