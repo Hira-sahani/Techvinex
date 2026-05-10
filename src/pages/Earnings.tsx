@@ -865,7 +865,7 @@ const Earnings = () => {
   return (
     <div className="min-h-screen bg-background">
       <SidebarNav />
-      <div className="ml-16 pb-20">
+      <div className="md:ml-16 pb-20">
         <TopStatusBar currentStep={2} />
         <div className="px-4 sm:px-6 pt-4 max-w-2xl mx-auto">
         <h1 className="text-2xl font-bold text-foreground mb-1">{t("earnings.title")}</h1>

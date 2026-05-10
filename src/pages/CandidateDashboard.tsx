@@ -113,7 +113,7 @@ const CandidateDashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <SidebarNav />
-      <div className="ml-16 pb-20">
+      <div className="md:ml-16 pb-20">
         <TopStatusBar currentStep={2} />
         <div className="px-4 sm:px-6 pt-4">
           <div className="max-w-5xl mx-auto animate-in fade-in-0 duration-200">
