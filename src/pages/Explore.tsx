@@ -221,7 +221,7 @@ const Explore = () => {
     <div className="min-h-screen bg-background">
       <SidebarNav />
 
-      <div className="ml-16 pb-20">
+      <div className="md:ml-16 pb-20">
         <TopStatusBar currentStep={2} />
 
         <div className="px-4 sm:px-6 pt-4">

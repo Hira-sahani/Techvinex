@@ -16,7 +16,7 @@ const PageDotLoader = () => (
   >
     <span className="sr-only">Loading</span>
     <SidebarNav />
-    <div className="ml-16 pb-20" aria-hidden="true">
+    <div className="md:ml-16 pb-20" aria-hidden="true">
       <TopStatusBar currentStep={2} />
       <div className="px-4 sm:px-6 pt-4 max-w-5xl mx-auto space-y-5">
         <div className="space-y-2">
