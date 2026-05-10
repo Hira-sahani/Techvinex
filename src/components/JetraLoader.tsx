@@ -1,40 +1,43 @@
-import { Shimmer } from "@/components/skeletons/Skeleton";
+import { Shimmer, SkeletonCard, SkeletonList } from "@/components/skeletons/Skeleton";
 
 /**
- * Full-page loading state. Skeleton-based (no dot spinner / "Loading..." text / glass card).
- * Renders a page-filling layout of shimmer blocks so it feels like the real screen
- * is rendering, not a centered "loading" overlay.
+ * Generic full-page skeleton placeholder used wherever a route or page-level
+ * loader was previously shown. Replaces the old animated dots loader so the
+ * user always sees a content-shaped shimmer instead of a spinner.
  */
 const JetraLoader = () => (
   <div
-    className="fixed inset-0 z-50 bg-background overflow-hidden"
+    className="min-h-screen bg-background"
     role="status"
     aria-busy="true"
     aria-live="polite"
     aria-label="Loading"
   >
     <span className="sr-only">Loading</span>
-    <div aria-hidden="true" className="h-full w-full px-4 sm:px-6 pt-6 pb-10 max-w-2xl mx-auto space-y-5">
+    <div aria-hidden="true" className="max-w-4xl mx-auto px-4 sm:px-6 pt-6 pb-24 space-y-5">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <Shimmer className="h-8 w-8 rounded-full" />
-        <Shimmer className="h-3 w-24" />
+        <div className="space-y-2">
+          <Shimmer className="h-6 w-48" />
+          <Shimmer className="h-3 w-64" />
+        </div>
+        <Shimmer className="h-9 w-9 rounded-full" />
       </div>
-      <div className="space-y-2">
-        <Shimmer className="h-6 w-2/3" />
-        <Shimmer className="h-3 w-1/2" />
+
+      {/* Stat cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        {[0, 1, 2, 3].map((i) => <SkeletonCard key={i} />)}
       </div>
-      <div className="space-y-3">
-        <Shimmer className="h-10 w-full rounded-md" />
-        <Shimmer className="h-10 w-full rounded-md" />
-        <Shimmer className="h-10 w-full rounded-md" />
-        <Shimmer className="h-10 w-3/4 rounded-md" />
+
+      {/* Tabs row */}
+      <div className="flex gap-4 border-b border-border pb-2">
+        {[0, 1, 2, 3, 4].map((i) => (
+          <Shimmer key={i} className="h-3 w-16" />
+        ))}
       </div>
-      <Shimmer className="h-32 w-full rounded-xl" />
-      <div className="grid grid-cols-2 gap-3">
-        <Shimmer className="h-16 rounded-lg" />
-        <Shimmer className="h-16 rounded-lg" />
-      </div>
-      <Shimmer className="h-10 w-full rounded-md" />
+
+      {/* List */}
+      <SkeletonList rows={5} />
     </div>
   </div>
 );
