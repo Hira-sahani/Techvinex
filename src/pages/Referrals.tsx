@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
 import SidebarNav from "@/components/SidebarNav";
-import TopStatusBar from "@/components/TopStatusBar";
 
 import { UserPlus, Copy, Gift, Share2, Mail, MessageCircle, Link2, CheckCircle2, ArrowRight, Users, DollarSign, Send } from "lucide-react";
 import { Shimmer } from "@/components/skeletons/Skeleton";
@@ -130,7 +129,6 @@ const Referrals = () => {
     <div className="min-h-screen bg-background">
       <SidebarNav />
       <div className="md:ml-16 pb-20">
-        <TopStatusBar currentStep={2} />
         <div className="px-4 sm:px-6 pt-4 max-w-2xl mx-auto space-y-5">
         {/* Header */}
         <div>

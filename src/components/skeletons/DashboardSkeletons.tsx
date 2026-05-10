@@ -2,7 +2,6 @@ import {
   SkeletonHeader, SkeletonStatGrid, SkeletonChart, SkeletonList, SkeletonTable, SkeletonCard, Shimmer,
 } from "./Skeleton";
 import SidebarNav from "@/components/SidebarNav";
-import TopStatusBar from "@/components/TopStatusBar";
 import { cn } from "@/lib/utils";
 
 /**
@@ -56,7 +55,6 @@ export const CandidateDashboardSkeleton = ({
     <SrLoading label={loadingLabel} />
     <SidebarNav />
     <div className="md:ml-16 pb-20" aria-hidden="true">
-      <TopStatusBar currentStep={2} />
       <div className="px-4 sm:px-6 pt-4">
         <div className="max-w-5xl mx-auto space-y-6">
           <SkeletonHeader />

@@ -5,7 +5,6 @@ import { useExploreJobs, useUserBookmarks, useBookmarkJob } from "@/hooks/useExp
 import type { ExploreJob } from "@/hooks/useExploreJobs";
 
 import SidebarNav from "@/components/SidebarNav";
-import TopStatusBar from "@/components/TopStatusBar";
 import ProfileDropdown from "@/components/ProfileDropdown";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLang } from "@/contexts/LangContext";
@@ -222,7 +221,6 @@ const Explore = () => {
       <SidebarNav />
 
       <div className="md:ml-16 pb-20">
-        <TopStatusBar currentStep={2} />
 
         <div className="px-4 sm:px-6 pt-4">
           <div className="max-w-5xl mx-auto">
