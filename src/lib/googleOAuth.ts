@@ -97,12 +97,14 @@ export const signInWithGooglePopup = async (extraParams?: Record<string, string>
 
   try {
     const message = await new Promise<OAuthMessage>((resolve, reject) => {
-      const timeoutId = window.setTimeout(() => reject(new Error("Google sign-in timed out. Please try again.")), OAUTH_TIMEOUT_MS);
+      const timeoutId = window.setTimeout(() => {
+        cleanup();
+        reject(new Error("Google sign-in timed out. Please try again."));
+      }, OAUTH_TIMEOUT_MS);
 
       const closedIntervalId = window.setInterval(() => {
         if (popup.closed) {
-          window.clearInterval(closedIntervalId);
-          window.clearTimeout(timeoutId);
+          cleanup();
           reject(new Error("Google sign-in was cancelled."));
         }
       }, POPUP_CHECK_INTERVAL_MS);
