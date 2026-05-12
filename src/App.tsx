@@ -21,6 +21,7 @@ import OfflineBanner from "@/components/OfflineBanner";
 import TechvinexLoader from "@/components/TechvinexLoader";
 import IdleTimeout from "@/components/security/IdleTimeout";
 import SessionStatusIndicator from "@/components/SessionStatusIndicator";
+import SessionExpiryBanner from "@/components/SessionExpiryBanner";
 
 // Error boundary to handle dynamic import failures (common in preview)
 class LazyErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
@@ -153,6 +154,7 @@ const AppLayout = () => {
   return (
     <>
       <AuthRedirectHandler />
+      <SessionExpiryBanner />
       {showTabs && <SidebarNav />}
       {showTabs && <BottomTabBar />}
       <LazyErrorBoundary>
