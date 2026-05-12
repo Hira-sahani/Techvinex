@@ -1,8 +1,9 @@
-// AI Interview — Lovable AI Gateway streaming.
+// AI Interview — direct OpenAI streaming. No Lovable dependency.
 // Auth: required (any signed-in user). Rate-limited per user.
 import { guard, z } from "../_shared/guard.ts";
 
-const LOVABLE_AI_URL = "https://api.lovable.dev/v1/chat/completions";
+const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+const MODEL = "gpt-4o-mini";
 
 const SYSTEM_PROMPT = `You are a professional technical interviewer at Techvinex, a top-tier talent platform. You conduct domain expert interviews to evaluate candidates' technical skills.
 
@@ -33,8 +34,8 @@ Deno.serve((req) =>
     schema: bodySchema,
     maxBodyBytes: 128 * 1024,
   }, async (ctx) => {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) {
       return new Response(JSON.stringify({ error: "service_unavailable" }), {
         status: 503,
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
@@ -43,15 +44,15 @@ Deno.serve((req) =>
 
     const { messages, domain } = ctx.body as z.infer<typeof bodySchema>;
     const systemMessage = {
-      role: "system",
+      role: "system" as const,
       content: domain ? SYSTEM_PROMPT.replace("technical skills", `${domain} skills`) : SYSTEM_PROMPT,
     };
 
-    const response = await fetch(LOVABLE_AI_URL, {
+    const response = await fetch(OPENAI_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_API_KEY}` },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${OPENAI_API_KEY}` },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: MODEL,
         messages: [systemMessage, ...messages],
         stream: true,
       }),
