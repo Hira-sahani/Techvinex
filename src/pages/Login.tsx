@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { signInWithGooglePopup } from "@/lib/googleOAuth";
 import { CheckCircle, ArrowLeft, Eye, EyeOff, LogIn } from "lucide-react";
 
 const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
@@ -79,11 +80,7 @@ const Login = () => {
   const handleGoogle = async () => {
     setLoading(true);
     try {
-      const { lovable } = await import("@/integrations/lovable/index");
-      const result = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
-        extraParams: { prompt: "select_account" },
-      });
+      const result = await signInWithGooglePopup({ prompt: "select_account" });
       if (result.error) {
         toast.error("Google sign-in failed: " + (result.error.message || String(result.error)));
       }
