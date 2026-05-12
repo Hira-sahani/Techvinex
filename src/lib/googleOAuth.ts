@@ -43,7 +43,7 @@ const getPopupFeatures = () => {
   const left = Math.max(0, Math.floor(window.screenX + (window.outerWidth - width) / 2));
   const top = Math.max(0, Math.floor(window.screenY + (window.outerHeight - height) / 2));
 
-  return `width=${width},height=${height},left=${left},top=${top},popup=yes,noopener=no`;
+  return `width=${width},height=${height},left=${left},top=${top},popup=yes`;
 };
 
 const buildOAuthUrl = (state: string, useWebMessage: boolean, extraParams?: Record<string, string>) => {
