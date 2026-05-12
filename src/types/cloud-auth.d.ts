@@ -1,5 +1,5 @@
 declare module "@lovable.dev/cloud-auth-js" {
-  type OAuthProvider = "google" | "apple" | "microsoft";
+  type OAuthProvider = "google" | "apple" | "microsoft" | "lovable";
   
   interface OAuthResult {
     redirected?: boolean;
