@@ -82,11 +82,11 @@ export interface GuardCtx<TBody = unknown> {
 }
 
 const DEFAULT_ALLOWED_ORIGINS = [
-  // Lovable preview + production hosts.
-  /^https:\/\/[\w-]+\.lovable\.app$/,
-  /^https:\/\/[\w-]+\.lovableproject\.com$/,
+  // Production hosts.
   /^https:\/\/techvinex\.com$/,
   /^https:\/\/www\.techvinex\.com$/,
+  // Vercel deploy + preview domains.
+  /^https:\/\/[\w-]+\.vercel\.app$/,
   /^http:\/\/localhost:\d+$/,
 ];
 
