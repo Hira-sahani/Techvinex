@@ -1,4 +1,4 @@
-＃ Fallback hosting config for Netlify (mirrors vercel.json behavior).
+# Fallback hosting config for Netlify (mirrors vercel.json behavior).
 # Lovable hosting ignores this file; it is only used if you deploy to Netlify.
 
 [build]
