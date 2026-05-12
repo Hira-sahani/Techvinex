@@ -12,7 +12,7 @@ import {
 } from "@/lib/authDiagnostics";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { useDocumentMeta } from "@/hooks/useDocumentMeta";
+import useDocumentMeta from "@/hooks/useDocumentMeta";
 
 const formatTime = (iso: string) => new Date(iso).toLocaleTimeString();
 
