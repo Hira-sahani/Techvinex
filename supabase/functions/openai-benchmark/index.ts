@@ -1,7 +1,9 @@
-// Benchmark runner — Lovable AI Gateway. Auth required, rate-limited.
+// Benchmark runner — direct OpenAI. No Lovable dependency. Auth required, rate-limited.
 import { guard, guardJson, z } from "../_shared/guard.ts";
 
-const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
+const DEFAULT_MODEL = "gpt-4o-mini";
+const SCORING_MODEL = "gpt-4o-mini";
 
 const bodySchema = z.object({
   task_id: z.string().uuid(),
@@ -17,10 +19,10 @@ Deno.serve((req) =>
     schema: bodySchema,
     maxBodyBytes: 16 * 1024,
   }, async (ctx) => {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) return guardJson({ error: "service_unavailable" }, 503);
+    const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+    if (!OPENAI_API_KEY) return guardJson({ error: "service_unavailable" }, 503);
 
-    const { task_id, model = "google/gemini-3-flash-preview", retry_count = 1 } =
+    const { task_id, model = DEFAULT_MODEL, retry_count = 1 } =
       ctx.body as z.infer<typeof bodySchema>;
     const userId = ctx.userId!;
 
@@ -38,9 +40,9 @@ Deno.serve((req) =>
       messages.push({ role: "user", content: task.prompt });
       if (task.input_data) messages.push({ role: "user", content: `Additional input data:\n${task.input_data}` });
 
-      const aiResponse = await fetch(GATEWAY_URL, {
+      const aiResponse = await fetch(OPENAI_URL, {
         method: "POST",
-        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
         body: JSON.stringify({ model, messages, temperature: 0.7, max_tokens: 4096 }),
       });
 
@@ -53,7 +55,7 @@ Deno.serve((req) =>
       const aiData = await aiResponse.json();
       const aiContent = aiData.choices?.[0]?.message?.content || "";
       const latencyMs = Date.now() - startTime;
-      const score = await scoreResponse(LOVABLE_API_KEY, task, aiContent);
+      const score = await scoreResponse(OPENAI_API_KEY, task, aiContent);
 
       attempts.push({ attempt: i + 1, response: aiContent, score, latency_ms: latencyMs });
       if (i === 0 && score >= task.max_score * 0.7) passAt1 = true;
@@ -98,13 +100,14 @@ ${response}
 
 Score from 0 to ${task.max_score}. Respond with ONLY a JSON object: {"score": <number>, "reasoning": "<brief explanation>"}`;
   try {
-    const res = await fetch(GATEWAY_URL, {
+    const res = await fetch(OPENAI_URL, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
+        model: SCORING_MODEL,
         messages: [{ role: "user", content: scoringPrompt }],
         temperature: 0.1, max_tokens: 500,
+        response_format: { type: "json_object" },
       }),
     });
     if (!res.ok) return 0;
