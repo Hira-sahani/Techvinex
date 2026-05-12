@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback, Re
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { onSessionExpired, type SessionExpiredEvent } from "@/lib/apiClient";
+import { logAuthDiag } from "@/lib/authDiagnostics";
 import type { User, Session } from "@supabase/supabase-js";
 
 interface AuthContextType {
@@ -32,6 +33,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, newSession) => {
+      logAuthDiag("info", "auth-state", event, {
+        hasSession: !!newSession,
+        userId: newSession?.user?.id,
+        provider: newSession?.user?.app_metadata?.provider,
+      });
       // Refresh-failure path: Supabase emits TOKEN_REFRESHED with a null
       // session (or USER_UPDATED with no user) when the refresh token is
       // rejected. Surface a clear "session expired" message and clear state.
@@ -40,6 +46,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         hadSession && !newSession && (event === "TOKEN_REFRESHED" || event === "USER_UPDATED");
 
       if (isRefreshFailure) {
+        logAuthDiag("error", "auth-state", "Refresh failure detected (session lost)");
         toast.error("Your session has expired. Please sign in again.", {
           id: "session-expired",
         });
@@ -61,6 +68,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     });
 
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
+      logAuthDiag("info", "auth-init", "Initial session loaded", {
+        hasSession: !!initialSession,
+        userId: initialSession?.user?.id,
+      });
       setSession(initialSession);
       setUser(initialSession?.user ?? null);
       setLoading(false);
