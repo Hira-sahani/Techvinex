@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
 
 const AuthRedirectHandler = () => {
   const { user, loading } = useAuth();
