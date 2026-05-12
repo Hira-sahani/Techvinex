@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { logAuthDiag } from "@/lib/authDiagnostics";
 
 type OAuthTokens = {
   access_token: string;
@@ -86,9 +87,13 @@ const parseOAuthResponse = (message: OAuthMessage, expectedState: string): OAuth
 export const signInWithGooglePopup = async (extraParams?: Record<string, string>): Promise<OAuthResult> => {
   const state = createState();
   const popupUrl = buildOAuthUrl(state, true, extraParams);
+  logAuthDiag("info", "google-oauth", "Opening OAuth popup", {
+    origin: window.location.origin,
+  });
   const popup = window.open(popupUrl, "techvinex-google-oauth", getPopupFeatures());
 
   if (!popup) {
+    logAuthDiag("warn", "google-oauth", "Popup blocked, falling back to full redirect");
     window.location.assign(buildOAuthUrl(state, false, extraParams));
     return { error: null, redirected: true };
   }
@@ -133,9 +138,12 @@ export const signInWithGooglePopup = async (extraParams?: Record<string, string>
       throw error;
     }
 
+    logAuthDiag("info", "google-oauth", "Session set successfully");
     return { error: null };
   } catch (error) {
-    return { error: error instanceof Error ? error : new Error(String(error)) };
+    const err = error instanceof Error ? error : new Error(String(error));
+    logAuthDiag("error", "google-oauth", err.message);
+    return { error: err };
   } finally {
     popup.close();
   }

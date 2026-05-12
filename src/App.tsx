@@ -20,6 +20,7 @@ import AdminProtectedRoute from "@/components/admin/AdminProtectedRoute";
 import OfflineBanner from "@/components/OfflineBanner";
 import TechvinexLoader from "@/components/TechvinexLoader";
 import IdleTimeout from "@/components/security/IdleTimeout";
+import SessionStatusIndicator from "@/components/SessionStatusIndicator";
 
 // Error boundary to handle dynamic import failures (common in preview)
 class LazyErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
@@ -71,6 +72,7 @@ const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const CandidateDashboard = lazy(() => import("./pages/CandidateDashboard"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const AuthTest = lazy(() => import("./pages/AuthTest"));
 const EmployerLogin = lazy(() => import("./pages/employer/EmployerLogin"));
 const EmployerDashboard = lazy(() => import("./pages/employer/EmployerDashboard"));
 const EmployerRequirements = lazy(() => import("./pages/employer/EmployerRequirements"));
@@ -159,6 +161,7 @@ const AppLayout = () => {
           <Route path="/" element={<Explore />} />
           <Route path="/login" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/auth-test" element={<AuthTest />} />
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/home" element={<ProtectedRoute><Index /></ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute><CandidateDashboard /></ProtectedRoute>} />
@@ -240,7 +243,7 @@ const AppLayout = () => {
         </Routes>
       </Suspense>
       </LazyErrorBoundary>
-      
+      <SessionStatusIndicator />
     </>
   );
 };
