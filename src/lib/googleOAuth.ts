@@ -1,4 +1,4 @@
-import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable/index";
 import { logAuthDiag } from "@/lib/authDiagnostics";
 
 type OAuthResult =
@@ -6,37 +6,34 @@ type OAuthResult =
   | { error: Error; redirected?: false };
 
 /**
- * Native Supabase Google OAuth — no Lovable broker in the runtime path.
- *
- * Requires (one-time setup in Supabase Dashboard → Authentication → Providers → Google):
- *   - Google Client ID + Secret saved
- *   - Site URL + Redirect URLs include your production / vercel / custom domains
- *   - In Google Cloud Console, authorized redirect URI:
- *       https://xfgyzcvrvgsntjenxecp.supabase.co/auth/v1/callback
+ * Google OAuth via Lovable Cloud Managed Social Login.
+ * No Client ID/Secret setup needed — managed credentials are used by default.
  */
 export const signInWithGooglePopup = async (
   extraParams?: Record<string, string>,
 ): Promise<OAuthResult> => {
   try {
-    logAuthDiag("info", "google-oauth", "Starting native Supabase Google OAuth", {
+    logAuthDiag("info", "google-oauth", "Starting Lovable managed Google OAuth", {
       origin: window.location.origin,
     });
 
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/`,
-        queryParams: extraParams,
-      },
+    const result = await lovable.auth.signInWithOAuth("google", {
+      redirect_uri: window.location.origin,
+      extraParams,
     });
 
-    if (error) {
-      logAuthDiag("error", "google-oauth", error.message);
-      return { error };
+    if (result.error) {
+      const err = result.error instanceof Error ? result.error : new Error(String(result.error));
+      logAuthDiag("error", "google-oauth", err.message);
+      return { error: err };
     }
 
-    logAuthDiag("info", "google-oauth", "Redirecting to Google", { url: data?.url });
-    // Browser will navigate to Google; nothing more to do here.
+    if (result.redirected) {
+      logAuthDiag("info", "google-oauth", "Redirecting to Google");
+      return { error: null, redirected: true };
+    }
+
+    // Tokens received and session set
     return { error: null, redirected: true };
   } catch (e) {
     const err = e instanceof Error ? e : new Error(String(e));
