@@ -161,6 +161,7 @@ const AppLayout = () => {
       {showTabs && <BottomTabBar />}
       <LazyErrorBoundary>
       <Suspense fallback={<PageLoader />}>
+        <main id="main-content">
         <Routes>
           <Route path="/" element={<Explore />} />
           <Route path="/login" element={<Login />} />
@@ -247,8 +248,10 @@ const AppLayout = () => {
 
           <Route path="*" element={<NotFound />} />
         </Routes>
+        </main>
       </Suspense>
       </LazyErrorBoundary>
+
       <SessionStatusIndicator />
     </>
   );
