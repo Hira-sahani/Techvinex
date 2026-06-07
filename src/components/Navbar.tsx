@@ -91,6 +91,8 @@ const Navbar = () => {
               <button
                 onClick={() => setMobileOpen(!mobileOpen)}
                 className="md:hidden p-2 text-foreground"
+                aria-label={mobileOpen ? "Close menu" : "Open menu"}
+                aria-expanded={mobileOpen}
               >
                 {mobileOpen ? <X size={20} /> : <Menu size={20} />}
               </button>
