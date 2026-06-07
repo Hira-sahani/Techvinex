@@ -27,9 +27,10 @@ const Login = () => {
     if (!email) { setEmailError("Please enter your email"); ok = false; }
     else if (!isValidEmail(email)) { setEmailError("Invalid email address"); ok = false; }
     else setEmailError("");
-    if (!password) { setPasswordError("Please enter your password"); ok = false; }
-    else if (mode === "signup" && password.length < 6) { setPasswordError("Password must be at least 6 characters"); ok = false; }
-    else setPasswordError("");
+    if (mode === "login") {
+      if (!password) { setPasswordError("Please enter your password"); ok = false; }
+      else setPasswordError("");
+    }
     return ok;
   };
 
@@ -52,15 +53,13 @@ const Login = () => {
   const handleSignup = async () => {
     if (!validate("signup")) return;
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signInWithOtp({
       email,
-      password,
       options: { emailRedirectTo: `${window.location.origin}/` },
     });
     setLoading(false);
     if (error) {
-      if (/already|registered|exists/i.test(error.message)) setEmailError("This email is already registered. Please log in.");
-      else toast.error(error.message);
+      toast.error(error.message);
       return;
     }
     setShowCheckInbox(true);
