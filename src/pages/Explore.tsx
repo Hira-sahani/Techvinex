@@ -12,6 +12,7 @@ import NotificationBell from "@/components/NotificationBell";
 import PageDotLoader from "@/components/PageDotLoader";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import useDocumentMeta from "@/hooks/useDocumentMeta";
 
 // Fallback to old roles hook if no explore_jobs exist
 import { useRoles } from "@/hooks/useRoles";
