@@ -102,6 +102,11 @@ function roleToDisplay(r: Role): DisplayJob {
 
 const Explore = () => {
   const navigate = useNavigate();
+  useDocumentMeta({
+    title: "Explore AI & Remote Tech Jobs",
+    description: "Browse remote AI, engineering, design, and product roles. Techvinex matches you to opportunities from top startups and global companies in real time.",
+    url: "/explore",
+  });
   const { t } = useLang();
   const { user } = useAuth();
   const { data: exploreJobs = [], isLoading: exploreLoading } = useExploreJobs(false);
