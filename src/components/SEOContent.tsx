@@ -6,9 +6,9 @@ const SEOContent = () => {
     <section className="px-4 sm:px-6 py-12 sm:py-16 max-w-6xl mx-auto">
       {/* H1 + intro */}
       <header className="text-center mb-12">
-        <h1 className="text-3xl sm:text-5xl font-extrabold text-foreground tracking-tight mb-5">
+        <h2 className="text-3xl sm:text-5xl font-extrabold text-foreground tracking-tight mb-5">
           Techvinex – AI Powered Job & Hiring Platform
-        </h1>
+        </h2>
         <div className="space-y-4 text-base sm:text-lg text-muted-foreground max-w-3xl mx-auto text-left sm:text-center">
           <p>
             Techvinex is a modern AI powered job and hiring platform that connects skilled

@@ -1,7 +1,14 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import useDocumentMeta from "@/hooks/useDocumentMeta";
 
-const Privacy = () => (
+const Privacy = () => {
+  useDocumentMeta({
+    title: "Privacy Policy",
+    description: "Learn how Techvinex collects, uses, and protects your personal information across our AI-powered job and hiring platform.",
+    url: "/privacy",
+  });
+  return (
   <div className="min-h-screen bg-background">
     <div className="max-w-3xl mx-auto px-4 py-8 pb-24 md:pb-8">
       <Link to="/home" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6">
@@ -38,6 +45,7 @@ const Privacy = () => (
       </div>
     </div>
   </div>
-);
+  );
+};
 
 export default Privacy;

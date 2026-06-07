@@ -60,10 +60,10 @@ const BlogDetail = () => {
     headline: blog.title,
     description: blog.short_description || "",
     image: blog.image_url || undefined,
-    author: { "@type": "Person", name: blog.author || "Atlas Team" },
+    author: { "@type": "Person", name: blog.author || "Techvinex Team" },
     datePublished: blog.created_at,
     dateModified: blog.updated_at,
-    publisher: { "@type": "Organization", name: "Atlas" },
+    publisher: { "@type": "Organization", name: "Techvinex" },
     url: `${window.location.origin}/blog/${blog.slug}`,
   };
 

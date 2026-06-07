@@ -1,7 +1,14 @@
 import { Link } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import useDocumentMeta from "@/hooks/useDocumentMeta";
 
-const Terms = () => (
+const Terms = () => {
+  useDocumentMeta({
+    title: "Terms of Service",
+    description: "Read the Techvinex Terms of Service covering account use, candidate and employer responsibilities, and platform policies.",
+    url: "/terms",
+  });
+  return (
   <div className="min-h-screen bg-background">
     <div className="max-w-3xl mx-auto px-4 py-8 pb-24 md:pb-8">
       <Link to="/home" className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-6">
@@ -38,6 +45,7 @@ const Terms = () => (
       </div>
     </div>
   </div>
-);
+  );
+};
 
 export default Terms;

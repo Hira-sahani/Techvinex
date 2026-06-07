@@ -12,6 +12,7 @@ import NotificationBell from "@/components/NotificationBell";
 import PageDotLoader from "@/components/PageDotLoader";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import useDocumentMeta from "@/hooks/useDocumentMeta";
 
 // Fallback to old roles hook if no explore_jobs exist
 import { useRoles } from "@/hooks/useRoles";
@@ -101,6 +102,11 @@ function roleToDisplay(r: Role): DisplayJob {
 
 const Explore = () => {
   const navigate = useNavigate();
+  useDocumentMeta({
+    title: "Explore AI & Remote Tech Jobs",
+    description: "Browse remote AI, engineering, design, and product roles. Techvinex matches you to opportunities from top startups and global companies in real time.",
+    url: "/explore",
+  });
   const { t } = useLang();
   const { user } = useAuth();
   const { data: exploreJobs = [], isLoading: exploreLoading } = useExploreJobs(false);
@@ -247,6 +253,8 @@ const Explore = () => {
                 <button
                   onClick={() => setShowFilters(!showFilters)}
                   className="h-10 w-10 flex items-center justify-center border border-border border-r-0 rounded-l-lg bg-background hover:bg-secondary transition-colors relative"
+                  aria-label={showFilters ? "Hide filters" : "Show filters"}
+                  aria-expanded={showFilters}
                 >
                   <SlidersHorizontal size={15} className="text-muted-foreground" />
                   {activeFilterCount > 0 && (
@@ -478,7 +486,7 @@ const Explore = () => {
                             )}
                           </div>
                           {job.source === "explore" && (
-                            <button onClick={(e) => handleBookmark(e, job)} className="p-1 rounded-md hover:bg-muted transition-colors flex-shrink-0">
+                            <button onClick={(e) => handleBookmark(e, job)} className="p-1 rounded-md hover:bg-muted transition-colors flex-shrink-0" aria-label={isBookmarked ? `Remove bookmark for ${job.title}` : `Bookmark ${job.title}`} aria-pressed={isBookmarked}>
                               {isBookmarked ? <BookmarkCheck size={16} className="text-primary" /> : <Bookmark size={16} className="text-muted-foreground" />}
                             </button>
                           )}
