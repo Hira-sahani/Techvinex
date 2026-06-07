@@ -14,6 +14,53 @@ export type Database = {
   }
   public: {
     Tables: {
+      applicants: {
+        Row: {
+          created_at: string
+          email: string
+          email_verified: boolean
+          full_name: string
+          id: string
+          job_id: string | null
+          linkedin_url: string | null
+          no_linkedin: boolean
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          email_verified?: boolean
+          full_name: string
+          id?: string
+          job_id?: string | null
+          linkedin_url?: string | null
+          no_linkedin?: boolean
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          email_verified?: boolean
+          full_name?: string
+          id?: string
+          job_id?: string | null
+          linkedin_url?: string | null
+          no_linkedin?: boolean
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "applicants_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "explore_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       applications: {
         Row: {
           applied_at: string

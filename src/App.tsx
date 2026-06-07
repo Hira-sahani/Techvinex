@@ -69,6 +69,8 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const Privacy = lazy(() => import("./pages/Privacy"));
 const Terms = lazy(() => import("./pages/Terms"));
 const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
+const Opportunities = lazy(() => import("./pages/Opportunities"));
+const OpportunityDetail = lazy(() => import("./pages/OpportunityDetail"));
 
 const Notifications = lazy(() => import("./pages/Notifications"));
 const CandidateDashboard = lazy(() => import("./pages/CandidateDashboard"));
@@ -180,6 +182,8 @@ const AppLayout = () => {
           <Route path="/cookie-policy" element={<CookiePolicy />} />
           <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
           <Route path="/jobs/:slug" element={<ExploreJobDetail />} />
+          <Route path="/opportunities" element={<Opportunities />} />
+          <Route path="/opportunities/:slug" element={<OpportunityDetail />} />
           <Route path="/blog" element={<Blog />} />
           <Route path="/blog/:slug" element={<BlogDetail />} />
           <Route path="/blog-dashboard/login" element={<Navigate to="/admin/login" replace />} />
