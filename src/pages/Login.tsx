@@ -131,7 +131,28 @@ const Login = () => {
         </div>
 
         <div className="bg-card border border-border rounded-lg p-5">
-          <form onSubmit={handleLogin} className="space-y-3">
+          <div className="flex mb-4 bg-muted rounded-md p-0.5">
+            <button
+              type="button"
+              onClick={() => { setAuthMode("login"); setEmailError(""); setPasswordError(""); }}
+              className={`flex-1 text-xs font-medium py-1.5 rounded-sm transition-colors ${
+                authMode === "login" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Login
+            </button>
+            <button
+              type="button"
+              onClick={() => { setAuthMode("signup"); setEmailError(""); setPasswordError(""); }}
+              className={`flex-1 text-xs font-medium py-1.5 rounded-sm transition-colors ${
+                authMode === "signup" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Sign Up
+            </button>
+          </div>
+
+          <form onSubmit={authMode === "login" ? handleLogin : (e) => { e.preventDefault(); handleSignup(); }} className="space-y-3">
             <div className="space-y-1">
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-medium">Email address</Label>
@@ -149,47 +170,39 @@ const Login = () => {
               />
             </div>
 
-            <div className="space-y-1">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs font-medium">Password</Label>
-                {passwordError && <span className="text-[10px] text-destructive">{passwordError}</span>}
-              </div>
-              <div className="relative">
-                <Input
-                  type={passwordVisible ? "text" : "password"}
-                  value={password}
-                  autoComplete="current-password"
-                  onChange={(e) => { setPassword(e.target.value); setPasswordError(""); }}
-                  placeholder="••••••••"
-                  className={`h-10 text-sm pr-9 ${passwordError ? "border-destructive" : ""}`}
-                />
-                <button type="button" onClick={() => setPasswordVisible(!passwordVisible)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                  {passwordVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            {authMode === "login" && (
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium">Password</Label>
+                  {passwordError && <span className="text-[10px] text-destructive">{passwordError}</span>}
+                </div>
+                <div className="relative">
+                  <Input
+                    type={passwordVisible ? "text" : "password"}
+                    value={password}
+                    autoComplete="current-password"
+                    onChange={(e) => { setPassword(e.target.value); setPasswordError(""); }}
+                    placeholder="••••••••"
+                    className={`h-10 text-sm pr-9 ${passwordError ? "border-destructive" : ""}`}
+                  />
+                  <button type="button" onClick={() => setPasswordVisible(!passwordVisible)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                    {passwordVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                <button type="button" onClick={handleForgotPassword}
+                  className="text-[11px] text-primary hover:underline block text-right pt-0.5">
+                  Forgot password?
                 </button>
               </div>
-              <button type="button" onClick={handleForgotPassword}
-                className="text-[11px] text-primary hover:underline block text-right pt-0.5">
-                Forgot password?
-              </button>
-            </div>
+            )}
 
             <Button
               type="submit"
               disabled={loading}
               className="w-full h-11 text-sm font-medium bg-gradient-to-r from-primary to-primary/80 hover:opacity-90"
             >
-              {loading ? "Please wait..." : "Login"}
-            </Button>
-
-            <Button
-              type="button"
-              variant="outline"
-              disabled={loading}
-              onClick={handleSignup}
-              className="w-full h-11 text-sm font-medium"
-            >
-              Sign Up
+              {loading ? "Please wait..." : authMode === "login" ? "Login" : "Sign Up"}
             </Button>
           </form>
 
