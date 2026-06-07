@@ -53,15 +53,13 @@ const Login = () => {
   const handleSignup = async () => {
     if (!validate("signup")) return;
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signInWithOtp({
       email,
-      password,
       options: { emailRedirectTo: `${window.location.origin}/` },
     });
     setLoading(false);
     if (error) {
-      if (/already|registered|exists/i.test(error.message)) setEmailError("This email is already registered. Please log in.");
-      else toast.error(error.message);
+      toast.error(error.message);
       return;
     }
     setShowCheckInbox(true);
