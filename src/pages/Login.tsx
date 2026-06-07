@@ -27,9 +27,10 @@ const Login = () => {
     if (!email) { setEmailError("Please enter your email"); ok = false; }
     else if (!isValidEmail(email)) { setEmailError("Invalid email address"); ok = false; }
     else setEmailError("");
-    if (!password) { setPasswordError("Please enter your password"); ok = false; }
-    else if (mode === "signup" && password.length < 6) { setPasswordError("Password must be at least 6 characters"); ok = false; }
-    else setPasswordError("");
+    if (mode === "login") {
+      if (!password) { setPasswordError("Please enter your password"); ok = false; }
+      else setPasswordError("");
+    }
     return ok;
   };
 
