@@ -247,6 +247,8 @@ const Explore = () => {
                 <button
                   onClick={() => setShowFilters(!showFilters)}
                   className="h-10 w-10 flex items-center justify-center border border-border border-r-0 rounded-l-lg bg-background hover:bg-secondary transition-colors relative"
+                  aria-label={showFilters ? "Hide filters" : "Show filters"}
+                  aria-expanded={showFilters}
                 >
                   <SlidersHorizontal size={15} className="text-muted-foreground" />
                   {activeFilterCount > 0 && (
