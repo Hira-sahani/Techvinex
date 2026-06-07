@@ -4,10 +4,11 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { signInWithGooglePopup } from "@/lib/googleOAuth";
-import { CheckCircle, ArrowLeft, Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Mail, CheckCircle } from "lucide-react";
 
 const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
@@ -22,6 +23,10 @@ const Login = () => {
   const [passwordError, setPasswordError] = useState("");
   const [showCheckInbox, setShowCheckInbox] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
+  const [otpStep, setOtpStep] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpError, setOtpError] = useState("");
+  const [resending, setResending] = useState(false);
 
   const validate = (mode: "login" | "signup") => {
     let ok = true;
@@ -58,14 +63,42 @@ const Login = () => {
     setLoading(true);
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${window.location.origin}/` },
+      options: { shouldCreateUser: true },
     });
     setLoading(false);
     if (error) {
       toast.error(error.message);
       return;
     }
-    setShowCheckInbox(true);
+    setOtpCode("");
+    setOtpError("");
+    setOtpStep(true);
+    toast.success("We sent a 6-digit code to your email");
+  };
+
+  const handleVerifyOtp = async (code?: string) => {
+    const token = (code ?? otpCode).trim();
+    if (token.length !== 6) { setOtpError("Enter the 6-digit code"); return; }
+    setLoading(true);
+    const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
+    setLoading(false);
+    if (error) {
+      setOtpError(error.message || "Invalid or expired code");
+      return;
+    }
+    toast.success("Account verified! Welcome to Techvinex.");
+    navigate("/");
+  };
+
+  const handleResendOtp = async () => {
+    setResending(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: true },
+    });
+    setResending(false);
+    if (error) toast.error(error.message);
+    else toast.success("New code sent to your email");
   };
 
   const handleForgotPassword = async () => {
@@ -92,6 +125,67 @@ const Login = () => {
       setLoading(false);
     }
   };
+
+  if (otpStep) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <div className="w-full max-w-sm bg-card border border-border rounded-lg p-6 flex flex-col items-center text-center">
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+            <Mail className="w-5 h-5 text-primary" />
+          </div>
+          <h1 className="text-base font-semibold mb-1">Verify your email</h1>
+          <p className="text-xs text-muted-foreground mb-5">
+            Enter the 6-digit code we sent to <span className="text-foreground font-medium">{email}</span>
+          </p>
+
+          <InputOTP
+            maxLength={6}
+            value={otpCode}
+            onChange={(v) => {
+              setOtpCode(v);
+              setOtpError("");
+              if (v.length === 6) handleVerifyOtp(v);
+            }}
+          >
+            <InputOTPGroup>
+              <InputOTPSlot index={0} />
+              <InputOTPSlot index={1} />
+              <InputOTPSlot index={2} />
+              <InputOTPSlot index={3} />
+              <InputOTPSlot index={4} />
+              <InputOTPSlot index={5} />
+            </InputOTPGroup>
+          </InputOTP>
+
+          {otpError && <p className="text-[11px] text-destructive mt-2">{otpError}</p>}
+
+          <Button
+            className="w-full h-10 text-sm mt-5"
+            disabled={loading || otpCode.length !== 6}
+            onClick={() => handleVerifyOtp()}
+          >
+            {loading ? "Verifying..." : "Verify & continue"}
+          </Button>
+
+          <div className="flex items-center gap-2 mt-3 text-[11px] text-muted-foreground">
+            <span>Didn't get it?</span>
+            <button type="button" disabled={resending} onClick={handleResendOtp}
+              className="text-primary hover:underline disabled:opacity-50">
+              {resending ? "Sending..." : "Resend code"}
+            </button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => { setOtpStep(false); setOtpCode(""); setOtpError(""); }}
+            className="mt-4 text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
+          >
+            <ArrowLeft size={11} /> Use a different email
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (resetEmailSent || showCheckInbox) {
     const isReset = resetEmailSent;
