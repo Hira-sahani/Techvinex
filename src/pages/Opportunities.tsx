@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Sparkles, MapPin, Clock } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
-import { useDocumentMeta } from "@/hooks/useDocumentMeta";
+import useDocumentMeta from "@/hooks/useDocumentMeta";
 
 const BRAND = "#5B4CF0";
 

@@ -3,7 +3,7 @@ import { Link, useParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Sparkles, MapPin, Clock, Check, UserPlus } from "lucide-react";
-import { useDocumentMeta } from "@/hooks/useDocumentMeta";
+import useDocumentMeta from "@/hooks/useDocumentMeta";
 import { z } from "zod";
 
 const BRAND = "#5B4CF0";
