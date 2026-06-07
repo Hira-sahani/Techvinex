@@ -1,0 +1,24 @@
+# Techvinex
+
+> Techvinex is an AI-powered job and hiring platform connecting top professionals with leading companies through AI matching, vetted opportunities, referrals, and remote-first roles.
+
+Techvinex helps job seekers discover relevant roles and grow their careers, while giving employers a vetted pipeline of qualified candidates via AI screening and structured interviews. The platform also hosts Atlas, an AI model benchmarking suite, and a blog covering AI, hiring, and careers.
+
+## Pages
+
+- [Home / Explore Jobs](/explore): Browse and search AI-curated job opportunities across engineering, AI, design, product, and data.
+- [Opportunities](/opportunities): Full list of open roles from vetted employers.
+- [Blog](/blog): Articles on AI, hiring trends, career growth, and Atlas benchmark insights.
+- [Sign in](/login): Candidate sign-in and account access.
+- [For Employers](/employer/login): Employer portal for posting roles and reviewing candidates.
+- [Atlas Benchmark](/benchmark/login): AI model performance benchmarking platform.
+
+## Legal
+
+- [Privacy Policy](/privacy): How Techvinex collects and uses data.
+- [Terms of Service](/terms): Terms governing use of Techvinex.
+- [Cookie Policy](/cookie-policy): Cookie usage and consent details.
+
+## Optional
+
+- [Reset password](/reset-password): Account password recovery flow.
