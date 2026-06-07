@@ -25,7 +25,7 @@ const useDocumentMeta = ({ title, description, image, url, type = "website", aut
     const prevTitle = document.title;
 
     if (title) {
-      const fullTitle = `${title} | Atlas Blog`;
+      const fullTitle = title.includes("Techvinex") ? title : `${title} | Techvinex`;
       document.title = fullTitle;
       setMeta("og:title", fullTitle);
       setMeta("twitter:title", fullTitle, true);
@@ -42,12 +42,14 @@ const useDocumentMeta = ({ title, description, image, url, type = "website", aut
       setMeta("twitter:image", image, true);
     }
 
-    if (url) {
-      setMeta("og:url", url);
-      const link = document.querySelector('link[rel="canonical"]') as HTMLLinkElement
-        || (() => { const l = document.createElement("link"); l.rel = "canonical"; document.head.appendChild(l); return l; })();
-      link.href = url;
-    }
+    // Always set canonical + og:url to current route (absolute URL)
+    const absoluteUrl = url
+      ? (url.startsWith("http") ? url : `${window.location.origin}${url.startsWith("/") ? url : `/${url}`}`)
+      : `${window.location.origin}${window.location.pathname}`;
+    setMeta("og:url", absoluteUrl);
+    const link = (document.querySelector('link[rel="canonical"]') as HTMLLinkElement)
+      || (() => { const l = document.createElement("link"); l.rel = "canonical"; document.head.appendChild(l); return l; })();
+    link.href = absoluteUrl;
 
     setMeta("og:type", type);
     setMeta("twitter:card", "summary_large_image", true);
