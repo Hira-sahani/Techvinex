@@ -480,7 +480,7 @@ const Explore = () => {
                             )}
                           </div>
                           {job.source === "explore" && (
-                            <button onClick={(e) => handleBookmark(e, job)} className="p-1 rounded-md hover:bg-muted transition-colors flex-shrink-0">
+                            <button onClick={(e) => handleBookmark(e, job)} className="p-1 rounded-md hover:bg-muted transition-colors flex-shrink-0" aria-label={isBookmarked ? `Remove bookmark for ${job.title}` : `Bookmark ${job.title}`} aria-pressed={isBookmarked}>
                               {isBookmarked ? <BookmarkCheck size={16} className="text-primary" /> : <Bookmark size={16} className="text-muted-foreground" />}
                             </button>
                           )}
