@@ -213,7 +213,7 @@ const OpportunityDetail = () => {
           </div>
 
           {/* RIGHT: Sticky application card */}
-          <aside className="lg:sticky lg:top-24 lg:self-start">
+          <aside className="order-first lg:order-none lg:sticky lg:top-24 lg:self-start">
             <form
               onSubmit={handleSubmit}
               className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6"
