@@ -63,14 +63,42 @@ const Login = () => {
     setLoading(true);
     const { error } = await supabase.auth.signInWithOtp({
       email,
-      options: { emailRedirectTo: `${window.location.origin}/` },
+      options: { shouldCreateUser: true },
     });
     setLoading(false);
     if (error) {
       toast.error(error.message);
       return;
     }
-    setShowCheckInbox(true);
+    setOtpCode("");
+    setOtpError("");
+    setOtpStep(true);
+    toast.success("We sent a 6-digit code to your email");
+  };
+
+  const handleVerifyOtp = async (code?: string) => {
+    const token = (code ?? otpCode).trim();
+    if (token.length !== 6) { setOtpError("Enter the 6-digit code"); return; }
+    setLoading(true);
+    const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
+    setLoading(false);
+    if (error) {
+      setOtpError(error.message || "Invalid or expired code");
+      return;
+    }
+    toast.success("Account verified! Welcome to Techvinex.");
+    navigate("/");
+  };
+
+  const handleResendOtp = async () => {
+    setResending(true);
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: true },
+    });
+    setResending(false);
+    if (error) toast.error(error.message);
+    else toast.success("New code sent to your email");
   };
 
   const handleForgotPassword = async () => {
