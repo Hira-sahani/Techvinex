@@ -31,6 +31,8 @@ const Login = () => {
     if (mode === "login") {
       if (!password) { setPasswordError("Please enter your password"); ok = false; }
       else setPasswordError("");
+    } else {
+      setPasswordError("");
     }
     return ok;
   };
@@ -131,27 +133,6 @@ const Login = () => {
         </div>
 
         <div className="bg-card border border-border rounded-lg p-5">
-          <div className="flex mb-4 bg-muted rounded-md p-0.5">
-            <button
-              type="button"
-              onClick={() => { setAuthMode("login"); setEmailError(""); setPasswordError(""); }}
-              className={`flex-1 text-xs font-medium py-1.5 rounded-sm transition-colors ${
-                authMode === "login" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Login
-            </button>
-            <button
-              type="button"
-              onClick={() => { setAuthMode("signup"); setEmailError(""); setPasswordError(""); }}
-              className={`flex-1 text-xs font-medium py-1.5 rounded-sm transition-colors ${
-                authMode === "signup" ? "bg-card text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Sign Up
-            </button>
-          </div>
-
           <form onSubmit={authMode === "login" ? handleLogin : (e) => { e.preventDefault(); handleSignup(); }} className="space-y-3">
             <div className="space-y-1">
               <div className="flex items-center justify-between">
@@ -204,6 +185,28 @@ const Login = () => {
             >
               {loading ? "Please wait..." : authMode === "login" ? "Login" : "Sign Up"}
             </Button>
+
+            {authMode === "login" ? (
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={loading}
+                className="w-full h-11 text-sm font-medium"
+                onClick={() => { setAuthMode("signup"); setEmailError(""); setPasswordError(""); }}
+              >
+                Sign Up
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                disabled={loading}
+                className="w-full h-11 text-sm font-medium"
+                onClick={() => { setAuthMode("login"); setEmailError(""); setPasswordError(""); }}
+              >
+                Login
+              </Button>
+            )}
           </form>
 
           <div className="flex items-center gap-2 my-4">
