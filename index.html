@@ -1,11 +1,38 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <!-- Google tag (gtag.js) -->
+    <!-- Google tag (gtag.js) with Consent Mode v2 -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-FVX99DJD8L"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
+      window.gtag = gtag;
+      // Default consent: denied until user accepts
+      gtag('consent', 'default', {
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        analytics_storage: 'denied',
+        functionality_storage: 'denied',
+        personalization_storage: 'denied',
+        security_storage: 'granted',
+        wait_for_update: 500
+      });
+      // Apply stored consent (if any) before config so GA respects it on load
+      try {
+        var stored = localStorage.getItem('cookie_consent_v1');
+        if (stored) {
+          var c = JSON.parse(stored);
+          gtag('consent', 'update', {
+            ad_storage: c.marketing ? 'granted' : 'denied',
+            ad_user_data: c.marketing ? 'granted' : 'denied',
+            ad_personalization: c.marketing ? 'granted' : 'denied',
+            analytics_storage: c.analytics ? 'granted' : 'denied',
+            functionality_storage: c.functional ? 'granted' : 'denied',
+            personalization_storage: c.functional ? 'granted' : 'denied'
+          });
+        }
+      } catch (e) {}
       gtag('js', new Date());
       gtag('config', 'G-FVX99DJD8L', { send_page_view: false });
     </script>
