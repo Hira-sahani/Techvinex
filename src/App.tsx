@@ -145,6 +145,8 @@ const AppLayout = () => {
   const location = useLocation();
   const showTabs = TABS_VISIBLE_ROUTES.includes(location.pathname);
 
+  usePageTracking();
+
   useEffect(() => {
     // Hide splash screen after a short delay to allow React to render
     const timer = window.setTimeout(() => {
