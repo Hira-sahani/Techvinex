@@ -1,3 +1,5 @@
+import { hasAnalyticsConsent } from "@/lib/consent";
+
 declare global {
   interface Window {
     gtag?: (...args: unknown[]) => void;
@@ -8,8 +10,9 @@ declare global {
 const GA_ID = "G-FVX99DJD8L";
 
 export const isGtagAvailable = (): boolean => {
-  return typeof window !== "undefined" && typeof window.gtag === "function";
+  return typeof window !== "undefined" && typeof window.gtag === "function" && hasAnalyticsConsent();
 };
+
 
 export const trackPageView = (path: string, title?: string) => {
   if (!isGtagAvailable()) return;

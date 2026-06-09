@@ -23,6 +23,7 @@ import TechvinexLoader from "@/components/TechvinexLoader";
 import IdleTimeout from "@/components/security/IdleTimeout";
 import SessionStatusIndicator from "@/components/SessionStatusIndicator";
 import SessionExpiryBanner from "@/components/SessionExpiryBanner";
+import CookieConsentBanner from "@/components/CookieConsentBanner";
 
 // Error boundary to handle dynamic import failures (common in preview)
 class LazyErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
@@ -256,6 +257,7 @@ const AppLayout = () => {
       </LazyErrorBoundary>
 
       <SessionStatusIndicator />
+      <CookieConsentBanner />
     </>
   );
 };
