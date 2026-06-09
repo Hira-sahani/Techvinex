@@ -257,6 +257,7 @@ const AppLayout = () => {
       </LazyErrorBoundary>
 
       <SessionStatusIndicator />
+      <CookieConsentBanner />
     </>
   );
 };
