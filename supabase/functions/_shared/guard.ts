@@ -293,7 +293,12 @@ export async function guard<TBody = unknown>(
       try {
         await admin().from("audit_logs").insert({
           user_id: userId, action, target_type: "edge_function",
-          target_id: targetId ?? route, details: { ip, fp, ...details },
+          target_id: targetId ?? route,
+          details: {
+            ip, fp, ua: req.headers.get("user-agent") ?? null,
+            method: req.method, origin: req.headers.get("origin") ?? null,
+            roles, ...details,
+          },
         });
       } catch (e) { log("warn", "audit_insert_failed", { error: String(e) }); }
     },
@@ -302,13 +307,19 @@ export async function guard<TBody = unknown>(
 
   try {
     const res = await handler(ctx);
-    // Inject defense-in-depth headers if handler returned a Response without them.
     const merged = new Headers(res.headers);
     for (const [k, v] of Object.entries({
       "X-Content-Type-Options": "nosniff",
       "Referrer-Policy": "no-referrer",
+      "X-Frame-Options": "DENY",
+      "Vary": "Origin",
     })) if (!merged.has(k)) merged.set(k, v);
-    if (!merged.has("Access-Control-Allow-Origin")) merged.set("Access-Control-Allow-Origin", "*");
+    if (!merged.has("Access-Control-Allow-Origin")) {
+      merged.set("Access-Control-Allow-Origin", cors["Access-Control-Allow-Origin"]);
+      if (cors["Access-Control-Allow-Credentials"]) {
+        merged.set("Access-Control-Allow-Credentials", "true");
+      }
+    }
     return new Response(res.body, { status: res.status, headers: merged });
   } catch (e) {
     log("error", "handler_unhandled", { route, error: String(e) });
