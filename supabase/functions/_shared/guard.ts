@@ -14,16 +14,33 @@ import { admin, log, rateLimit, setRateStore, PgRateStore, withIdempotency } fro
 // One-time: distributed limiter shared across instances.
 setRateStore(new PgRateStore());
 
+// Default headers used only for non-browser callers (no Origin header).
+// For browser callers, buildCors(req) reflects the verified Origin so wildcard "*"
+// is never emitted to authenticated, credentialed requests.
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, idempotency-key, x-signature, x-timestamp, x-requested-with",
   "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+  "Vary": "Origin",
   // Defense-in-depth response headers.
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "no-referrer",
   "X-Frame-Options": "DENY",
 };
+
+export function buildCors(req: Request, extraAllowed: string[] = []): Record<string, string> {
+  const origin = req.headers.get("origin");
+  const headers = { ...corsHeaders };
+  if (origin && (extraAllowed.includes(origin) || DEFAULT_ALLOWED_ORIGINS.some((re) => re.test(origin)))) {
+    headers["Access-Control-Allow-Origin"] = origin;
+    headers["Access-Control-Allow-Credentials"] = "true";
+  } else if (origin) {
+    // Origin present but not on allow-list — refuse cross-origin reads.
+    headers["Access-Control-Allow-Origin"] = "null";
+  }
+  return headers;
+}
 
 const json = (body: unknown, status = 200, extra: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), {
