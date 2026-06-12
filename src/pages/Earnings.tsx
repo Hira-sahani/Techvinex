@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, lazy, Suspense } from "react";
 import SidebarNav from "@/components/SidebarNav";
 
 import { Wallet, ArrowLeft, Settings, Download, DollarSign, Clock, ArrowRight, Shield, Camera, Upload, CheckCircle2, FileText, Phone, User } from "lucide-react";
@@ -14,6 +14,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { EarningsPageSkeleton } from "@/components/skeletons/PageSkeletons";
+
+// Presentational pieces extracted for chunk-splitting + memoization.
+const PaymentsTable = lazy(() => import("@/components/earnings/PaymentsTable"));
+const EarningsOverTimeCard = lazy(() => import("@/components/earnings/EarningsOverTimeCard"));
+const PromoBanner = lazy(() => import("@/components/earnings/PromoBanner"));
+
 
 const VERIFICATION_OTP = "123456";
 
@@ -887,93 +893,12 @@ const Earnings = () => {
           </Button>
         </div>
 
-        {/* Promo banner */}
-        <div className="rounded-xl bg-primary/5 border border-primary/20 p-4 mb-4">
-          <p className="font-semibold text-foreground text-sm mb-1">Unlock more earnings with Intros</p>
-          <p className="text-xs text-muted-foreground mb-3">You decide who to introduce and what gets sent. We handle the invite, so you don't need to reach out personally.</p>
-          <Button size="sm" className="gap-1.5 text-xs" onClick={() => window.open("https://www.linkedin.com", "_blank")}>
-            Explore LinkedIn Connections <ArrowRight size={14} />
-          </Button>
-        </div>
+        <Suspense fallback={null}>
+          <PromoBanner />
+          <EarningsOverTimeCard totalPaid={totalPaid} />
+          <PaymentsTable payoutHistory={payoutHistory} />
+        </Suspense>
 
-        {/* Earnings over time */}
-        <div className="rounded-xl border border-border p-4 bg-card mb-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-foreground text-sm">Earnings Over Time</h3>
-            <div className="flex items-center gap-2">
-              <DollarSign size={16} className="text-muted-foreground" />
-              <Clock size={16} className="text-muted-foreground" />
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Earnings total</p>
-                <p className="text-sm font-bold text-foreground">${totalPaid.toFixed(2)}</p>
-              </div>
-            </div>
-          </div>
-          <div className="flex gap-2 mb-4 flex-wrap">
-            <span className="text-[10px] px-2 py-1 rounded border border-border text-muted-foreground">📅 Billing Date: Mar 1 - Mar 18, 2026</span>
-            <span className="text-[10px] px-2 py-1 rounded border border-border text-muted-foreground">📋 Contracts</span>
-            <span className="text-[10px] px-2 py-1 rounded border border-border text-muted-foreground">📊 Type</span>
-          </div>
-          {/* Chart placeholder */}
-          <div className="h-28 border-l-2 border-b-2 border-border relative">
-            <span className="absolute -left-8 top-0 text-[10px] text-muted-foreground">$100</span>
-            <span className="absolute -left-6 top-1/4 text-[10px] text-muted-foreground">$75</span>
-            <span className="absolute -left-6 top-1/2 text-[10px] text-muted-foreground">$50</span>
-          </div>
-        </div>
-
-        {/* Payments table */}
-        <div className="rounded-xl border border-border p-4 bg-card">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="font-semibold text-foreground text-sm">Payments</h3>
-            <Button variant="outline" size="sm" className="text-xs gap-1.5">
-              <Download size={14} /> Download Payment Report
-            </Button>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-2 font-medium text-muted-foreground">Payout date</th>
-                  <th className="text-left py-2 font-medium text-muted-foreground">Type</th>
-                  <th className="text-left py-2 font-medium text-muted-foreground">Description</th>
-                  <th className="text-left py-2 font-medium text-muted-foreground">Status</th>
-                  <th className="text-left py-2 font-medium text-muted-foreground">Hours</th>
-                  <th className="text-left py-2 font-medium text-muted-foreground">Earned</th>
-                </tr>
-              </thead>
-              <tbody>
-                {payoutHistory.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="text-center py-8">
-                      <p className="text-sm text-muted-foreground font-medium">No payment history yet</p>
-                      <p className="text-xs text-muted-foreground">Once you receive your first payout, it will appear here</p>
-                    </td>
-                  </tr>
-                ) : (
-                  payoutHistory.map((p) => (
-                    <tr key={p.id} className="border-b border-border last:border-0">
-                      <td className="py-2 text-foreground">{new Date(p.created_at).toLocaleDateString()}</td>
-                      <td className="py-2 text-foreground">Payout</td>
-                      <td className="py-2 text-foreground">{p.notes || "—"}</td>
-                      <td className="py-2">
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                          p.status === 'completed' ? 'bg-green-500/10 text-green-600' :
-                          p.status === 'pending' ? 'bg-amber-500/10 text-amber-600' :
-                          'bg-destructive/10 text-destructive'
-                        }`}>
-                          {p.status}
-                        </span>
-                      </td>
-                      <td className="py-2 text-foreground">—</td>
-                      <td className="py-2 font-medium text-foreground">${Number(p.amount).toFixed(2)}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
       </div>
 
       {/* Setup Dialog */}
