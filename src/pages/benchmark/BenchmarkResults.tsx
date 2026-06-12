@@ -15,9 +15,12 @@ const BenchmarkResults = () => {
 
   const fetchResults = async () => {
     setLoading(true);
+    // Explicit column list: drops heavy `ai_response`, `attempts`, `metadata`
+    // from the list view; difficulty is the only field that still needs the
+    // join (task_title/category are denormalized on the row).
     const { data } = await supabase
       .from("benchmark_results")
-      .select("*, benchmark_tasks(title, category, difficulty)")
+      .select("id, model, score, max_score, pass_at_1, latency_ms, status, created_at, task_title, task_category, benchmark_tasks(difficulty)")
       .order("created_at", { ascending: false })
       .limit(50);
     setResults(data || []);

@@ -25,7 +25,7 @@ const fetchBenchmarkData = async (): Promise<BenchmarkData> => {
     supabase.from("benchmark_reviews").select("id", { count: "exact", head: true }).eq("status", "pending"),
     supabase
       .from("benchmark_results")
-      .select("*, benchmark_tasks(title, category)")
+      .select("id, model, score, max_score, pass_at_1, latency_ms, status, created_at, task_title, task_category")
       .order("created_at", { ascending: false })
       .limit(5),
   ]);
