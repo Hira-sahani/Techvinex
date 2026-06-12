@@ -216,7 +216,11 @@ export async function guard<TBody = unknown>(
 
     // 4. RBAC.
     if (cfg.requireRoles && cfg.requireRoles.length > 0) {
+      if (!userId) {
+        return json({ error: "unauthorized", code: "AUTH" }, 401);
+      }
       roles = await getRoles(admin(), userId);
+
       const ok = cfg.requireRoles.some((r) => roles.includes(r));
       if (!ok) {
         await recordDeny({
