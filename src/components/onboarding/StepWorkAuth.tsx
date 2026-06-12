@@ -3,8 +3,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronDown, Search } from "lucide-react";
 import { countries } from "@/data/countries";
 import { statesByCountry } from "@/data/states";
-import { citiesByState } from "@/data/cities";
-import { useState } from "react";
+import { loadCities } from "@/lib/loadCities";
+import { useEffect, useState } from "react";
+
 
 interface Props {
   form: {
