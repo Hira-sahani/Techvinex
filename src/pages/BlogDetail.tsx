@@ -80,9 +80,18 @@ const BlogDetail = () => {
     url: `${window.location.origin}/blog/${blog.slug}`,
   };
 
+  const safeHtml = useMemo(
+    () => DOMPurify.sanitize(blog.content || "", SANITIZE_CONFIG),
+    [blog.content]
+  );
+
   return (
     <div className="min-h-screen bg-background">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: escapeJsonForScript(JSON.stringify(jsonLd)) }}
+      />
+
       {/* Header */}
       <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -136,8 +145,9 @@ const BlogDetail = () => {
             [&_table]:w-full [&_table]:border-collapse [&_table]:my-4
             [&_th]:border [&_th]:border-border [&_th]:px-3 [&_th]:py-2 [&_th]:bg-muted [&_th]:text-left [&_th]:text-xs [&_th]:font-semibold
             [&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-2 [&_td]:text-xs"
-          dangerouslySetInnerHTML={{ __html: blog.content || "" }}
+          dangerouslySetInnerHTML={{ __html: safeHtml }}
         />
+
       </article>
     </div>
   );
