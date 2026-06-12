@@ -45,6 +45,15 @@ const ProfileLocationTab = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(true);
+  const [cityOptions, setCityOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    if (!form.state) { setCityOptions([]); return; }
+    loadCities().then((m) => { if (alive) setCityOptions(m[form.state] || []); }).catch(() => alive && setCityOptions([]));
+    return () => { alive = false; };
+  }, [form.state]);
+
 
   useEffect(() => {
     let isMounted = true;
