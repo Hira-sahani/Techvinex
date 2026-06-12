@@ -7,6 +7,7 @@
 import * as Sentry from "@sentry/react";
 import { addTelemetrySink, type UnauthorizedEvent } from "@/lib/apiClient";
 import { supabase } from "@/integrations/supabase/client";
+import { RELEASE, ENVIRONMENT } from "@/generated/release";
 
 let initialized = false;
 
@@ -93,13 +94,11 @@ async function fetchConfig(): Promise<{ dsn: string; environment: string; releas
       },
     });
     if (!res.ok) return null;
-    const cfg = (await res.json()) as { dsn?: string; environment?: string; release?: string };
+    const cfg = (await res.json()) as { dsn?: string };
     if (!cfg.dsn) return null;
-    return {
-      dsn: cfg.dsn,
-      environment: cfg.environment ?? "production",
-      release: cfg.release ?? "techvinex@unknown",
-    };
+    // Release + environment come from the build-time generated module so
+    // frontend and edge functions stay in lockstep on the same release tag.
+    return { dsn: cfg.dsn, environment: ENVIRONMENT, release: RELEASE };
   } catch {
     return null;
   }
