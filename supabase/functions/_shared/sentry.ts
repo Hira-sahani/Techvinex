@@ -6,9 +6,14 @@
 //   import { withSentry } from "../_shared/sentry.ts";
 //   Deno.serve(withSentry("admin-view-payout", (req) => guard(req, ...)));
 
+import { RELEASE, ENVIRONMENT } from "./release.ts";
+
 const DSN = Deno.env.get("SENTRY_DSN") ?? "";
-const ENVIRONMENT = Deno.env.get("SENTRY_ENVIRONMENT") ?? "production";
-const RELEASE = Deno.env.get("SENTRY_RELEASE") ?? "techvinex-edge@unknown";
+// Environment + release prefer build-time generated values so every event —
+// browser or edge — carries the SAME release tag. Env vars still override
+// for hosted overrides (staging/canary).
+const ENV = Deno.env.get("SENTRY_ENVIRONMENT") ?? ENVIRONMENT;
+const REL = Deno.env.get("SENTRY_RELEASE") ?? RELEASE;
 
 interface ParsedDsn { storeUrl: string; publicKey: string; }
 
