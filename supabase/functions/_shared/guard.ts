@@ -102,6 +102,8 @@ const DEFAULT_ALLOWED_ORIGINS = [
   // Production hosts.
   /^https:\/\/techvinex\.com$/,
   /^https:\/\/www\.techvinex\.com$/,
+  // Lovable preview + published domains.
+  /^https:\/\/[\w-]+\.lovable\.app$/,
   // Vercel deploy + preview domains.
   /^https:\/\/[\w-]+\.vercel\.app$/,
   /^http:\/\/localhost:\d+$/,
