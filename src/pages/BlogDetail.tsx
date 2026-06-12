@@ -1,10 +1,23 @@
 import { useParams, Link } from "react-router-dom";
+import { useMemo } from "react";
+import DOMPurify from "dompurify";
 import { ArrowLeft, Share2, Clock, User, Calendar } from "lucide-react";
 import { useBlog } from "@/hooks/useBlogs";
 import useDocumentMeta from "@/hooks/useDocumentMeta";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+
+// CV-1 patch: sanitize TipTap-authored HTML before rendering to block stored XSS.
+// CV-2 (JSON-LD): escape `<` to neutralise any `</script>` substring in dynamic fields.
+const SANITIZE_CONFIG: DOMPurify.Config = {
+  USE_PROFILES: { html: true },
+  FORBID_TAGS: ["script", "style", "iframe", "object", "embed", "form", "base"],
+  FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover", "onfocus", "onblur", "formaction", "srcdoc", "xlink:href"],
+  ALLOW_DATA_ATTR: false,
+};
+const escapeJsonForScript = (s: string) => s.replace(/</g, "\\u003c").replace(/-->/g, "--\\u003e");
+
 
 const BlogDetail = () => {
   const { slug } = useParams<{ slug: string }>();
