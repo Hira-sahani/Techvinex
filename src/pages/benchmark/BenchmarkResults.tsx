@@ -74,7 +74,7 @@ const BenchmarkResults = () => {
               <Card key={r.id} className="p-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-semibold">{(r.benchmark_tasks as any)?.title}</p>
+                    <p className="text-xs font-semibold">{r.task_title}</p>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <Badge variant="outline" className="text-[9px]">{r.model}</Badge>
                       <Badge variant="outline" className="text-[9px] capitalize">{(r.benchmark_tasks as any)?.category}</Badge>
