@@ -60,14 +60,52 @@ const PUBLIC_COLUMNS =
   "expiry_date, views_count, clicks_count, applications_count, created_by, created_at, updated_at";
 
 
-export function useExploreJobs(adminMode = false) {
+export interface ExploreJobsPage {
+  jobs: ExploreJob[];
+  total: number;
+  pageSize: number;
+  pageIndex: number;
+}
+
+export interface UseExploreJobsOptions {
+  pageSize?: number;
+  pageIndex?: number;
+  search?: string;
+}
+
+/**
+ * Public Explore feed.
+ *
+ *   adminMode = false  → routes through the CDN-cached `public-explore-jobs`
+ *                        Edge Function (45 s s-maxage, 120 s SWR). NO Realtime.
+ *                        This is what allows the public route to scale to
+ *                        10K+ concurrent anon users without DB pressure.
+ *   adminMode = true   → direct PostgREST read; Realtime subscription kept so
+ *                        operators see fresh data. Admin audience is small.
+ *
+ * Returns a flat `ExploreJob[]` for backwards compatibility with existing
+ * callers. Pagination metadata is exposed via `useExploreJobsPage`.
+ */
+export function useExploreJobs(
+  adminMode = false,
+  opts: UseExploreJobsOptions = {},
+) {
+  const page = useExploreJobsPage(adminMode, opts);
+  return {
+    ...page,
+    data: page.data?.jobs ?? [],
+  } as Omit<typeof page, "data"> & { data: ExploreJob[] };
+}
+
+export function useExploreJobsPage(
+  adminMode = false,
+  opts: UseExploreJobsOptions = {},
+) {
   const queryClient = useQueryClient();
+  const { pageSize = 25, pageIndex = 0, search } = opts;
 
   useEffect(() => {
-    // Multiplexed onto the shared global realtime channel.
-    // Targeted, debounced invalidation: a burst of writes (e.g. bulk publish)
-    // would otherwise trigger one refetch per row. We coalesce within 250 ms
-    // and only invalidate the single affected job entry plus the list key.
+    if (!adminMode) return; // anon: no realtime, no DB pressure
     let pending: ReturnType<typeof setTimeout> | null = null;
     const unsubscribe = subscribeRealtime({
       table: "explore_jobs",
@@ -89,24 +127,41 @@ export function useExploreJobs(adminMode = false) {
       if (pending) clearTimeout(pending);
       unsubscribe();
     };
-  }, [queryClient]);
+  }, [queryClient, adminMode]);
 
-  const query = useQuery({
-    queryKey: ["explore-jobs", adminMode],
-    queryFn: async () => {
-      let q = supabase.from("explore_jobs").select(PUBLIC_COLUMNS).order("created_at", { ascending: false });
-      if (!adminMode) {
-        q = q.eq("status", "published").eq("visibility", "public");
+  return useQuery({
+    queryKey: ["explore-jobs", adminMode, pageIndex, pageSize, search ?? ""],
+    queryFn: async (): Promise<ExploreJobsPage> => {
+      if (adminMode) {
+        const from = pageIndex * pageSize;
+        const to = from + pageSize - 1;
+        const { data, count, error } = await supabase
+          .from("explore_jobs")
+          .select(PUBLIC_COLUMNS, { count: "exact" })
+          .order("created_at", { ascending: false })
+          .range(from, to);
+        if (error) throw error;
+        return {
+          jobs: (data ?? []) as unknown as ExploreJob[],
+          total: count ?? 0,
+          pageSize,
+          pageIndex,
+        };
       }
-      const { data, error } = await q;
+      // Anon path: CDN-cached edge function.
+      const { data, error } = await supabase.functions.invoke<ExploreJobsPage>(
+        "public-explore-jobs",
+        { body: { pageSize, pageIndex, search } },
+      );
       if (error) throw error;
-      return (data ?? []) as unknown as ExploreJob[];
+      return data ?? { jobs: [], total: 0, pageSize, pageIndex };
     },
-    staleTime: 15_000,
+    staleTime: adminMode ? 15_000 : 45_000,
+    refetchOnWindowFocus: false,
   });
-
-  return query;
 }
+
+
 
 
 export function useExploreJobById(id: string | undefined) {

@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_jobs: {
+        Row: {
+          attempts: number
+          completed_at: string | null
+          created_at: string
+          error: string | null
+          id: string
+          input: Json
+          kind: string
+          result: Json | null
+          started_at: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          input?: Json
+          kind: string
+          result?: Json | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          input?: Json
+          kind?: string
+          result?: Json | null
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       applicants: {
         Row: {
           created_at: string
