@@ -4,6 +4,7 @@
 // account_number, sort_code, tax_signature) are returned masked unless the caller
 // passes { reveal: true } in the body, in which case the audit row records reveal=true.
 import { guard, guardJson, z } from "../_shared/guard.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
 const bodySchema = z.object({
   target_user_id: z.string().uuid(),
@@ -17,7 +18,7 @@ const maskTail = (v: string | null, keep = 4): string | null => {
   return "•".repeat(Math.max(4, v.length - keep)) + v.slice(-keep);
 };
 
-Deno.serve((req) =>
+Deno.serve(withSentry("admin-view-payout", (req) =>
   guard(
     req,
     {
@@ -78,4 +79,4 @@ Deno.serve((req) =>
       return guardJson({ payout: sanitized, revealed: reveal });
     },
   ),
-);
+));
