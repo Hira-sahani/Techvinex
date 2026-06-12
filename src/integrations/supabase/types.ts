@@ -165,7 +165,9 @@ export type Database = {
           pass_at_n: boolean | null
           score: number | null
           status: string
+          task_category: string | null
           task_id: string
+          task_title: string | null
           updated_at: string
           user_id: string
         }
@@ -182,7 +184,9 @@ export type Database = {
           pass_at_n?: boolean | null
           score?: number | null
           status?: string
+          task_category?: string | null
           task_id: string
+          task_title?: string | null
           updated_at?: string
           user_id: string
         }
@@ -199,7 +203,9 @@ export type Database = {
           pass_at_n?: boolean | null
           score?: number | null
           status?: string
+          task_category?: string | null
           task_id?: string
+          task_title?: string | null
           updated_at?: string
           user_id?: string
         }
