@@ -167,7 +167,14 @@ const StepWorkAuth = ({ form, update }: Props) => {
   };
 
   const stateOptions = statesByCountry[form.country] || [];
-  const cityOptions = citiesByState[form.state] || [];
+  const [cityOptions, setCityOptions] = useState<string[]>([]);
+  useEffect(() => {
+    let alive = true;
+    if (!form.state) { setCityOptions([]); return; }
+    loadCities().then((m) => { if (alive) setCityOptions(m[form.state] || []); }).catch(() => alive && setCityOptions([]));
+    return () => { alive = false; };
+  }, [form.state]);
+
 
   return (
     <div className="text-center">
