@@ -5,8 +5,9 @@
 // This complements (does not replace) Postgres RLS, which already enforces
 // admin-only access to every admin-protected table.
 import { guard, guardJson } from "../_shared/guard.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
-Deno.serve((req) =>
+Deno.serve(withSentry("verify-admin", (req) =>
   guard(req, {
     allowedMethods: ["POST"],
     requireAuth: true,
@@ -16,4 +17,4 @@ Deno.serve((req) =>
     await ctx.audit("admin_verify_ok", { ip: ctx.ip });
     return guardJson({ ok: true, userId: ctx.userId });
   })
-);
+));

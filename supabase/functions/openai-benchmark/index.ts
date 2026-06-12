@@ -1,5 +1,6 @@
 // Benchmark runner — direct OpenAI. No Lovable dependency. Auth required, rate-limited.
 import { guard, guardJson, z } from "../_shared/guard.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 const DEFAULT_MODEL = "gpt-4o-mini";
@@ -11,7 +12,7 @@ const bodySchema = z.object({
   retry_count: z.number().int().min(1).max(5).optional(),
 });
 
-Deno.serve((req) =>
+Deno.serve(withSentry("openai-benchmark", (req) =>
   guard(req, {
     allowedMethods: ["POST"],
     requireAuth: true,
@@ -80,7 +81,7 @@ Deno.serve((req) =>
     if (insertError) return guardJson({ error: "save_failed" }, 500);
     return guardJson({ result, attempts });
   })
-);
+));
 
 async function scoreResponse(apiKey: string, task: any, response: string): Promise<number> {
   const rubricText = Array.isArray(task.rubric)

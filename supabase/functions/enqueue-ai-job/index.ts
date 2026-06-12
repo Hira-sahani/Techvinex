@@ -11,6 +11,7 @@
 // endpoint never holds an open connection to the upstream model.
 
 import { guard, z, guardJson } from "../_shared/guard.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
 const inputSchema = z.object({
   kind: z.enum(["interview", "tts", "benchmark"]),
@@ -33,7 +34,7 @@ const inputSchema = z.object({
 // Declare EdgeRuntime for Deno Deploy / Supabase Edge Functions.
 declare const EdgeRuntime: { waitUntil(p: Promise<unknown>): void } | undefined;
 
-Deno.serve((req) =>
+Deno.serve(withSentry("enqueue-ai-job", (req) =>
   guard(req, {
     allowedMethods: ["POST"],
     requireAuth: true,
@@ -76,4 +77,4 @@ Deno.serve((req) =>
 
     return guardJson({ jobId: data.id, status: "queued" }, 202);
   })
-);
+));

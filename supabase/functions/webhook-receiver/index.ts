@@ -2,6 +2,7 @@
 // Webhooks are unauthenticated by Supabase JWT — auth = HMAC signature.
 import { guard, guardJson } from "../_shared/guard.ts";
 import { admin, log, verifyHmac, withIdempotency, guarded } from "../_shared/abuse-prevention.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
 // ---- Decrypt secrets stored in `secrets` table ----
 async function getKey(): Promise<CryptoKey> {
@@ -28,7 +29,7 @@ async function loadSecret(name: string): Promise<string | null> {
   return Deno.env.get(name) ?? null;
 }
 
-Deno.serve((req) =>
+Deno.serve(withSentry("webhook-receiver", (req) =>
   guard(req, {
     allowedMethods: ["POST"],
     requireAuth: false,                 // signed by HMAC, not JWT
@@ -89,4 +90,4 @@ Deno.serve((req) =>
     await recordDelivery(true, result.status, result.replayed ? "replayed" : "ok", ctx.rawBody);
     return guardJson(result.body, result.status);
   })
-);
+));

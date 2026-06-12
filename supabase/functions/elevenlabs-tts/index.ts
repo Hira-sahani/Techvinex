@@ -1,6 +1,7 @@
 // ElevenLabs TTS — auth required, per-user rate-limited.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { guard, guardJson, z } from "../_shared/guard.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
 const VOICE_ID = "JBFqnCBsd6RMkjVDRZzb";
 
@@ -49,7 +50,7 @@ const bodySchema = z.object({
   voiceId: z.string().regex(/^[A-Za-z0-9]{1,40}$/).optional(),
 });
 
-Deno.serve((req) =>
+Deno.serve(withSentry("elevenlabs-tts", (req) =>
   guard(req, {
     allowedMethods: ["POST"],
     requireAuth: true,
@@ -83,4 +84,4 @@ Deno.serve((req) =>
       headers: { "Content-Type": "audio/mpeg", "Cache-Control": "public, max-age=3600" },
     });
   })
-);
+));

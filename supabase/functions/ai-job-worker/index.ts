@@ -10,6 +10,7 @@
 // trust client input.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { withSentry } from "../_shared/sentry.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
@@ -83,7 +84,7 @@ async function runTts(input: Record<string, unknown>): Promise<unknown> {
   return { audioContent: btoa(binary), mime: "audio/mpeg" };
 }
 
-Deno.serve(async (req) => {
+Deno.serve(withSentry("ai-job-worker", async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") {
     return new Response("method", { status: 405, headers: CORS });
@@ -145,4 +146,4 @@ Deno.serve(async (req) => {
       status: 200, headers: { ...CORS, "Content-Type": "application/json" },
     });
   }
-});
+}));

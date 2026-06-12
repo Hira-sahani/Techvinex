@@ -1,6 +1,7 @@
 // AI Interview — direct OpenAI streaming. No Lovable dependency.
 // Auth: required (any signed-in user). Rate-limited per user.
 import { guard, z } from "../_shared/guard.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
 const MODEL = "gpt-4o-mini";
@@ -26,7 +27,7 @@ const bodySchema = z.object({
   domain: z.string().max(100).optional(),
 });
 
-Deno.serve((req) =>
+Deno.serve(withSentry("ai-interview", (req) =>
   guard(req, {
     allowedMethods: ["POST"],
     requireAuth: true,
@@ -74,4 +75,4 @@ Deno.serve((req) =>
       },
     });
   })
-);
+));
