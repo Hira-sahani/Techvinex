@@ -197,13 +197,22 @@ export async function guard<TBody = unknown>(
       global: { headers: { Authorization: authHeader } },
     });
     const token = authHeader.replace(/^Bearer\s+/i, "");
-    const { data, error } = await userClient.auth.getClaims(token);
-    if (error || !data?.claims?.sub) {
-      await recordDeny({ userId: null, action: "auth", reason: "invalid_token", route, ip });
-      return json({ error: "unauthorized", code: "AUTH" }, 401);
+    const { data, error } = await userClient.auth.getUser(token);
+    if (error || !data?.user?.id) {
+      // Anonymous public callers send the project anon key as Bearer (auto-attached
+      // by supabase.functions.invoke). That token has no user — treat it as
+      // unauthenticated and let routes with requireAuth=false proceed.
+      if (!requireAuth) {
+        // fall through with userId = null
+      } else {
+        await recordDeny({ userId: null, action: "auth", reason: "invalid_token", route, ip });
+        return json({ error: "unauthorized", code: "AUTH" }, 401);
+      }
+    } else {
+      userId = data.user.id;
+      claims = { sub: data.user.id, email: data.user.email, role: data.user.role } as Record<string, unknown>;
     }
-    claims = data.claims as Record<string, unknown>;
-    userId = String(data.claims.sub);
+
 
     // 4. RBAC.
     if (cfg.requireRoles && cfg.requireRoles.length > 0) {
