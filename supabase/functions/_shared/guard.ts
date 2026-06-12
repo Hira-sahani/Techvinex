@@ -151,12 +151,19 @@ export async function guard<TBody = unknown>(
   cfg: GuardConfig<TBody>,
   handler: (ctx: GuardCtx<TBody>) => Promise<Response> | Response,
 ): Promise<Response> {
-  // CORS preflight short-circuit.
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  // CORS preflight — reflect verified Origin only.
+  const cors = buildCors(req, cfg.allowedOrigins ?? []);
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
   const url = new URL(req.url);
   const route = url.pathname;
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  // Trusted-proxy XFF parse: take the right-most entry (added by our edge proxy),
+  // not the left-most which any client can spoof.
+  const xff = req.headers.get("x-forwarded-for") ?? "";
+  const xffParts = xff.split(",").map((s) => s.trim()).filter(Boolean);
+  const ip = xffParts.length > 0
+    ? xffParts[xffParts.length - 1]
+    : (req.headers.get("cf-connecting-ip") ?? req.headers.get("x-real-ip") ?? "unknown");
 
   // 1. Method allowlist.
   if (!cfg.allowedMethods.includes(req.method as never)) {
