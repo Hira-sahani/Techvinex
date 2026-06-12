@@ -71,8 +71,8 @@ export async function captureEdgeException(err: unknown, opts: CaptureOptions): 
       timestamp: Date.now() / 1000,
       platform: "javascript",
       level: opts.level ?? "error",
-      environment: ENVIRONMENT,
-      release: RELEASE,
+      environment: ENV,
+      release: REL,
       server_name: opts.function_name,
       tags: { runtime: "deno-edge", function: opts.function_name, ...(opts.tags ?? {}) },
       exception: {
