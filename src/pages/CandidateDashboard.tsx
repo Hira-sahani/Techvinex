@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { subscribeRealtime, debouncedInvalidate } from "@/lib/realtimeBus";
 import SidebarNav from "@/components/SidebarNav";
 import ProfileDropdown from "@/components/ProfileDropdown";
 import NotificationBell from "@/components/NotificationBell";
@@ -95,17 +96,18 @@ const CandidateDashboard = () => {
   });
 
   // Realtime updates trigger refetch (keeps boundary state authoritative).
+  // Multiplexed via the shared user-scope channel; debounced 250 ms so a
+  // burst of writes across applications/notifications/offers triggers a
+  // single refetch instead of three.
   useEffect(() => {
     if (!userId) return;
-    const channel = supabase
-      .channel("candidate-dashboard")
-      .on("postgres_changes", { event: "*", schema: "public", table: "applications", filter: `user_id=eq.${userId}` }, () => void query.refetch())
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications", filter: `user_id=eq.${userId}` }, () => void query.refetch())
-      .on("postgres_changes", { event: "*", schema: "public", table: "offers", filter: `user_id=eq.${userId}` }, () => void query.refetch())
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    const refetch = debouncedInvalidate(() => void query.refetch(), 250);
+    const unsubs = [
+      subscribeRealtime({ table: "applications", scope: "user", filter: `user_id=eq.${userId}`, handler: refetch }),
+      subscribeRealtime({ table: "notifications", scope: "user", event: "INSERT", filter: `user_id=eq.${userId}`, handler: refetch }),
+      subscribeRealtime({ table: "offers", scope: "user", filter: `user_id=eq.${userId}`, handler: refetch }),
+    ];
+    return () => { unsubs.forEach((u) => u()); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
