@@ -80,7 +80,7 @@ Deno.serve((req) =>
 
     const audioBuffer = await response.arrayBuffer();
     return new Response(audioBuffer, {
-      headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "audio/mpeg", "Cache-Control": "public, max-age=3600" },
+      headers: { "Content-Type": "audio/mpeg", "Cache-Control": "public, max-age=3600" },
     });
   })
 );
