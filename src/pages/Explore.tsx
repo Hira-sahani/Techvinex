@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useDeferredValue } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, SlidersHorizontal, Users, X, ChevronDown, Share2, Sparkles, Target, Bookmark, BookmarkCheck, Star, MapPin, Briefcase, Clock } from "lucide-react";
 import { useExploreJobs, useUserBookmarks, useBookmarkJob } from "@/hooks/useExploreJobs";
@@ -166,25 +166,36 @@ const Explore = () => {
   if (isLoading) return <PageDotLoader />;
 
 
-  const filteredJobs = allJobs
-    .filter((job) =>
-      (job.title.toLowerCase().includes(search.toLowerCase()) ||
-       job.description.toLowerCase().includes(search.toLowerCase()) ||
-       job.skills.some(s => s.toLowerCase().includes(search.toLowerCase()))) &&
-      (!selectedCategory || job.tags.includes(selectedCategory) || job.category === selectedCategory) &&
-      (!selectedJobType || job.jobType === selectedJobType) &&
-      (!selectedSkill || job.skills.includes(selectedSkill)) &&
-      matchesPay(job)
-    )
-    .sort((a, b) => {
-      // Featured always first
-      if (a.featured && !b.featured) return -1;
-      if (!a.featured && b.featured) return 1;
-      if (sortBy === "Pay: High to Low") return parseFloat(b.pay.replace(/[^0-9.]/g, "") || "0") - parseFloat(a.pay.replace(/[^0-9.]/g, "") || "0");
-      if (sortBy === "Pay: Low to High") return parseFloat(a.pay.replace(/[^0-9.]/g, "") || "0") - parseFloat(b.pay.replace(/[^0-9.]/g, "") || "0");
-      if (sortBy === "Most popular") return b.hiredCount - a.hiredCount;
-      return 0;
-    });
+  // Defer search input for INP. Typing updates state synchronously
+  // (so the input stays responsive) while the heavy filter pass runs
+  // with a slightly stale value during bursts.
+  const deferredSearch = useDeferredValue(search);
+  const filteredJobs = useMemo(() => {
+    const q = deferredSearch.trim().toLowerCase();
+    return allJobs
+      .filter((job) => {
+        if (q) {
+          const hit =
+            job.title.toLowerCase().includes(q) ||
+            job.description.toLowerCase().includes(q) ||
+            job.skills.some((s) => s.toLowerCase().includes(q));
+          if (!hit) return false;
+        }
+        if (selectedCategory && !(job.tags.includes(selectedCategory) || job.category === selectedCategory)) return false;
+        if (selectedJobType && job.jobType !== selectedJobType) return false;
+        if (selectedSkill && !job.skills.includes(selectedSkill)) return false;
+        return matchesPay(job);
+      })
+      .sort((a, b) => {
+        if (a.featured && !b.featured) return -1;
+        if (!a.featured && b.featured) return 1;
+        if (sortBy === "Pay: High to Low") return parseFloat(b.pay.replace(/[^0-9.]/g, "") || "0") - parseFloat(a.pay.replace(/[^0-9.]/g, "") || "0");
+        if (sortBy === "Pay: Low to High") return parseFloat(a.pay.replace(/[^0-9.]/g, "") || "0") - parseFloat(b.pay.replace(/[^0-9.]/g, "") || "0");
+        if (sortBy === "Most popular") return b.hiredCount - a.hiredCount;
+        return 0;
+      });
+  }, [allJobs, deferredSearch, selectedCategory, selectedJobType, selectedSkill, selectedPay, sortBy]);
+
 
   const activeFilterCount = (selectedCategory ? 1 : 0) + (selectedPay !== "All" ? 1 : 0) + (selectedJobType ? 1 : 0) + (selectedSkill ? 1 : 0);
   const totalPages = Math.ceil(filteredJobs.length / ITEMS_PER_PAGE);
