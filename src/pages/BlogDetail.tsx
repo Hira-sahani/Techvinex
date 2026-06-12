@@ -1,10 +1,23 @@
 import { useParams, Link } from "react-router-dom";
+import { useMemo } from "react";
+import DOMPurify from "dompurify";
 import { ArrowLeft, Share2, Clock, User, Calendar } from "lucide-react";
 import { useBlog } from "@/hooks/useBlogs";
 import useDocumentMeta from "@/hooks/useDocumentMeta";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+
+// CV-1 patch: sanitize TipTap-authored HTML before rendering to block stored XSS.
+// CV-2 (JSON-LD): escape `<` to neutralise any `</script>` substring in dynamic fields.
+const SANITIZE_CONFIG = {
+  USE_PROFILES: { html: true },
+  FORBID_TAGS: ["script", "style", "iframe", "object", "embed", "form", "base"],
+  FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover", "onfocus", "onblur", "formaction", "srcdoc", "xlink:href"],
+  ALLOW_DATA_ATTR: false,
+};
+const escapeJsonForScript = (s: string) => s.replace(/</g, "\\u003c").replace(/-->/g, "--\\u003e");
+
 
 const BlogDetail = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -67,9 +80,18 @@ const BlogDetail = () => {
     url: `${window.location.origin}/blog/${blog.slug}`,
   };
 
+  const safeHtml = useMemo(
+    () => DOMPurify.sanitize(blog.content || "", SANITIZE_CONFIG),
+    [blog.content]
+  );
+
   return (
     <div className="min-h-screen bg-background">
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: escapeJsonForScript(JSON.stringify(jsonLd)) }}
+      />
+
       {/* Header */}
       <div className="sticky top-0 z-30 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between">
@@ -123,8 +145,9 @@ const BlogDetail = () => {
             [&_table]:w-full [&_table]:border-collapse [&_table]:my-4
             [&_th]:border [&_th]:border-border [&_th]:px-3 [&_th]:py-2 [&_th]:bg-muted [&_th]:text-left [&_th]:text-xs [&_th]:font-semibold
             [&_td]:border [&_td]:border-border [&_td]:px-3 [&_td]:py-2 [&_td]:text-xs"
-          dangerouslySetInnerHTML={{ __html: blog.content || "" }}
+          dangerouslySetInnerHTML={{ __html: safeHtml }}
         />
+
       </article>
     </div>
   );

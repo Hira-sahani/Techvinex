@@ -19,13 +19,27 @@ const AdminLogin = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) { toast.error(error.message); setLoading(false); return; }
-    const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", data.user.id);
-    if (!roles?.some((r) => r.role === "admin")) { await supabase.auth.signOut(); toast.error("Access denied. Admin privileges required."); setLoading(false); return; }
+
+    // CV-3 patch: server-side admin authorization. The edge function uses the
+    // central guard() which validates the JWT, looks up user_roles, and only
+    // returns 200 for admins. Anything else → sign out immediately.
+    const { error: verifyError } = await supabase.functions.invoke("verify-admin", {
+      method: "POST",
+      body: {},
+    });
+    if (verifyError) {
+      await supabase.auth.signOut();
+      toast.error("Access denied. Admin privileges required.");
+      setLoading(false);
+      return;
+    }
+
     toast.success("Welcome back, Admin!");
     navigate("/admin/requirements");
   };
+
 
   return (
     <div className="relative min-h-screen flex items-center justify-center bg-background p-4">
