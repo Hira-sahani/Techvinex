@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Admins can view all payout accounts" ON public.payout_accounts;
