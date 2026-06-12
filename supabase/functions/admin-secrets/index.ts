@@ -1,6 +1,7 @@
 // Admin Secrets Management — AES-256-GCM encryption, admin-only access.
 // All access checks delegated to the centralized guard (default-deny).
 import { guard, guardJson, z } from "../_shared/guard.ts";
+import { withSentry } from "../_shared/sentry.ts";
 
 // ---- Encryption (AES-256-GCM) ----
 async function getKey(): Promise<CryptoKey> {
@@ -49,7 +50,7 @@ const upsertSchema = z.object({
   action: z.enum(["create", "rotate"]).optional(),
 });
 
-Deno.serve((req) => {
+Deno.serve(withSentry("admin-secrets", (req) => {
   const method = req.method as "GET" | "POST" | "DELETE" | "OPTIONS";
 
   return guard(req, {
@@ -118,4 +119,4 @@ Deno.serve((req) => {
 
     return guardJson({ error: "method_not_allowed" }, 405);
   });
-});
+}));
