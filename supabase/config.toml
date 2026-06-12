@@ -1,1 +1,7 @@
 project_id = "xfgyzcvrvgsntjenxecp"
+
+[functions.public-explore-jobs]
+verify_jwt = false
+
+[functions.ai-job-worker]
+verify_jwt = false
