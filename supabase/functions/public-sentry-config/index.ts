@@ -1,6 +1,6 @@
 // Returns the public Sentry DSN + env + release to the browser.
 // The DSN is public by design (abuse protection lives in Sentry inbound filters).
-// Public, no JWT — see config.toml.
+// Public, no JWT — see config.toml. Env overrides: SENTRY_ENVIRONMENT, SENTRY_RELEASE.
 import { RELEASE, ENVIRONMENT } from "../_shared/release.ts";
 
 const corsHeaders = {
