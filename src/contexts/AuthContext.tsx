@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { onSessionExpired, type SessionExpiredEvent } from "@/lib/apiClient";
 import { logAuthDiag } from "@/lib/authDiagnostics";
+import { setRealtimeUser } from "@/lib/realtimeBus";
 import type { User, Session } from "@supabase/supabase-js";
 
 interface AuthContextType {
@@ -65,6 +66,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(newSession?.user ?? null);
       setLoading(false);
       previousSessionRef.current = newSession;
+      // Route the shared user-scope Realtime channel to the new identity.
+      setRealtimeUser(newSession?.user?.id ?? null);
     });
 
     supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
@@ -76,6 +79,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(initialSession?.user ?? null);
       setLoading(false);
       previousSessionRef.current = initialSession;
+      setRealtimeUser(initialSession?.user?.id ?? null);
     });
 
     return () => subscription.unsubscribe();
@@ -100,6 +104,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setSession(null);
     setSessionExpiredEvent(null);
     previousSessionRef.current = null;
+    setRealtimeUser(null);
   }, []);
 
   const login = useCallback(() => {}, []);

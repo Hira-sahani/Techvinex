@@ -1,6 +1,7 @@
 import { useLang } from "@/contexts/LangContext";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { subscribeRealtime } from "@/lib/realtimeBus";
 
 const formatValue = (key: string, value: number): string => {
   if (key === "avg_pay_hourly") {
@@ -41,27 +42,22 @@ const StatsBar = () => {
     };
     fetchStats();
 
-    // Realtime subscription for live updates
-    const channel = supabase
-      .channel("platform_stats_changes")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "platform_stats" },
-        (payload: any) => {
-          const row = payload.new;
-          if (row?.stat_key) {
-            setStatsData((prev) => ({
-              ...prev,
-              [row.stat_key]: Number(row.stat_value),
-            }));
-          }
+    // Multiplexed onto the shared global realtime channel.
+    const unsubscribe = subscribeRealtime({
+      table: "platform_stats",
+      scope: "global",
+      handler: (payload: any) => {
+        const row = payload.new;
+        if (row?.stat_key) {
+          setStatsData((prev) => ({
+            ...prev,
+            [row.stat_key]: Number(row.stat_value),
+          }));
         }
-      )
-      .subscribe();
+      },
+    });
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return unsubscribe;
   }, []);
 
   const stats = [

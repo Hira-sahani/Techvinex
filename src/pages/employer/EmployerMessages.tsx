@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useEmployerCandidates, useEmployerJobs } from "@/hooks/useEmployerData";
 import { supabase } from "@/integrations/supabase/client";
+import { subscribeRealtime, debouncedInvalidate } from "@/lib/realtimeBus";
 import { Send, Search, MessageSquare, Check, CheckCheck } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -49,14 +50,13 @@ const EmployerMessages = () => {
     fetchMessages();
 
     if (!user) return;
-    const channel = supabase
-      .channel("employer-messages")
-      .on("postgres_changes", {
-        event: "*", schema: "public", table: "employer_messages",
-      }, () => fetchMessages())
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
+    // Multiplexed onto the shared global realtime channel with 250 ms debounce.
+    const refetch = debouncedInvalidate(() => { void fetchMessages(); }, 250);
+    return subscribeRealtime({
+      table: "employer_messages",
+      scope: "global",
+      handler: refetch,
+    });
   }, [user]);
 
   useEffect(() => {

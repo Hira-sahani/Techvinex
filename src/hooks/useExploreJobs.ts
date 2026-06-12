@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
+import { subscribeRealtime } from "@/lib/realtimeBus";
 
 export interface ExploreJob {
   id: string;
@@ -63,32 +64,30 @@ export function useExploreJobs(adminMode = false) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    // Targeted, debounced invalidation. A burst of writes (e.g. bulk publish)
+    // Multiplexed onto the shared global realtime channel.
+    // Targeted, debounced invalidation: a burst of writes (e.g. bulk publish)
     // would otherwise trigger one refetch per row. We coalesce within 250 ms
     // and only invalidate the single affected job entry plus the list key.
     let pending: ReturnType<typeof setTimeout> | null = null;
-    const channel = supabase
-      .channel("explore-jobs-realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "explore_jobs" },
-        (payload) => {
-          const jobId = (payload.new as { id?: string } | null)?.id
-            ?? (payload.old as { id?: string } | null)?.id;
-          if (jobId) {
-            queryClient.invalidateQueries({ queryKey: ["explore-job", jobId] });
-          }
-          if (pending) clearTimeout(pending);
-          pending = setTimeout(() => {
-            queryClient.invalidateQueries({ queryKey: ["explore-jobs"] });
-            pending = null;
-          }, 250);
-        },
-      )
-      .subscribe();
+    const unsubscribe = subscribeRealtime({
+      table: "explore_jobs",
+      scope: "global",
+      handler: (payload) => {
+        const jobId = (payload.new as { id?: string } | null)?.id
+          ?? (payload.old as { id?: string } | null)?.id;
+        if (jobId) {
+          queryClient.invalidateQueries({ queryKey: ["explore-job", jobId] });
+        }
+        if (pending) clearTimeout(pending);
+        pending = setTimeout(() => {
+          queryClient.invalidateQueries({ queryKey: ["explore-jobs"] });
+          pending = null;
+        }, 250);
+      },
+    });
     return () => {
       if (pending) clearTimeout(pending);
-      supabase.removeChannel(channel);
+      unsubscribe();
     };
   }, [queryClient]);
 

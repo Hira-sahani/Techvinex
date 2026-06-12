@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { subscribeRealtime } from "@/lib/realtimeBus";
 
 export interface Notification {
   id: string;
@@ -67,18 +68,12 @@ export const useNotifications = () => {
 
     if (!user) return;
 
-    const channel = supabase
-      .channel(`user_notifications:${user.id}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "notifications", filter: `user_id=eq.${user.id}` },
-        () => void fetchNotifications()
-      )
-      .subscribe();
-
-    return () => {
-      void supabase.removeChannel(channel);
-    };
+    return subscribeRealtime({
+      table: "notifications",
+      scope: "user",
+      filter: `user_id=eq.${user.id}`,
+      handler: () => void fetchNotifications(),
+    });
   }, [user]);
 
   return { notifications, unreadCount, loading, markAsRead, markAllRead };
