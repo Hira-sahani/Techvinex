@@ -15,9 +15,12 @@ const BenchmarkResults = () => {
 
   const fetchResults = async () => {
     setLoading(true);
+    // Explicit column list: drops heavy `ai_response`, `attempts`, `metadata`
+    // from the list view; difficulty is the only field that still needs the
+    // join (task_title/category are denormalized on the row).
     const { data } = await supabase
       .from("benchmark_results")
-      .select("*, benchmark_tasks(title, category, difficulty)")
+      .select("id, model, score, max_score, pass_at_1, latency_ms, status, created_at, task_title, task_category, benchmark_tasks(difficulty)")
       .order("created_at", { ascending: false })
       .limit(50);
     setResults(data || []);
@@ -71,10 +74,10 @@ const BenchmarkResults = () => {
               <Card key={r.id} className="p-3">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs font-semibold">{(r.benchmark_tasks as any)?.title}</p>
+                    <p className="text-xs font-semibold">{r.task_title}</p>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <Badge variant="outline" className="text-[9px]">{r.model}</Badge>
-                      <Badge variant="outline" className="text-[9px] capitalize">{(r.benchmark_tasks as any)?.category}</Badge>
+                      <Badge variant="outline" className="text-[9px] capitalize">{r.task_category}</Badge>
                       <Badge variant={r.pass_at_1 ? "default" : "secondary"} className="text-[9px]">
                         Pass@1: {r.pass_at_1 ? "✓" : "✗"}
                       </Badge>

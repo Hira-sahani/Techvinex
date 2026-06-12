@@ -38,9 +38,10 @@ const BenchmarkLeaderboard = () => {
 
   const fetchResults = async () => {
     setLoading(true);
+    // Denormalized task_category lives on benchmark_results — no lateral join.
     const { data } = await supabase
       .from("benchmark_results")
-      .select("model, score, max_score, pass_at_1, latency_ms, status, benchmark_tasks(category)")
+      .select("model, score, max_score, pass_at_1, latency_ms, status, task_category")
       .eq("status", "completed");
     setResults(data || []);
     computeLeaderboard(data || [], filterCategory);
@@ -52,7 +53,7 @@ const BenchmarkLeaderboard = () => {
   }, [filterCategory]);
 
   const computeLeaderboard = (data: any[], category: string) => {
-    const filtered = category === "all" ? data : data.filter((r) => (r.benchmark_tasks as any)?.category === category);
+    const filtered = category === "all" ? data : data.filter((r) => (r.task_category ?? (r.benchmark_tasks as any)?.category) === category);
     const byModel: Record<string, { scores: number[]; pass: number; latencies: number[]; cats: Record<string, number[]> }> = {};
 
     filtered.forEach((r) => {
@@ -61,7 +62,7 @@ const BenchmarkLeaderboard = () => {
       byModel[r.model].scores.push(pct);
       if (r.pass_at_1) byModel[r.model].pass++;
       byModel[r.model].latencies.push(r.latency_ms || 0);
-      const cat = (r.benchmark_tasks as any)?.category || "general";
+      const cat = r.task_category ?? (r.benchmark_tasks as any)?.category ?? "general";
       if (!byModel[r.model].cats[cat]) byModel[r.model].cats[cat] = [];
       byModel[r.model].cats[cat].push(pct);
     });

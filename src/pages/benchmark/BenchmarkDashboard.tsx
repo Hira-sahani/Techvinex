@@ -25,7 +25,7 @@ const fetchBenchmarkData = async (): Promise<BenchmarkData> => {
     supabase.from("benchmark_reviews").select("id", { count: "exact", head: true }).eq("status", "pending"),
     supabase
       .from("benchmark_results")
-      .select("*, benchmark_tasks(title, category)")
+      .select("id, model, score, max_score, pass_at_1, latency_ms, status, created_at, task_title, task_category")
       .order("created_at", { ascending: false })
       .limit(5),
   ]);
@@ -118,8 +118,8 @@ const BenchmarkDashboard = () => {
                   {recentResults.map((r) => (
                     <div key={r.id} className="flex items-center justify-between py-2 border-b border-border last:border-0">
                       <div>
-                        <p className="text-xs font-medium">{(r.benchmark_tasks as any)?.title || "Unknown Task"}</p>
-                        <p className="text-[10px] text-muted-foreground">{r.model} · {(r.benchmark_tasks as any)?.category}</p>
+                        <p className="text-xs font-medium">{r.task_title || "Unknown Task"}</p>
+                        <p className="text-[10px] text-muted-foreground">{r.model} · {r.task_category}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-xs font-bold">{Math.round(Number(r.score))}/{r.max_score}</p>

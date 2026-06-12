@@ -203,7 +203,7 @@ const ApexContent = () => {
       setLoading(true);
       const [tasksRes, resultsRes] = await Promise.all([
         supabase.from("benchmark_tasks").select("id, category, title", { count: "exact" }).eq("is_active", true),
-        supabase.from("benchmark_results").select("model, score, max_score, latency_ms, pass_at_1, benchmark_tasks(category, title)"),
+        supabase.from("benchmark_results").select("model, score, max_score, latency_ms, pass_at_1, task_title, task_category"),
       ]);
 
       setTotalTasks(tasksRes.count || 0);
@@ -213,7 +213,7 @@ const ApexContent = () => {
       // Group by category, then aggregate by model
       const grouped: Record<string, Record<string, { totalScore: number; totalMax: number; count: number; totalLatency: number }>> = {};
       results.forEach((r: any) => {
-        const cat = r.benchmark_tasks?.category || "General";
+        const cat = r.task_category ?? r.benchmark_tasks?.category ?? "General";
         const model = r.model || "Unknown";
         if (!grouped[cat]) grouped[cat] = {};
         if (!grouped[cat][model]) grouped[cat][model] = { totalScore: 0, totalMax: 0, count: 0, totalLatency: 0 };
