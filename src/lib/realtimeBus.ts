@@ -70,7 +70,14 @@ function rebuild(scope: "global" | "user") {
     if (state.subs.size === 0) return;
     if (scope === "user" && !currentUserId) return;
 
-    let ch = supabase.channel(channelName(scope));
+    // Private channels: Supabase enforces the `realtime.messages` RLS policy
+    // at subscribe time, so only the rightful user can join their
+    // `realtime:user:<uid>` topic. Global stays readable to any authenticated
+    // user (policy allows `realtime:global`). Defense-in-depth on top of
+    // per-table RLS that already filters postgres_changes payloads.
+    let ch = supabase.channel(channelName(scope), {
+      config: { private: true },
+    });
     for (const sub of state.subs) {
       ch = ch.on(
         "postgres_changes" as never,
