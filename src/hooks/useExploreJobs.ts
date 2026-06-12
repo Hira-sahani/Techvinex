@@ -83,9 +83,21 @@ export interface UseExploreJobsOptions {
  *   adminMode = true   → direct PostgREST read; Realtime subscription kept so
  *                        operators see fresh data. Admin audience is small.
  *
- * Pagination is enforced server-side (pageSize ≤ 50, pageIndex ≤ 10).
+ * Returns a flat `ExploreJob[]` for backwards compatibility with existing
+ * callers. Pagination metadata is exposed via `useExploreJobsPage`.
  */
 export function useExploreJobs(
+  adminMode = false,
+  opts: UseExploreJobsOptions = {},
+) {
+  const page = useExploreJobsPage(adminMode, opts);
+  return {
+    ...page,
+    data: page.data?.jobs ?? [],
+  } as Omit<typeof page, "data"> & { data: ExploreJob[] };
+}
+
+export function useExploreJobsPage(
   adminMode = false,
   opts: UseExploreJobsOptions = {},
 ) {
@@ -117,7 +129,7 @@ export function useExploreJobs(
     };
   }, [queryClient, adminMode]);
 
-  const query = useQuery({
+  return useQuery({
     queryKey: ["explore-jobs", adminMode, pageIndex, pageSize, search ?? ""],
     queryFn: async (): Promise<ExploreJobsPage> => {
       if (adminMode) {
@@ -147,9 +159,8 @@ export function useExploreJobs(
     staleTime: adminMode ? 15_000 : 45_000,
     refetchOnWindowFocus: false,
   });
-
-  return query;
 }
+
 
 
 
