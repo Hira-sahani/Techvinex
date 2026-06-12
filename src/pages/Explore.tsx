@@ -163,12 +163,11 @@ const Explore = () => {
     return true;
   };
 
-  if (isLoading) return <PageDotLoader />;
-
-
   // Defer search input for INP. Typing updates state synchronously
   // (so the input stays responsive) while the heavy filter pass runs
   // with a slightly stale value during bursts.
+  // IMPORTANT: hooks must run on every render — keep this ABOVE any early return,
+  // or React throws error #310 (hook count mismatch) when isLoading flips.
   const deferredSearch = useDeferredValue(search);
   const filteredJobs = useMemo(() => {
     const q = deferredSearch.trim().toLowerCase();
@@ -195,6 +194,8 @@ const Explore = () => {
         return 0;
       });
   }, [allJobs, deferredSearch, selectedCategory, selectedJobType, selectedSkill, selectedPay, sortBy]);
+
+  if (isLoading) return <PageDotLoader />;
 
 
   const activeFilterCount = (selectedCategory ? 1 : 0) + (selectedPay !== "All" ? 1 : 0) + (selectedJobType ? 1 : 0) + (selectedSkill ? 1 : 0);
