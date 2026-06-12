@@ -39,20 +39,15 @@ export function useRoles() {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    const channel = supabase
-      .channel("roles-realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "roles" },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ["roles"] });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    const invalidate = debouncedInvalidate(
+      () => queryClient.invalidateQueries({ queryKey: ["roles"] }),
+      250,
+    );
+    return subscribeRealtime({
+      table: "roles",
+      scope: "global",
+      handler: invalidate,
+    });
   }, [queryClient]);
 
   return useQuery({
