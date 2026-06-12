@@ -94,11 +94,18 @@ async function fetchConfig(): Promise<{ dsn: string; environment: string; releas
       },
     });
     if (!res.ok) return null;
-    const cfg = (await res.json()) as { dsn?: string };
+    const cfg = (await res.json()) as { dsn?: string; environment?: string; release?: string };
     if (!cfg.dsn) return null;
-    // Release + environment come from the build-time generated module so
-    // frontend and edge functions stay in lockstep on the same release tag.
-    return { dsn: cfg.dsn, environment: ENVIRONMENT, release: RELEASE };
+    // Precedence:
+    //   environment → SENTRY_ENVIRONMENT edge secret (returned by endpoint) > build-time ENVIRONMENT
+    //   release     → SENTRY_RELEASE edge secret (returned by endpoint)     > build-time RELEASE
+    // The endpoint already applies the env-var override server-side, so we
+    // simply trust its value when present and fall back to the bundle's.
+    return {
+      dsn: cfg.dsn,
+      environment: cfg.environment || ENVIRONMENT,
+      release: cfg.release || RELEASE,
+    };
   } catch {
     return null;
   }

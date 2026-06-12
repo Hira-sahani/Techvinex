@@ -2,5 +2,5 @@
 // Regenerated at every build. Frontend and edge functions import this so
 // Sentry events share the same release tag.
 
-export const RELEASE = "techvinex@b4381267b5";
-export const ENVIRONMENT = "development";
+export const RELEASE = "techvinex@fb784a35fe";
+export const ENVIRONMENT = "production";
