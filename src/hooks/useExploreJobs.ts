@@ -61,16 +61,39 @@ export function useExploreJobs(adminMode = false) {
     return () => { supabase.removeChannel(channel); };
   }, [queryClient]);
 
+// Safe column list — `internal_notes` is intentionally excluded
+// because the Data API now revokes that column for anon/authenticated.
+// Admins read it through the `admin_get_explore_job_internal_notes` RPC.
+const PUBLIC_COLUMNS =
+  "id, source_requirement_id, title, short_description, description, skills, experience, " +
+  "budget, job_type, location, company_name, show_company, show_salary, urgency, tags, " +
+  "compliance_info, visibility, geo_targeting, skill_targeting, featured, status, slug, " +
+  "meta_title, meta_description, allow_direct_apply, auto_match_only, application_limit, " +
+  "expiry_date, views_count, clicks_count, applications_count, created_by, created_at, updated_at";
+
+export function useExploreJobs(adminMode = false) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const channel = supabase
+      .channel("explore-jobs-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "explore_jobs" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["explore-jobs"] });
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
+
   const query = useQuery({
     queryKey: ["explore-jobs", adminMode],
     queryFn: async () => {
-      let q = supabase.from("explore_jobs").select("*").order("created_at", { ascending: false });
+      let q = supabase.from("explore_jobs").select(PUBLIC_COLUMNS).order("created_at", { ascending: false });
       if (!adminMode) {
         q = q.eq("status", "published").eq("visibility", "public");
       }
       const { data, error } = await q;
       if (error) throw error;
-      return (data ?? []) as ExploreJob[];
+      return (data ?? []) as unknown as ExploreJob[];
     },
     staleTime: 15_000,
   });
@@ -83,9 +106,9 @@ export function useExploreJobById(id: string | undefined) {
     queryKey: ["explore-job", id],
     queryFn: async () => {
       if (!id) return null;
-      const { data, error } = await supabase.from("explore_jobs").select("*").eq("id", id).single();
+      const { data, error } = await supabase.from("explore_jobs").select(PUBLIC_COLUMNS).eq("id", id).single();
       if (error) throw error;
-      return data as ExploreJob;
+      return data as unknown as ExploreJob;
     },
     enabled: !!id,
   });
@@ -96,11 +119,25 @@ export function useExploreJobBySlug(slug: string | undefined) {
     queryKey: ["explore-job-slug", slug],
     queryFn: async () => {
       if (!slug) return null;
-      const { data, error } = await supabase.from("explore_jobs").select("*").eq("slug", slug).single();
+      const { data, error } = await supabase.from("explore_jobs").select(PUBLIC_COLUMNS).eq("slug", slug).single();
       if (error) throw error;
-      return data as ExploreJob;
+      return data as unknown as ExploreJob;
     },
     enabled: !!slug,
+  });
+}
+
+/** Admin-only: fetches the privileged `internal_notes` column via SECURITY DEFINER RPC. */
+export function useExploreJobInternalNotes(jobId: string | undefined) {
+  return useQuery({
+    queryKey: ["explore-job-internal-notes", jobId],
+    queryFn: async () => {
+      if (!jobId) return null;
+      const { data, error } = await supabase.rpc("admin_get_explore_job_internal_notes", { _job_id: jobId });
+      if (error) throw error;
+      return (data as string | null) ?? null;
+    },
+    enabled: !!jobId,
   });
 }
 
