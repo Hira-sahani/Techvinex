@@ -55,9 +55,11 @@ const BenchmarkTasks = () => {
 
   const fetchTasks = async () => {
     setLoading(true);
+    // Secret columns (system_prompt, rubric, expected_output) are revoked from
+    // the Data API and only readable via `get_benchmark_task_secret` for admin/reviewer.
     const { data } = await supabase
       .from("benchmark_tasks")
-      .select("*")
+      .select("id, title, prompt, category, difficulty, input_type, max_score, is_active, tags, created_at")
       .order("created_at", { ascending: false });
     setTasks((data as any[]) || []);
     setLoading(false);
@@ -68,18 +70,27 @@ const BenchmarkTasks = () => {
     setEditing(null);
   };
 
-  const handleEdit = (task: BenchmarkTask) => {
+  const handleEdit = async (task: BenchmarkTask) => {
     setEditing(task);
+    // Fetch the answer-key columns through the guarded RPC.
+    const { data: secret, error: secretErr } = await supabase
+      .rpc("get_benchmark_task_secret", { _task_id: task.id })
+      .maybeSingle();
+    if (secretErr) {
+      toast.error("Not authorized to view task answer key");
+      return;
+    }
+    const s = (secret as any) ?? {};
     setForm({
       title: task.title,
       prompt: task.prompt,
-      system_prompt: task.system_prompt || "",
+      system_prompt: s.system_prompt || "",
       category: task.category,
       difficulty: task.difficulty,
-      expected_output: task.expected_output || "",
+      expected_output: s.expected_output || "",
       input_type: task.input_type,
       max_score: task.max_score,
-      rubric_text: Array.isArray(task.rubric) ? task.rubric.map((r: any) => `${r.criterion}:${r.weight || 1}`).join("\n") : "",
+      rubric_text: Array.isArray(s.rubric) ? s.rubric.map((r: any) => `${r.criterion}:${r.weight || 1}`).join("\n") : "",
       tags: (task.tags || []).join(", "),
     });
     setDialogOpen(true);

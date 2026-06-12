@@ -26,8 +26,9 @@ const BenchmarkReviews = () => {
 
   const fetchData = async () => {
     setLoading(true);
+    // Only select non-secret task columns; expected_output is loaded per-row via RPC.
     const [resultsRes, reviewsRes] = await Promise.all([
-      supabase.from("benchmark_results").select("*, benchmark_tasks(title, category, prompt, expected_output)").order("created_at", { ascending: false }).limit(50),
+      supabase.from("benchmark_results").select("*, benchmark_tasks(title, category, prompt)").order("created_at", { ascending: false }).limit(50),
       supabase.from("benchmark_reviews").select("*").order("created_at", { ascending: false }),
     ]);
     setResults(resultsRes.data || []);
@@ -35,8 +36,15 @@ const BenchmarkReviews = () => {
     setLoading(false);
   };
 
-  const openReview = (result: any) => {
+  const openReview = async (result: any) => {
     setSelected(result);
+    // Reviewer/admin: fetch the answer key via guarded RPC.
+    const { data: secret } = await supabase
+      .rpc("get_benchmark_task_secret", { _task_id: result.task_id })
+      .maybeSingle();
+    if (secret && (secret as any).expected_output && result.benchmark_tasks) {
+      (result.benchmark_tasks as any).expected_output = (secret as any).expected_output;
+    }
     const existing = reviews.find((r) => r.result_id === result.id);
     setOverrideScore(existing?.override_score?.toString() || "");
     setComments(existing?.comments || "");
