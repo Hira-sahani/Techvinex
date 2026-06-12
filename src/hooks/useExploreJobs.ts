@@ -48,19 +48,6 @@ function generateSlug(title: string): string {
     .slice(0, 60) + "-" + Math.random().toString(36).slice(2, 7);
 }
 
-export function useExploreJobs(adminMode = false) {
-  const queryClient = useQueryClient();
-
-  useEffect(() => {
-    const channel = supabase
-      .channel("explore-jobs-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "explore_jobs" }, () => {
-        queryClient.invalidateQueries({ queryKey: ["explore-jobs"] });
-      })
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [queryClient]);
-
 // Safe column list — `internal_notes` is intentionally excluded
 // because the Data API now revokes that column for anon/authenticated.
 // Admins read it through the `admin_get_explore_job_internal_notes` RPC.
@@ -70,6 +57,7 @@ const PUBLIC_COLUMNS =
   "compliance_info, visibility, geo_targeting, skill_targeting, featured, status, slug, " +
   "meta_title, meta_description, allow_direct_apply, auto_match_only, application_limit, " +
   "expiry_date, views_count, clicks_count, applications_count, created_by, created_at, updated_at";
+
 
 export function useExploreJobs(adminMode = false) {
   const queryClient = useQueryClient();
