@@ -21,7 +21,10 @@ export default defineConfig(({ mode }) => ({
   build: {
     target: "es2020",
     cssCodeSplit: true,
-    sourcemap: mode !== "production",
+    // Generate sourcemaps in production so Sentry can symbolicate stack
+    // traces. They are kept alongside the JS chunks; if a future build step
+    // wants to upload+strip them via @sentry/vite-plugin, the maps are ready.
+    sourcemap: true,
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {

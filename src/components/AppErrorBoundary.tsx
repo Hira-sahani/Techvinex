@@ -1,6 +1,7 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
 import { AlertTriangle, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import * as Sentry from "@sentry/react";
 
 type Props = {
   children: ReactNode;
@@ -33,6 +34,14 @@ export class AppErrorBoundary extends Component<Props, State> {
     // Surface to console for devtools / log aggregators
     // eslint-disable-next-line no-console
     console.error("[AppErrorBoundary] Caught error:", error, info.componentStack);
+    try {
+      Sentry.captureException(error, {
+        tags: { source: "react.error_boundary" },
+        contexts: { react: { componentStack: info.componentStack ?? null } },
+      });
+    } catch {
+      // never let reporting break recovery UI
+    }
   }
 
   reset = () => this.setState({ error: null });

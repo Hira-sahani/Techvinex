@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, ReactNode } from "react";
 import { toast } from "sonner";
+import * as Sentry from "@sentry/react";
 import { supabase } from "@/integrations/supabase/client";
 import { onSessionExpired, type SessionExpiredEvent } from "@/lib/apiClient";
 import { logAuthDiag } from "@/lib/authDiagnostics";
@@ -48,6 +49,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (isRefreshFailure) {
         logAuthDiag("error", "auth-state", "Refresh failure detected (session lost)");
+        try {
+          Sentry.captureMessage("auth.refresh_failed", {
+            level: "warning",
+            tags: { source: "auth_state_change" },
+          });
+        } catch { /* noop */ }
         toast.error("Your session has expired. Please sign in again.", {
           id: "session-expired",
         });
