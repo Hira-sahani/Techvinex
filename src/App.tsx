@@ -273,8 +273,11 @@ const App = () => (
         <Toaster />
         <Sonner />
         <OfflineBanner />
-        <IdleTimeout />
         <BrowserRouter>
+          {/* IdleTimeout consumes useAuth() and must live inside AuthProvider.
+              It also needs to be inside BrowserRouter so that any future
+              navigation it triggers resolves via the router. */}
+          <IdleTimeout />
           <AppLayout />
         </BrowserRouter>
       </TooltipProvider>
