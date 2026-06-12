@@ -10,7 +10,7 @@ import { toast } from "sonner";
 
 // CV-1 patch: sanitize TipTap-authored HTML before rendering to block stored XSS.
 // CV-2 (JSON-LD): escape `<` to neutralise any `</script>` substring in dynamic fields.
-const SANITIZE_CONFIG: DOMPurify.Config = {
+const SANITIZE_CONFIG = {
   USE_PROFILES: { html: true },
   FORBID_TAGS: ["script", "style", "iframe", "object", "embed", "form", "base"],
   FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover", "onfocus", "onblur", "formaction", "srcdoc", "xlink:href"],
