@@ -1,6 +1,7 @@
 import { useLang } from "@/contexts/LangContext";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { subscribeRealtime } from "@/lib/realtimeBus";
 
 const formatValue = (key: string, value: number): string => {
   if (key === "avg_pay_hourly") {
