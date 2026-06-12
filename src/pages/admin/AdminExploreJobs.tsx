@@ -3,7 +3,7 @@ import {
   Plus, Search, Edit2, Trash2, Eye, Copy, BarChart3, Star, Globe, Pause, Play, Clock,
   Flag, Share2, AlertTriangle, Shield, ExternalLink, MessageSquare, ArrowLeft,
 } from "lucide-react";
-import { useExploreJobs, useDeleteExploreJob, useUpdateExploreJob, useCreateExploreJob } from "@/hooks/useExploreJobs";
+import { useExploreJobs, useDeleteExploreJob, useUpdateExploreJob, useCreateExploreJob, useExploreJobInternalNotes } from "@/hooks/useExploreJobs";
 import type { ExploreJob } from "@/hooks/useExploreJobs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,6 +37,7 @@ const AdminExploreJobs = () => {
   const [showForm, setShowForm] = useState(false);
   const [activeTab, setActiveTab] = useState("listings");
   const [selectedJob, setSelectedJob] = useState<ExploreJob | null>(null);
+  const { data: selectedInternalNotes } = useExploreJobInternalNotes(selectedJob?.id);
 
   const filtered = jobs.filter(j =>
     (statusFilter === "all" || j.status === statusFilter) &&
@@ -222,10 +223,10 @@ const AdminExploreJobs = () => {
                   ))}
                 </div>
               </div>
-              {selectedJob.internal_notes && (
+              {selectedInternalNotes && (
                 <div>
                   <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Internal Notes</p>
-                  <p className="mt-1 text-xs text-foreground bg-muted/40 rounded p-2">{selectedJob.internal_notes}</p>
+                  <p className="mt-1 text-xs text-foreground bg-muted/40 rounded p-2">{selectedInternalNotes}</p>
                 </div>
               )}
               <div>
