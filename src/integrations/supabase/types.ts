@@ -1381,7 +1381,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_get_explore_job_internal_notes: {
+        Args: { _job_id: string }
+        Returns: string
+      }
       cleanup_expired_rate_buckets: { Args: never; Returns: number }
+      get_benchmark_task_secret: {
+        Args: { _task_id: string }
+        Returns: {
+          expected_output: string
+          id: string
+          rubric: Json
+          system_prompt: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
