@@ -77,7 +77,7 @@ const BenchmarkResults = () => {
                     <p className="text-xs font-semibold">{r.task_title}</p>
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <Badge variant="outline" className="text-[9px]">{r.model}</Badge>
-                      <Badge variant="outline" className="text-[9px] capitalize">{(r.benchmark_tasks as any)?.category}</Badge>
+                      <Badge variant="outline" className="text-[9px] capitalize">{r.task_category}</Badge>
                       <Badge variant={r.pass_at_1 ? "default" : "secondary"} className="text-[9px]">
                         Pass@1: {r.pass_at_1 ? "✓" : "✗"}
                       </Badge>
