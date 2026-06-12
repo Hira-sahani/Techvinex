@@ -1,17 +1,13 @@
 # Fallback hosting config for Netlify (mirrors vercel.json behavior).
-# Lovable hosting ignores this file; it is only used if you deploy to Netlify.
-
 [build]
   command = "npm run build"
   publish = "dist"
 
-# SPA fallback — every non-asset route serves index.html so React Router can handle it.
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
 
-# Long-cache hashed assets
 [[headers]]
   for = "/assets/*"
   [headers.values]
@@ -21,4 +17,10 @@
   for = "/*"
   [headers.values]
     X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
     Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(self), geolocation=(), payment=(), usb=(), interest-cohort=()"
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+    Cross-Origin-Opener-Policy = "same-origin-allow-popups"
+    Cross-Origin-Resource-Policy = "same-site"
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://*.lovable.app https://cdn.gpteng.co; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' https://fonts.gstatic.com data:; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://www.google-analytics.com https://*.googleapis.com https://api.elevenlabs.io https://*.lovable.app https://api.openai.com; media-src 'self' blob: https:; frame-src https://accounts.google.com https://*.supabase.co; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests"

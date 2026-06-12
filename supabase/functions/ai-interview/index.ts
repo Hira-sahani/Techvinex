@@ -38,7 +38,7 @@ Deno.serve((req) =>
     if (!OPENAI_API_KEY) {
       return new Response(JSON.stringify({ error: "service_unavailable" }), {
         status: 503,
-        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        headers: { "Content-Type": "application/json" },
       });
     }
 
@@ -62,13 +62,12 @@ Deno.serve((req) =>
       const status = response.status === 429 ? 429 : response.status === 402 ? 402 : 502;
       return new Response(JSON.stringify({ error: "upstream_error", status: response.status }), {
         status,
-        headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+        headers: { "Content-Type": "application/json" },
       });
     }
 
     return new Response(response.body, {
       headers: {
-        "Access-Control-Allow-Origin": "*",
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
         Connection: "keep-alive",

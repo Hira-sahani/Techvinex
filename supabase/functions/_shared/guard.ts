@@ -14,16 +14,33 @@ import { admin, log, rateLimit, setRateStore, PgRateStore, withIdempotency } fro
 // One-time: distributed limiter shared across instances.
 setRateStore(new PgRateStore());
 
+// Default headers used only for non-browser callers (no Origin header).
+// For browser callers, buildCors(req) reflects the verified Origin so wildcard "*"
+// is never emitted to authenticated, credentialed requests.
 export const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type, idempotency-key, x-signature, x-timestamp, x-requested-with",
   "Access-Control-Allow-Methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+  "Vary": "Origin",
   // Defense-in-depth response headers.
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "no-referrer",
   "X-Frame-Options": "DENY",
 };
+
+export function buildCors(req: Request, extraAllowed: string[] = []): Record<string, string> {
+  const origin = req.headers.get("origin");
+  const headers = { ...corsHeaders };
+  if (origin && (extraAllowed.includes(origin) || DEFAULT_ALLOWED_ORIGINS.some((re) => re.test(origin)))) {
+    headers["Access-Control-Allow-Origin"] = origin;
+    headers["Access-Control-Allow-Credentials"] = "true";
+  } else if (origin) {
+    // Origin present but not on allow-list — refuse cross-origin reads.
+    headers["Access-Control-Allow-Origin"] = "null";
+  }
+  return headers;
+}
 
 const json = (body: unknown, status = 200, extra: Record<string, string> = {}) =>
   new Response(JSON.stringify(body), {
@@ -134,12 +151,19 @@ export async function guard<TBody = unknown>(
   cfg: GuardConfig<TBody>,
   handler: (ctx: GuardCtx<TBody>) => Promise<Response> | Response,
 ): Promise<Response> {
-  // CORS preflight short-circuit.
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  // CORS preflight — reflect verified Origin only.
+  const cors = buildCors(req, cfg.allowedOrigins ?? []);
+  if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
 
   const url = new URL(req.url);
   const route = url.pathname;
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  // Trusted-proxy XFF parse: take the right-most entry (added by our edge proxy),
+  // not the left-most which any client can spoof.
+  const xff = req.headers.get("x-forwarded-for") ?? "";
+  const xffParts = xff.split(",").map((s) => s.trim()).filter(Boolean);
+  const ip = xffParts.length > 0
+    ? xffParts[xffParts.length - 1]
+    : (req.headers.get("cf-connecting-ip") ?? req.headers.get("x-real-ip") ?? "unknown");
 
   // 1. Method allowlist.
   if (!cfg.allowedMethods.includes(req.method as never)) {
@@ -269,7 +293,12 @@ export async function guard<TBody = unknown>(
       try {
         await admin().from("audit_logs").insert({
           user_id: userId, action, target_type: "edge_function",
-          target_id: targetId ?? route, details: { ip, fp, ...details },
+          target_id: targetId ?? route,
+          details: {
+            ip, fp, ua: req.headers.get("user-agent") ?? null,
+            method: req.method, origin: req.headers.get("origin") ?? null,
+            roles, ...details,
+          },
         });
       } catch (e) { log("warn", "audit_insert_failed", { error: String(e) }); }
     },
@@ -278,13 +307,19 @@ export async function guard<TBody = unknown>(
 
   try {
     const res = await handler(ctx);
-    // Inject defense-in-depth headers if handler returned a Response without them.
     const merged = new Headers(res.headers);
     for (const [k, v] of Object.entries({
       "X-Content-Type-Options": "nosniff",
       "Referrer-Policy": "no-referrer",
+      "X-Frame-Options": "DENY",
+      "Vary": "Origin",
     })) if (!merged.has(k)) merged.set(k, v);
-    if (!merged.has("Access-Control-Allow-Origin")) merged.set("Access-Control-Allow-Origin", "*");
+    if (!merged.has("Access-Control-Allow-Origin")) {
+      merged.set("Access-Control-Allow-Origin", cors["Access-Control-Allow-Origin"]);
+      if (cors["Access-Control-Allow-Credentials"]) {
+        merged.set("Access-Control-Allow-Credentials", "true");
+      }
+    }
     return new Response(res.body, { status: res.status, headers: merged });
   } catch (e) {
     log("error", "handler_unhandled", { route, error: String(e) });

@@ -1,0 +1,63 @@
+name: Security Scan
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: '0 6 * * 1' # weekly Monday 06:00 UTC
+
+jobs:
+  dependency-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: latest }
+      - name: Install
+        run: bun install --frozen-lockfile
+      - name: Bun audit (advisory)
+        run: bun audit || true
+      - name: npm audit (high+)
+        run: |
+          npx --yes npm@10 install --package-lock-only --ignore-scripts || true
+          npx --yes npm@10 audit --audit-level=high || echo "::warning::npm audit reported issues"
+
+  codeql:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+          queries: security-and-quality
+      - uses: github/codeql-action/analyze@v3
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+  edge-function-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check edge functions for wildcard CORS without guard()
+        run: |
+          set -e
+          violations=$(grep -RIn "Access-Control-Allow-Origin\": \"\*\"" supabase/functions \
+            --exclude-dir=_shared || true)
+          if [ -n "$violations" ]; then
+            echo "::warning::Edge functions using wildcard CORS without guard():"
+            echo "$violations"
+          fi
