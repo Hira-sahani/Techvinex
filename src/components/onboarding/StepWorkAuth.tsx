@@ -3,8 +3,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronDown, Search } from "lucide-react";
 import { countries } from "@/data/countries";
 import { statesByCountry } from "@/data/states";
-import { citiesByState } from "@/data/cities";
-import { useState } from "react";
+import { loadCities } from "@/lib/loadCities";
+import { useEffect, useState } from "react";
+
 
 interface Props {
   form: {
@@ -166,7 +167,14 @@ const StepWorkAuth = ({ form, update }: Props) => {
   };
 
   const stateOptions = statesByCountry[form.country] || [];
-  const cityOptions = citiesByState[form.state] || [];
+  const [cityOptions, setCityOptions] = useState<string[]>([]);
+  useEffect(() => {
+    let alive = true;
+    if (!form.state) { setCityOptions([]); return; }
+    loadCities().then((m) => { if (alive) setCityOptions(m[form.state] || []); }).catch(() => alive && setCityOptions([]));
+    return () => { alive = false; };
+  }, [form.state]);
+
 
   return (
     <div className="text-center">

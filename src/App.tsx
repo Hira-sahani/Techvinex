@@ -77,7 +77,7 @@ const OpportunityDetail = lazy(() => import("./pages/OpportunityDetail"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const CandidateDashboard = lazy(() => import("./pages/CandidateDashboard"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
-const AuthTest = lazy(() => import("./pages/AuthTest"));
+// AuthTest removed from production. Re-add behind import.meta.env.DEV if needed.
 const EmployerLogin = lazy(() => import("./pages/employer/EmployerLogin"));
 const EmployerDashboard = lazy(() => import("./pages/employer/EmployerDashboard"));
 const EmployerRequirements = lazy(() => import("./pages/employer/EmployerRequirements"));
@@ -170,7 +170,7 @@ const AppLayout = () => {
           <Route path="/" element={<Explore />} />
           <Route path="/login" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
-          <Route path="/auth-test" element={<AuthTest />} />
+          {import.meta.env.DEV && <Route path="/auth-test" element={<div>AuthTest removed from production build.</div>} />}
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/home" element={<ProtectedRoute><Index /></ProtectedRoute>} />
           <Route path="/dashboard" element={<ProtectedRoute><CandidateDashboard /></ProtectedRoute>} />

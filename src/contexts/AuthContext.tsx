@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, ReactNode } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { onSessionExpired, type SessionExpiredEvent } from "@/lib/apiClient";
@@ -94,16 +94,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setSessionExpiredEvent(null);
   }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     await supabase.auth.signOut();
     setUser(null);
     setSession(null);
     setSessionExpiredEvent(null);
     previousSessionRef.current = null;
-  };
+  }, []);
 
-  return (
-    <AuthContext.Provider value={{
+  const login = useCallback(() => {}, []);
+
+  const value = useMemo(
+    () => ({
       isLoggedIn: !!user,
       user,
       session,
@@ -111,13 +113,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       isSessionExpired: !!sessionExpiredEvent,
       sessionExpiredEvent,
       dismissSessionExpired,
-      login: () => {},
+      login,
       logout,
-    }}>
-      {children}
-    </AuthContext.Provider>
+    }),
+    [user, session, loading, sessionExpiredEvent, dismissSessionExpired, login, logout],
   );
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
+
 
 export const useAuth = () => {
   const ctx = useContext(AuthContext);

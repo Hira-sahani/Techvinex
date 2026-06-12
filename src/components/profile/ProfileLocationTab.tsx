@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { countries } from "@/data/countries";
 import { statesByCountry } from "@/data/states";
-import { citiesByState } from "@/data/cities";
+import { loadCities } from "@/lib/loadCities";
 import { toast } from "sonner";
 import { ProfileTabSkeleton } from "@/components/skeletons/PageSkeletons";
 
@@ -45,6 +45,15 @@ const ProfileLocationTab = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [editMode, setEditMode] = useState(true);
+  const [cityOptions, setCityOptions] = useState<string[]>([]);
+
+  useEffect(() => {
+    let alive = true;
+    if (!form.state) { setCityOptions([]); return; }
+    loadCities().then((m) => { if (alive) setCityOptions(m[form.state] || []); }).catch(() => alive && setCityOptions([]));
+    return () => { alive = false; };
+  }, [form.state]);
+
 
   useEffect(() => {
     let isMounted = true;
@@ -136,15 +145,16 @@ const ProfileLocationTab = () => {
           </div>
           <div>
             <label className="text-xs font-medium text-foreground mb-1.5 block">City</label>
-            {citiesByState[form.state] ? (
+            {cityOptions.length > 0 ? (
               <Select value={form.city || undefined} onValueChange={(value) => updateField("city", value)} disabled={disabled}>
                 <SelectTrigger className="h-10 text-sm"><SelectValue placeholder="Select city" /></SelectTrigger>
-                <SelectContent className="max-h-72">{citiesByState[form.state].map((c) => (<SelectItem key={c} value={c}>{c}</SelectItem>))}</SelectContent>
+                <SelectContent className="max-h-72">{cityOptions.map((c) => (<SelectItem key={c} value={c}>{c}</SelectItem>))}</SelectContent>
               </Select>
             ) : (
               <Input value={form.city} onChange={(e) => updateField("city", e.target.value)} placeholder="Enter city" className="h-10 text-sm" disabled={disabled} />
             )}
           </div>
+
         </div>
 
         <div>
