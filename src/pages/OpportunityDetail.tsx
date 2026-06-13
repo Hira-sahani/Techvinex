@@ -67,7 +67,46 @@ const OpportunityDetail = () => {
     },
   });
 
-  useDocumentMeta({ title: job ? `${job.title} · Techvinex` : "Opportunity · Techvinex" });
+  useDocumentMeta({
+    title: job ? `${job.title} · Techvinex` : "Opportunity · Techvinex",
+    description: job
+      ? `Apply for ${job.title}${job.company_name ? ` at ${job.company_name}` : ""}${job.location ? ` (${job.location})` : ""} on Techvinex — AI matched hiring for top professionals.`
+      : "Explore vetted job opportunities on Techvinex, the AI powered hiring platform.",
+    type: job ? "article" : "website",
+    jsonLd: job
+      ? {
+          "@context": "https://schema.org",
+          "@type": "JobPosting",
+          title: job.title,
+          description: (job.description || "").slice(0, 5000),
+          datePosted: job.created_at || new Date().toISOString(),
+          employmentType: job.job_type || "FULL_TIME",
+          hiringOrganization: {
+            "@type": "Organization",
+            name: job.company_name || "Techvinex",
+            sameAs: "https://techvinex.com/",
+          },
+          jobLocation: {
+            "@type": "Place",
+            address: { "@type": "PostalAddress", addressLocality: job.location || "Remote" },
+          },
+          ...(job.location && /remote/i.test(job.location)
+            ? { jobLocationType: "TELECOMMUTE", applicantLocationRequirements: { "@type": "Country", name: "Worldwide" } }
+            : {}),
+          ...(job.budget
+            ? {
+                baseSalary: {
+                  "@type": "MonetaryAmount",
+                  currency: "USD",
+                  value: { "@type": "QuantitativeValue", value: String(job.budget).replace(/[^0-9.]/g, "") || undefined, unitText: "HOUR" },
+                },
+              }
+            : {}),
+          url: typeof window !== "undefined" ? window.location.href : undefined,
+          directApply: true,
+        }
+      : undefined,
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

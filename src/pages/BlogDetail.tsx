@@ -30,6 +30,24 @@ const BlogDetail = () => {
     url: blog ? `${window.location.origin}/blog/${blog.slug}` : undefined,
     type: "article",
     author: blog?.author || undefined,
+    jsonLd: blog
+      ? {
+          "@context": "https://schema.org",
+          "@type": "Article",
+          headline: blog.title,
+          description: blog.short_description || undefined,
+          image: blog.image_url || undefined,
+          datePublished: (blog as any).published_at || (blog as any).created_at || undefined,
+          dateModified: (blog as any).updated_at || (blog as any).created_at || undefined,
+          author: blog.author ? { "@type": "Person", name: blog.author } : { "@type": "Organization", name: "Techvinex" },
+          publisher: {
+            "@type": "Organization",
+            name: "Techvinex",
+            logo: { "@type": "ImageObject", url: "https://techvinex.com/techvinex-logo.png" },
+          },
+          mainEntityOfPage: typeof window !== "undefined" ? `${window.location.origin}/blog/${blog.slug}` : undefined,
+        }
+      : undefined,
   });
 
   const handleShare = async () => {
