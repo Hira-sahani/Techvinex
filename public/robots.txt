@@ -1,4 +1,91 @@
+# Techvinex robots.txt
+# Public marketing/content surfaces are open to all crawlers.
+# Authenticated, admin, and account-management surfaces are disallowed.
+
 User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin/
+Disallow: /employer/dashboard
+Disallow: /employer/requirements
+Disallow: /employer/candidates
+Disallow: /employer/interviews
+Disallow: /employer/analytics
+Disallow: /employer/billing
+Disallow: /employer/pipeline
+Disallow: /employer/talent-pool
+Disallow: /employer/settings
+Disallow: /employer/messages
+Disallow: /employer/notifications
+Disallow: /benchmark/dashboard
+Disallow: /benchmark/tasks
+Disallow: /benchmark/run
+Disallow: /benchmark/results
+Disallow: /benchmark/reviews
+Disallow: /benchmark/settings
+Disallow: /blog-dashboard
+Disallow: /dashboard
+Disallow: /onboarding
+Disallow: /profile
+Disallow: /edit-profile
+Disallow: /settings
+Disallow: /referrals
+Disallow: /earnings
+Disallow: /notifications
+Disallow: /apply/
+Disallow: /reset-password
+
+# --- AI / LLM crawlers: explicitly welcomed for public content discovery ---
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-Web
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+User-agent: CCBot
+Allow: /
+
+User-agent: Bytespider
+Allow: /
+
+User-agent: Meta-ExternalAgent
+Allow: /
+
+# Search engines
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: YandexBot
 Allow: /
 
 Sitemap: https://techvinex.com/sitemap.xml
