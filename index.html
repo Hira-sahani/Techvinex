@@ -111,43 +111,78 @@
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
-      "@type": "WebSite",
-      "name": "Techvinex",
-      "url": "https://techvinex.com/",
-      "description": "AI powered job and hiring platform connecting top professionals with leading companies.",
-      "potentialAction": {
-        "@type": "SearchAction",
-        "target": "https://techvinex.com/explore?q={search_term_string}",
-        "query-input": "required name=search_term_string"
-      }
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://techvinex.com/#organization",
+          "name": "Techvinex",
+          "legalName": "Techvinex",
+          "alternateName": ["Techvinex AI", "Techvinex.com"],
+          "url": "https://techvinex.com/",
+          "logo": {
+            "@type": "ImageObject",
+            "@id": "https://techvinex.com/#logo",
+            "url": "https://techvinex.com/techvinex-logo.png",
+            "contentUrl": "https://techvinex.com/techvinex-logo.png",
+            "caption": "Techvinex"
+          },
+          "image": { "@id": "https://techvinex.com/#logo" },
+          "description": "Techvinex is an AI powered job and hiring platform connecting top professionals with leading companies through AI matching, vetted opportunities and referrals.",
+          "foundingDate": "2024",
+          "knowsAbout": ["AI Hiring", "Job Matching", "Talent Acquisition", "AI Benchmarks", "Remote Work", "Recruiting"],
+          "areaServed": "Worldwide",
+          "brand": { "@id": "https://techvinex.com/#brand" },
+          "sameAs": []
+        },
+        {
+          "@type": "Brand",
+          "@id": "https://techvinex.com/#brand",
+          "name": "Techvinex",
+          "url": "https://techvinex.com/",
+          "logo": "https://techvinex.com/techvinex-logo.png",
+          "description": "Techvinex brand — AI powered job and hiring platform."
+        },
+        {
+          "@type": "WebSite",
+          "@id": "https://techvinex.com/#website",
+          "name": "Techvinex",
+          "alternateName": "Techvinex AI",
+          "url": "https://techvinex.com/",
+          "description": "AI powered job and hiring platform connecting top professionals with leading companies.",
+          "publisher": { "@id": "https://techvinex.com/#organization" },
+          "inLanguage": "en",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://techvinex.com/explore?q={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "WebPage",
+          "@id": "https://techvinex.com/#webpage",
+          "url": "https://techvinex.com/",
+          "name": "Techvinex – AI Powered Job & Hiring Platform",
+          "isPartOf": { "@id": "https://techvinex.com/#website" },
+          "about": { "@id": "https://techvinex.com/#organization" },
+          "primaryImageOfPage": { "@id": "https://techvinex.com/#logo" },
+          "description": "Techvinex is an AI powered job and hiring platform connecting top professionals with leading companies."
+        },
+        {
+          "@type": "SoftwareApplication",
+          "name": "Techvinex",
+          "applicationCategory": "BusinessApplication",
+          "operatingSystem": "Web",
+          "url": "https://techvinex.com/",
+          "publisher": { "@id": "https://techvinex.com/#organization" },
+          "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+        }
+      ]
     }
     </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "Organization",
-      "name": "Techvinex",
-      "alternateName": "Techvinex AI",
-      "url": "https://techvinex.com/",
-      "logo": "https://techvinex.com/techvinex-logo.png",
-      "description": "AI powered job and hiring platform connecting top professionals with leading companies through AI matching, vetted opportunities and referrals.",
-      "foundingDate": "2024",
-      "knowsAbout": ["AI Hiring", "Job Matching", "Talent Acquisition", "AI Benchmarks", "Remote Work", "Recruiting"],
-      "areaServed": "Worldwide",
-      "sameAs": []
-    }
-    </script>
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      "name": "Techvinex",
-      "applicationCategory": "BusinessApplication",
-      "operatingSystem": "Web",
-      "url": "https://techvinex.com/",
-      "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
-    }
-    </script>
+
   </head>
 
   <body>
