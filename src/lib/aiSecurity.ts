@@ -176,17 +176,14 @@ export function detectFileKind(bytes: Uint8Array): FileKind {
   return "unknown";
 }
 
-/** Read the first 4 KB and verify the declared MIME/extension matches the magic bytes. */
-export async function verifyFileSignature(file: File): Promise<FileValidationResult> {
-  if (file.size === 0) return { ok: false, reason: "empty" };
-  const buf = await file.arrayBuffer();
-  const head = new Uint8Array(buf, 0, Math.min(buf.byteLength, 4096));
+/** Verify head bytes against declared filename. Pure — safe to call in any runtime. */
+export function verifyFileBytes(head: Uint8Array, filename: string): FileValidationResult {
   const kind = detectFileKind(head);
   if (kind === "exe" || kind === "elf" || kind === "macho" || kind === "script") {
     return { ok: false, reason: "executable", detected: kind };
   }
   if (kind === "docm") return { ok: false, reason: "macro", detected: kind };
-  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
   const extMap: Record<string, FileKind[]> = {
     pdf: ["pdf"], png: ["png"], jpg: ["jpeg"], jpeg: ["jpeg"], gif: ["gif"], webp: ["webp"],
     mp3: ["mp3"], wav: ["wav"], webm: ["webm"], txt: ["text"], md: ["text"], csv: ["text"],
@@ -195,6 +192,19 @@ export async function verifyFileSignature(file: File): Promise<FileValidationRes
   const expected = extMap[ext];
   if (expected && !expected.includes(kind)) return { ok: false, reason: "signature", detected: kind };
   return { ok: true, detected: kind };
+}
+
+/** Read the first 4 KB of a File and verify. Uses FileReader for widest compatibility. */
+export async function verifyFileSignature(file: File): Promise<FileValidationResult> {
+  if (file.size === 0) return { ok: false, reason: "empty" };
+  const blob = file.slice(0, 4096);
+  const buf: ArrayBuffer = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as ArrayBuffer);
+    r.onerror = () => reject(r.error);
+    r.readAsArrayBuffer(blob);
+  });
+  return verifyFileBytes(new Uint8Array(buf), file.name);
 }
 
 // ---------------------------------------------------------------------------
