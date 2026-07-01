@@ -43,7 +43,7 @@ const BlogDetail = () => {
           publisher: {
             "@type": "Organization",
             name: "Techvinex",
-            logo: { "@type": "ImageObject", url: "https://techvinex.com/techvinex-logo.png" },
+            logo: { "@type": "ImageObject", url: "https://www.techvinex.com/techvinex-logo.png" },
           },
           mainEntityOfPage: typeof window !== "undefined" ? `${window.location.origin}/blog/${blog.slug}` : undefined,
         }

@@ -88,4 +88,4 @@ Allow: /
 User-agent: YandexBot
 Allow: /
 
-Sitemap: https://techvinex.com/sitemap.xml
+Sitemap: https://www.techvinex.com/sitemap.xml

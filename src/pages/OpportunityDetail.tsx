@@ -84,7 +84,7 @@ const OpportunityDetail = () => {
           hiringOrganization: {
             "@type": "Organization",
             name: job.company_name || "Techvinex",
-            sameAs: "https://techvinex.com/",
+            sameAs: "https://www.techvinex.com/",
           },
           jobLocation: {
             "@type": "Place",
