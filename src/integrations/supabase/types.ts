@@ -14,6 +14,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_approval_requests: {
+        Row: {
+          action: string
+          decided_at: string | null
+          decided_by: string | null
+          expires_at: string
+          id: string
+          org_id: string | null
+          params: Json
+          plan_hash: string | null
+          reason: string
+          requested_at: string
+          risk: string
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          decided_at?: string | null
+          decided_by?: string | null
+          expires_at?: string
+          id?: string
+          org_id?: string | null
+          params?: Json
+          plan_hash?: string | null
+          reason: string
+          requested_at?: string
+          risk: string
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          expires_at?: string
+          id?: string
+          org_id?: string | null
+          params?: Json
+          plan_hash?: string | null
+          reason?: string
+          requested_at?: string
+          risk?: string
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       ai_jobs: {
         Row: {
           attempts: number
@@ -125,6 +173,42 @@ export type Database = {
           plan_hash?: string | null
           severity?: string
           user_id?: string | null
+        }
+        Relationships: []
+      }
+      ai_session_memory: {
+        Row: {
+          classification: string
+          content: Json
+          created_at: string
+          expires_at: string
+          id: string
+          org_id: string | null
+          scope: string
+          session_id: string
+          user_id: string
+        }
+        Insert: {
+          classification?: string
+          content: Json
+          created_at?: string
+          expires_at?: string
+          id?: string
+          org_id?: string | null
+          scope?: string
+          session_id: string
+          user_id: string
+        }
+        Update: {
+          classification?: string
+          content?: Json
+          created_at?: string
+          expires_at?: string
+          id?: string
+          org_id?: string | null
+          scope?: string
+          session_id?: string
+          user_id?: string
         }
         Relationships: []
       }
