@@ -84,10 +84,13 @@ async function runInterview(input: Record<string, unknown>, enforcer: PlanEnforc
   return validateToolOutput(enforcer, { content: redactDeep(content) }, "text");
 }
 
-async function runTts(input: Record<string, unknown>): Promise<unknown> {
+async function runTts(input: Record<string, unknown>, enforcer: PlanEnforcer): Promise<unknown> {
   const apiKey = Deno.env.get("ELEVENLABS_API_KEY");
   if (!apiKey) throw new Error("elevenlabs_not_configured");
-  const text = String(input.text ?? "");
+  enforcer.step();
+  enforcer.authorizeEgress("api.elevenlabs.io");
+  // Sanitize TTS text — attackers commonly embed prompt-injection here.
+  const text = sanitizeExternalContent(String(input.text ?? "")).safe;
   const voiceId = String(input.voiceId ?? ELEVENLABS_VOICE_DEFAULT);
 
   const r = await fetch(
@@ -111,7 +114,7 @@ async function runTts(input: Record<string, unknown>): Promise<unknown> {
   for (let i = 0; i < buf.length; i += chunk) {
     binary += String.fromCharCode(...buf.subarray(i, i + chunk));
   }
-  return { audioContent: btoa(binary), mime: "audio/mpeg" };
+  return validateToolOutput(enforcer, { audioContent: btoa(binary), mime: "audio/mpeg" }, "audio");
 }
 
 Deno.serve(withSentry("ai-job-worker", async (req) => {
