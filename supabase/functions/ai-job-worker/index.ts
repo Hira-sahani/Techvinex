@@ -153,15 +153,26 @@ Deno.serve(withSentry("ai-job-worker", async (req) => {
   }
 
   const j = job as Job;
+
+  // Freeze an execution plan for this job kind. From here on, every model
+  // call and every tool use is bounded by this plan.
+  const planKind = j.kind === "interview" ? "interview" : j.kind === "tts" ? "tts" : "benchmark";
+  const signed = await createExecutionPlan(planKind as never, j.user_id);
+  const enforcer = new PlanEnforcer(signed);
+  await auditSecurity({
+    userId: j.user_id, jobId: j.id, kind: j.kind, event: "plan_created",
+    severity: "info", planHash: signed.hash,
+  });
+
   try {
     let result: unknown;
-    if (j.kind === "interview") result = await runInterview(j.input);
-    else if (j.kind === "tts") result = await runTts(j.input);
+    if (j.kind === "interview") result = await runInterview(j.input, enforcer);
+    else if (j.kind === "tts") result = await runTts(j.input, enforcer);
     else throw new Error(`unsupported_kind:${j.kind}`);
 
     await db.from("ai_jobs").update({
       status: "completed",
-      result,
+      result: redactDeep(result),
       completed_at: new Date().toISOString(),
     }).eq("id", j.id);
 
@@ -169,13 +180,19 @@ Deno.serve(withSentry("ai-job-worker", async (req) => {
       status: 200, headers: { ...CORS, "Content-Type": "application/json" },
     });
   } catch (e) {
+    const message = String((e as Error).message ?? e).slice(0, 500);
+    await auditSecurity({
+      userId: j.user_id, jobId: j.id, kind: j.kind, event: "job_failed",
+      severity: message.startsWith("plan_") || message.includes("violation") ? "high" : "medium",
+      planHash: signed.hash, details: { error: message },
+    });
     await db.from("ai_jobs").update({
       status: "failed",
-      error: String((e as Error).message ?? e).slice(0, 500),
+      error: message,
       completed_at: new Date().toISOString(),
     }).eq("id", j.id);
 
-    return new Response(JSON.stringify({ ok: false, error: String(e) }), {
+    return new Response(JSON.stringify({ ok: false, error: "job_failed" }), {
       status: 200, headers: { ...CORS, "Content-Type": "application/json" },
     });
   }
