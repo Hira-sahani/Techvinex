@@ -203,8 +203,8 @@ export async function verifyFileSignature(file: File): Promise<FileValidationRes
 // ---------------------------------------------------------------------------
 
 const HOMOGLYPHS: Record<string, string> = {
-  "\u0430": "a", "\u0435": "e", "\u043e": "o", "\u0440": "p", "\u0441": "c",
-  "\u0445": "x", "\u0455": "s", "\u0456": "i",
+  "\u0430": "a", "\u0432": "v", "\u0435": "e", "\u043e": "o", "\u0440": "p", "\u0441": "c",
+  "\u0445": "x", "\u0455": "s", "\u0456": "i", "\u043a": "k", "\u0443": "y",
 };
 export function normalizeUnicode(input: string): string {
   let out = String(input ?? "").normalize("NFKC");
