@@ -179,7 +179,8 @@ export function detectFileKind(bytes: Uint8Array): FileKind {
 /** Read the first 4 KB and verify the declared MIME/extension matches the magic bytes. */
 export async function verifyFileSignature(file: File): Promise<FileValidationResult> {
   if (file.size === 0) return { ok: false, reason: "empty" };
-  const head = new Uint8Array(await file.slice(0, 4096).arrayBuffer());
+  const buf = await file.arrayBuffer();
+  const head = new Uint8Array(buf, 0, Math.min(buf.byteLength, 4096));
   const kind = detectFileKind(head);
   if (kind === "exe" || kind === "elf" || kind === "macho" || kind === "script") {
     return { ok: false, reason: "executable", detected: kind };
