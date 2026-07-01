@@ -17,7 +17,7 @@
 // Non-goal: this file NEVER embeds secrets, service-role keys, or SQL.
 
 import { supabase } from "@/integrations/supabase/client";
-import { redactSecretsClient, sanitizeClient } from "@/lib/aiSecurity";
+import { redactSecrets, sanitizeAiOutput } from "@/lib/aiSecurity";
 
 export type SafePermissionScope = "public" | "self" | "elevated";
 export type SafeOutputType = "text" | "json";
