@@ -21,6 +21,12 @@ import {
   redactDeep,
   validateToolOutput,
 } from "../_shared/ai-security.ts";
+import {
+  evaluatePolicy,
+  requestHumanApproval,
+  checkApprovalStatus,
+  getActionPolicy,
+} from "../_shared/ai-policy.ts";
 
 const bodySchema = z.object({
   planToken: z.string().min(20).max(8000),
