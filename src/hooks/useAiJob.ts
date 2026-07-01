@@ -77,7 +77,9 @@ export function useAiJob(jobId: string | null | undefined) {
         { body: { jobId } },
       );
       if (error) throw error;
-      return data ?? null;
+      // Defense-in-depth: strip secrets / tool-call blocks from anything the
+      // model produced before it can reach a render surface.
+      return data ? sanitizeAiJson(data) : null;
     },
     enabled: !!jobId,
     // Poll only while pending — terminal statuses stop polling.
