@@ -47,16 +47,14 @@ describe("aiSecurity", () => {
     expect(detectFileKind(bytes([0x7f, 0x45, 0x4c, 0x46]))).toBe("elf");
   });
 
-  it("rejects PE executable disguised as PDF", async () => {
-    const disguised = mkFile(bytes([0x4d, 0x5a, 0x90, 0, 0, 0, 0, 0]), "resume.pdf", "application/pdf");
-    const r = await verifyFileSignature(disguised);
+  it("rejects PE executable disguised as PDF", () => {
+    const r = verifyFileBytes(bytes([0x4d, 0x5a, 0x90, 0, 0, 0, 0, 0]), "resume.pdf");
     expect(r.ok).toBe(false);
     expect(r.reason).toBe("executable");
   });
 
-  it("accepts a real PDF signature", async () => {
-    const pdf = mkFile(bytes([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34]), "a.pdf", "application/pdf");
-    const r = await verifyFileSignature(pdf);
+  it("accepts a real PDF signature", () => {
+    const r = verifyFileBytes(bytes([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34]), "a.pdf");
     expect(r.ok).toBe(true);
     expect(r.detected).toBe("pdf");
   });
