@@ -233,7 +233,31 @@ const INJECTION_PATTERNS: Array<[RegExp, string]> = [
   [/curl\s+http|wget\s+http|fetch\(['"]http/gi, "egress-attempt"],
   [/tool_call\s*[:=]|<\s*tool\s*>/gi, "tool-injection"],
   [/\u200B|\u200C|\u200D|\uFEFF/g, "zero-width"],
+  // Nested / smuggled injection inside structured formats.
+  [/<!--[\s\S]{0,400}?(ignore|system|prompt)[\s\S]{0,400}?-->/gi, "html-comment-smuggle"],
+  [/data:text\/[a-z]+;base64,[A-Za-z0-9+/=]{40,}/gi, "data-url-smuggle"],
+  [/```(system|assistant|developer)[\s\S]*?```/gi, "fence-role-hijack"],
+  [/\{\{[\s\S]*?(system|prompt|instructions)[\s\S]*?\}\}/gi, "template-smuggle"],
 ];
+
+// Homoglyph normalisation table — attackers replace ASCII letters with
+// visually-identical Cyrillic / Greek code points to bypass regex filters.
+const HOMOGLYPH_MAP: Record<string, string> = {
+  "\u0430": "a", "\u0435": "e", "\u043e": "o", "\u0440": "p", "\u0441": "c",
+  "\u0445": "x", "\u0455": "s", "\u0456": "i", "\u0501": "d", "\u051b": "q",
+  "\u0399": "I", "\u0392": "B", "\u0397": "H", "\u039a": "K", "\u039c": "M",
+  "\u039d": "N", "\u039f": "O", "\u03a1": "P", "\u03a4": "T", "\u03a7": "X",
+  "\uff21": "A", "\uff22": "B", "\uff23": "C", "\uff24": "D", "\uff25": "E",
+};
+
+/** NFKC-normalise and map common homoglyphs back to ASCII before scanning. */
+export function normalizeUnicode(input: string): string {
+  let out = String(input ?? "").normalize("NFKC");
+  out = out.replace(/[\u0080-\uFFFF]/g, (ch) => HOMOGLYPH_MAP[ch] ?? ch);
+  // Strip combining marks (used to hide keywords like "i̶g̶n̶o̶r̶e̶").
+  out = out.replace(/[\u0300-\u036F]/g, "");
+  return out;
+}
 
 export interface SanitizeResult {
   safe: string;
