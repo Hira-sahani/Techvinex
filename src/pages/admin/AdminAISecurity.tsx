@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { ShieldAlert, Bug, FileWarning, KeyRound, Activity } from "lucide-react";
 import { SkeletonTableRows } from "@/components/skeletons/Skeleton";
-import { useDocumentMeta } from "@/hooks/useDocumentMeta";
+import useDocumentMeta from "@/hooks/useDocumentMeta";
 
 interface AuditRow {
   id: string;
