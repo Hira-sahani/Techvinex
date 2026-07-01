@@ -1,37 +1,37 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://techvinex.com/</loc>
+    <loc>https://www.techvinex.com/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://techvinex.com/explore</loc>
+    <loc>https://www.techvinex.com/explore</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://techvinex.com/opportunities</loc>
+    <loc>https://www.techvinex.com/opportunities</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://techvinex.com/blog</loc>
+    <loc>https://www.techvinex.com/blog</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://techvinex.com/privacy</loc>
+    <loc>https://www.techvinex.com/privacy</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://techvinex.com/terms</loc>
+    <loc>https://www.techvinex.com/terms</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://techvinex.com/cookie-policy</loc>
+    <loc>https://www.techvinex.com/cookie-policy</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
