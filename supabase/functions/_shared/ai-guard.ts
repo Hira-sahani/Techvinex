@@ -171,7 +171,7 @@ export function withAiGuard<TBody>(
           });
           return guardJson({ error: "plan_violation", code: err.code }, 400);
         }
-        captureEdgeException(err, { function: name, plan: signed.hash });
+        captureEdgeException(err, { function_name: name, extra: { plan: signed.hash } });
         await auditSecurity({
           userId: ctx.userId, kind: name, event: "handler_error",
           severity: "medium", planHash: signed.hash,
