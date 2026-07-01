@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   redactSecrets, sanitizeHtml, sanitizeMarkdown, sanitizeAiOutput,
-  validateUploadedFile, verifyFileSignature, detectFileKind,
+  validateUploadedFile, verifyFileBytes, detectFileKind,
   normalizeUnicode, detectJailbreak, isApprovedModel,
 } from "./aiSecurity";
 
