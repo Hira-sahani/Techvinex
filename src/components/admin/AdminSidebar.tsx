@@ -23,6 +23,7 @@ const navItems = [
   { label: "Benchmark", path: "/benchmark/dashboard", icon: FlaskConical },
   { label: "Secrets", path: "/admin/secrets", icon: KeyRound },
   { label: "Webhooks", path: "/admin/webhooks", icon: Webhook },
+  { label: "AI Security", path: "/admin/ai-security", icon: ShieldAlert },
   { label: "Settings", path: "/admin/settings", icon: Settings },
 ];
 
