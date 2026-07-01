@@ -50,38 +50,41 @@ const bodySchema = z.object({
   voiceId: z.string().regex(/^[A-Za-z0-9]{1,40}$/).optional(),
 });
 
-Deno.serve(withSentry("elevenlabs-tts", (req) =>
-  guard(req, {
-    allowedMethods: ["POST"],
-    requireAuth: true,
-    rateLimit: { key: "elevenlabs-tts", limit: 60, windowMs: 60_000 },
-    schema: bodySchema,
-    maxBodyBytes: 32 * 1024,
-  }, async (ctx) => {
-    const ELEVENLABS_API_KEY = await getSecret("ELEVENLABS_API_KEY");
-    if (!ELEVENLABS_API_KEY) return guardJson({ error: "service_unavailable" }, 503);
+Deno.serve(withAiGuard("elevenlabs-tts", {
+  allowedMethods: ["POST"],
+  requireAuth: true,
+  rateLimit: { key: "elevenlabs-tts", limit: 60, windowMs: 60_000 },
+  schema: bodySchema,
+  maxBodyBytes: 32 * 1024,
+  planKind: "tts",
+  untrustedFields: ["text"],
+}, async (ctx) => {
+  const ELEVENLABS_API_KEY = await getSecret("ELEVENLABS_API_KEY");
+  if (!ELEVENLABS_API_KEY) return guardJson({ error: "service_unavailable" }, 503);
 
-    const { text, voiceId } = ctx.body as z.infer<typeof bodySchema>;
-    const selectedVoice = voiceId || VOICE_ID;
+  const { text, voiceId } = ctx.body as z.infer<typeof bodySchema>;
+  const selectedVoice = voiceId || VOICE_ID;
 
-    const response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${selectedVoice}?output_format=mp3_44100_128`,
-      {
-        method: "POST",
-        headers: { "xi-api-key": ELEVENLABS_API_KEY, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          text: text.slice(0, 5000),
-          model_id: "eleven_turbo_v2_5",
-          voice_settings: { stability: 0.6, similarity_boost: 0.75, style: 0.3, use_speaker_boost: true, speed: 1.0 },
-        }),
-      }
-    );
+  ctx.plan.step();
+  ctx.plan.authorizeEgress("api.elevenlabs.io");
 
-    if (!response.ok) return guardJson({ error: "upstream_error", status: response.status }, 502);
+  const response = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${selectedVoice}?output_format=mp3_44100_128`,
+    {
+      method: "POST",
+      headers: { "xi-api-key": ELEVENLABS_API_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text: text.slice(0, 5000),
+        model_id: "eleven_turbo_v2_5",
+        voice_settings: { stability: 0.6, similarity_boost: 0.75, style: 0.3, use_speaker_boost: true, speed: 1.0 },
+      }),
+    }
+  );
 
-    const audioBuffer = await response.arrayBuffer();
-    return new Response(audioBuffer, {
-      headers: { "Content-Type": "audio/mpeg", "Cache-Control": "public, max-age=3600" },
-    });
-  })
-));
+  if (!response.ok) return guardJson({ error: "upstream_error", status: response.status }, 502);
+
+  const audioBuffer = await response.arrayBuffer();
+  return new Response(audioBuffer, {
+    headers: { "Content-Type": "audio/mpeg", "Cache-Control": "public, max-age=3600" },
+  });
+}));
