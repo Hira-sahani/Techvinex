@@ -54,3 +54,103 @@ export function sanitizeAiJson<T>(value: T): T {
   }
   return value;
 }
+
+// ---------------------------------------------------------------------------
+// HTML / Markdown protection — used for AI-generated content, blog authoring,
+// and any rich text that will hit the DOM.
+// ---------------------------------------------------------------------------
+
+const UNSAFE_HTML_PATTERNS: RegExp[] = [
+  /<script[\s\S]*?<\/script>/gi,
+  /<style[\s\S]*?<\/style>/gi,
+  /<iframe[\s\S]*?<\/iframe>/gi,
+  /<object[\s\S]*?<\/object>/gi,
+  /<embed[\s\S]*?>/gi,
+  /<link\b[^>]*>/gi,
+  /<meta\b[^>]*>/gi,
+  /\son\w+\s*=\s*"[^"]*"/gi, // inline event handlers "onclick=..."
+  /\son\w+\s*=\s*'[^']*'/gi,
+  /\son\w+\s*=\s*[^\s>]+/gi,
+  /javascript\s*:/gi,
+  /data\s*:\s*text\/html/gi,
+  /vbscript\s*:/gi,
+];
+
+export function sanitizeHtml(html: string): string {
+  let out = String(html ?? "");
+  for (const re of UNSAFE_HTML_PATTERNS) out = out.replace(re, "");
+  return redactSecrets(out);
+}
+
+/** Strip HTML tags entirely — safest option for AI output rendered as text. */
+export function stripHtml(html: string): string {
+  return String(html ?? "").replace(/<[^>]*>/g, "");
+}
+
+export function sanitizeMarkdown(md: string): string {
+  let out = String(md ?? "");
+  // Block raw HTML islands, javascript: links, and image URLs.
+  out = sanitizeHtml(out);
+  out = out.replace(/\]\(\s*javascript:[^)]*\)/gi, "](#)");
+  out = out.replace(/\]\(\s*data:text\/html[^)]*\)/gi, "](#)");
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// File upload validation — MIME allow-list + size cap. Server-side must
+// re-validate; this exists to reject obviously unsafe files before upload.
+// ---------------------------------------------------------------------------
+
+export const ALLOWED_UPLOAD_MIME = new Set<string>([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "text/plain", "text/markdown", "text/csv",
+  "image/jpeg", "image/png", "image/webp", "image/gif",
+  "audio/mpeg", "audio/wav", "audio/webm",
+]);
+
+export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
+
+export interface FileValidationResult {
+  ok: boolean;
+  reason?: "type" | "size" | "extension" | "empty";
+}
+
+export function validateUploadedFile(file: File): FileValidationResult {
+  if (!file || file.size === 0) return { ok: false, reason: "empty" };
+  if (file.size > MAX_UPLOAD_BYTES) return { ok: false, reason: "size" };
+  if (!ALLOWED_UPLOAD_MIME.has(file.type)) return { ok: false, reason: "type" };
+  const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+  const banned = new Set([
+    "exe", "sh", "bat", "cmd", "js", "mjs", "cjs", "html", "htm", "svg", "jsp",
+    "php", "py", "rb", "pl", "ps1", "vbs", "com", "dll", "jar", "war", "apk", "msi",
+  ]);
+  if (banned.has(ext)) return { ok: false, reason: "extension" };
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Jailbreak detection — client-side prefilter. Server re-runs the same check.
+// ---------------------------------------------------------------------------
+
+const JAILBREAK_PATTERNS: RegExp[] = [
+  /ignore\s+(all\s+)?previous\s+instructions/gi,
+  /disregard\s+(the\s+)?(above|previous)/gi,
+  /you\s+are\s+now\s+/gi,
+  /act\s+as\s+(an?\s+)?(admin|root|system|dan|developer)/gi,
+  /reveal\s+(the\s+)?(system\s+)?prompt/gi,
+  /print\s+(the\s+)?(env|environment|secrets?|api[_ ]?keys?)/gi,
+  /developer\s+mode|jailbreak|prompt\s+leak/gi,
+  /<\|(im_start|im_end|endoftext)\|>/gi,
+];
+
+export function detectJailbreak(text: string): { blocked: boolean; findings: string[] } {
+  const t = String(text ?? "");
+  const findings: string[] = [];
+  for (const re of JAILBREAK_PATTERNS) {
+    if (re.test(t)) findings.push(re.source.slice(0, 40));
+  }
+  return { blocked: findings.length >= 2, findings };
+}
+
