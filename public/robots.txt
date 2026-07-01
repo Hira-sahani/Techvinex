@@ -89,4 +89,3 @@ User-agent: YandexBot
 Allow: /
 
 Sitemap: https://www.techvinex.com/sitemap.xml
-Sitemap: https://xfgyzcvrvgsntjenxecp.supabase.co/functions/v1/public-sitemap
