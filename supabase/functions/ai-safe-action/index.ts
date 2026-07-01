@@ -196,14 +196,19 @@ Deno.serve(withSentry("ai-safe-action", (req) =>
       }
     }
 
-    // 5. Dispatch, then redact + validate output.
+    // 7. Dispatch, redact, validate output.
     try {
       const result = await dispatch(action, params, { db: ctx.db, userId: ctx.userId });
       const safeBody = validateToolOutput(enforcer, redactDeep(result.body), "json");
+      if (approvalId) {
+        await ctx.db.from("ai_approval_requests")
+          .update({ status: "executed", decided_at: new Date().toISOString() })
+          .eq("id", approvalId).eq("status", "approved");
+      }
       await auditSecurity({
         userId: ctx.userId, kind: "safe_action", event: "invoked", severity: "info",
         planHash: signed.hash,
-        details: { action, status: result.status, requires_approval: reg.requires_approval },
+        details: { action, status: result.status, risk: decision.risk, approvalId: approvalId ?? null },
       });
       return guardJson(safeBody as Record<string, unknown>, result.status);
     } catch (e) {
