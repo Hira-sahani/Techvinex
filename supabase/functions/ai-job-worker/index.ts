@@ -11,6 +11,15 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { withSentry } from "../_shared/sentry.ts";
+import {
+  createExecutionPlan,
+  PlanEnforcer,
+  sanitizeExternalContent,
+  wrapExternalContent,
+  redactDeep,
+  validateToolOutput,
+  auditSecurity,
+} from "../_shared/ai-security.ts";
 
 const CORS = {
   "Access-Control-Allow-Origin": "*",
