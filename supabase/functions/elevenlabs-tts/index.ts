@@ -1,7 +1,7 @@
-// ElevenLabs TTS — auth required, per-user rate-limited.
+// ElevenLabs TTS — auth required, per-user rate-limited, plan-enforced.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
-import { guard, guardJson, z } from "../_shared/guard.ts";
-import { withSentry } from "../_shared/sentry.ts";
+import { guardJson } from "../_shared/guard.ts";
+import { withAiGuard, z } from "../_shared/ai-guard.ts";
 
 const VOICE_ID = "JBFqnCBsd6RMkjVDRZzb";
 
