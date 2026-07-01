@@ -16,6 +16,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { subscribeRealtime } from "@/lib/realtimeBus";
+import { sanitizeAiJson } from "@/lib/aiSecurity";
 
 export type AiJobKind = "interview" | "tts" | "benchmark";
 export type AiJobStatus = "queued" | "running" | "completed" | "failed" | "cancelled";
