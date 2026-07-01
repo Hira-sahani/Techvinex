@@ -32,6 +32,9 @@ const bodySchema = z.object({
   planToken: z.string().min(20).max(8000),
   action: z.string().min(2).max(64),
   params: z.record(z.unknown()).default({}),
+  approvalId: z.string().uuid().optional(),
+  targetUserId: z.string().uuid().optional(),
+  targetOrgId: z.string().uuid().optional(),
 });
 
 // Per-action narrow dispatchers. Each returns { status, body }.
