@@ -75,7 +75,7 @@ export async function safeAction<T = unknown>(
   const cleanParams: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(plan.params)) {
     cleanParams[k] = typeof v === "string"
-      ? redactSecretsClient(sanitizeClient(v))
+      ? redactSecrets(sanitizeAiOutput(v))
       : v;
   }
 
@@ -107,7 +107,7 @@ export async function safeAction<T = unknown>(
 
     // 3. Output guard: redact secrets before handing to the UI.
     const scrub = (v: unknown): unknown => {
-      if (typeof v === "string") return redactSecretsClient(v);
+      if (typeof v === "string") return redactSecrets(v);
       if (Array.isArray(v)) return v.map(scrub);
       if (v && typeof v === "object") {
         const out: Record<string, unknown> = {};
