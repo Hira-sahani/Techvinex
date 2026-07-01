@@ -233,7 +233,31 @@ const INJECTION_PATTERNS: Array<[RegExp, string]> = [
   [/curl\s+http|wget\s+http|fetch\(['"]http/gi, "egress-attempt"],
   [/tool_call\s*[:=]|<\s*tool\s*>/gi, "tool-injection"],
   [/\u200B|\u200C|\u200D|\uFEFF/g, "zero-width"],
+  // Nested / smuggled injection inside structured formats.
+  [/<!--[\s\S]{0,400}?(ignore|system|prompt)[\s\S]{0,400}?-->/gi, "html-comment-smuggle"],
+  [/data:text\/[a-z]+;base64,[A-Za-z0-9+/=]{40,}/gi, "data-url-smuggle"],
+  [/```(system|assistant|developer)[\s\S]*?```/gi, "fence-role-hijack"],
+  [/\{\{[\s\S]*?(system|prompt|instructions)[\s\S]*?\}\}/gi, "template-smuggle"],
 ];
+
+// Homoglyph normalisation table — attackers replace ASCII letters with
+// visually-identical Cyrillic / Greek code points to bypass regex filters.
+const HOMOGLYPH_MAP: Record<string, string> = {
+  "\u0430": "a", "\u0435": "e", "\u043e": "o", "\u0440": "p", "\u0441": "c",
+  "\u0445": "x", "\u0455": "s", "\u0456": "i", "\u0501": "d", "\u051b": "q",
+  "\u0399": "I", "\u0392": "B", "\u0397": "H", "\u039a": "K", "\u039c": "M",
+  "\u039d": "N", "\u039f": "O", "\u03a1": "P", "\u03a4": "T", "\u03a7": "X",
+  "\uff21": "A", "\uff22": "B", "\uff23": "C", "\uff24": "D", "\uff25": "E",
+};
+
+/** NFKC-normalise and map common homoglyphs back to ASCII before scanning. */
+export function normalizeUnicode(input: string): string {
+  let out = String(input ?? "").normalize("NFKC");
+  out = out.replace(/[\u0080-\uFFFF]/g, (ch) => HOMOGLYPH_MAP[ch] ?? ch);
+  // Strip combining marks (used to hide keywords like "i̶g̶n̶o̶r̶e̶").
+  out = out.replace(/[\u0300-\u036F]/g, "");
+  return out;
+}
 
 export interface SanitizeResult {
   safe: string;
@@ -242,7 +266,7 @@ export interface SanitizeResult {
 }
 
 export function sanitizeExternalContent(input: string, maxLen = 20_000): SanitizeResult {
-  let text = String(input ?? "");
+  let text = normalizeUnicode(String(input ?? ""));
   if (text.length > maxLen) text = text.slice(0, maxLen);
   const findings: string[] = [];
   for (const [re, tag] of INJECTION_PATTERNS) {
@@ -353,5 +377,168 @@ export async function auditSecurity(entry: AuditEntry): Promise<void> {
     });
   } catch (e) {
     log("warn", "ai_security_audit_failed", { error: String(e) });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Approved-model allowlist. Any AI edge function that selects a model at
+// runtime MUST call `assertApprovedModel(model)` before invoking the gateway.
+// This blocks prompt-driven or client-driven model overrides.
+// ---------------------------------------------------------------------------
+
+export const APPROVED_MODELS: readonly string[] = [
+  "google/gemini-3-flash-preview",
+  "google/gemini-2.5-pro",
+  "openai/gpt-4o-mini",
+  "openai/gpt-4o",
+  "openai/text-embedding-3-small",
+  "openai/text-embedding-3-large",
+  "elevenlabs/tts",
+];
+
+export function assertApprovedModel(model: string): string {
+  if (!APPROVED_MODELS.includes(model)) {
+    throw new PlanViolationError("model_not_allowed",
+      `model "${model}" is not on the approved allow-list`,
+      { allowed: APPROVED_MODELS });
+  }
+  return model;
+}
+
+// ---------------------------------------------------------------------------
+// File-signature (magic-byte) verification. Extension + Content-Type are
+// spoofable; the first bytes of a file are the ground truth. We ALSO look
+// for DOCX macro payloads (vbaProject.bin) and executable disguises.
+// ---------------------------------------------------------------------------
+
+export type FileKind =
+  | "pdf" | "png" | "jpeg" | "gif" | "webp"
+  | "zip" | "docx" | "xlsx" | "pptx" | "docm"
+  | "mp3" | "wav" | "webm"
+  | "text" | "exe" | "elf" | "macho" | "script" | "unknown";
+
+function startsWith(buf: Uint8Array, sig: number[], offset = 0): boolean {
+  if (buf.length < offset + sig.length) return false;
+  for (let i = 0; i < sig.length; i++) if (buf[offset + i] !== sig[i]) return false;
+  return true;
+}
+
+/** Detect the true file kind from up to the first 4 KB of the file. */
+export function detectFileKind(bytes: Uint8Array): FileKind {
+  if (startsWith(bytes, [0x25, 0x50, 0x44, 0x46])) return "pdf"; // %PDF
+  if (startsWith(bytes, [0x89, 0x50, 0x4e, 0x47])) return "png";
+  if (startsWith(bytes, [0xff, 0xd8, 0xff])) return "jpeg";
+  if (startsWith(bytes, [0x47, 0x49, 0x46, 0x38])) return "gif";
+  if (startsWith(bytes, [0x52, 0x49, 0x46, 0x46]) && startsWith(bytes, [0x57, 0x45, 0x42, 0x50], 8)) return "webp";
+  if (startsWith(bytes, [0x52, 0x49, 0x46, 0x46]) && startsWith(bytes, [0x57, 0x41, 0x56, 0x45], 8)) return "wav";
+  if (startsWith(bytes, [0x49, 0x44, 0x33]) || startsWith(bytes, [0xff, 0xfb])) return "mp3";
+  if (startsWith(bytes, [0x1a, 0x45, 0xdf, 0xa3])) return "webm";
+  if (startsWith(bytes, [0x4d, 0x5a])) return "exe";     // PE / .exe / .dll
+  if (startsWith(bytes, [0x7f, 0x45, 0x4c, 0x46])) return "elf";
+  if (startsWith(bytes, [0xcf, 0xfa, 0xed, 0xfe]) || startsWith(bytes, [0xfe, 0xed, 0xfa, 0xce])) return "macho";
+  if (startsWith(bytes, [0x23, 0x21])) return "script";   // "#!"
+  if (startsWith(bytes, [0x50, 0x4b, 0x03, 0x04])) {
+    // ZIP container — could be docx/xlsx/pptx or a hostile archive.
+    const tail = new TextDecoder("latin1").decode(bytes);
+    if (/vbaProject\.bin/i.test(tail)) return "docm";
+    if (/word\/document\.xml/i.test(tail)) return "docx";
+    if (/xl\/workbook\.xml/i.test(tail)) return "xlsx";
+    if (/ppt\/presentation\.xml/i.test(tail)) return "pptx";
+    return "zip";
+  }
+  // Heuristic text: most bytes printable.
+  let printable = 0;
+  const sample = bytes.subarray(0, Math.min(bytes.length, 512));
+  for (const b of sample) if (b === 9 || b === 10 || b === 13 || (b >= 32 && b < 127)) printable++;
+  if (sample.length > 0 && printable / sample.length > 0.9) return "text";
+  return "unknown";
+}
+
+export interface FileSignatureCheck {
+  ok: boolean;
+  detected: FileKind;
+  reason?: "mismatch" | "executable" | "macro" | "unknown" | "too_large";
+}
+
+/** Verify the declared MIME/extension against the actual magic bytes. */
+export function verifyFileSignature(
+  bytes: Uint8Array,
+  declaredMime: string,
+  filename: string,
+  maxBytes = 20 * 1024 * 1024,
+): FileSignatureCheck {
+  if (bytes.byteLength > maxBytes) return { ok: false, detected: "unknown", reason: "too_large" };
+  const kind = detectFileKind(bytes);
+  if (kind === "exe" || kind === "elf" || kind === "macho" || kind === "script") {
+    return { ok: false, detected: kind, reason: "executable" };
+  }
+  if (kind === "docm") return { ok: false, detected: kind, reason: "macro" };
+  const ext = (filename.split(".").pop() ?? "").toLowerCase();
+  const mimeExpects: Record<string, FileKind[]> = {
+    "application/pdf": ["pdf"],
+    "image/png": ["png"], "image/jpeg": ["jpeg"], "image/gif": ["gif"], "image/webp": ["webp"],
+    "audio/mpeg": ["mp3"], "audio/wav": ["wav"], "audio/webm": ["webm"],
+    "text/plain": ["text"], "text/markdown": ["text"], "text/csv": ["text"],
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ["docx"],
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": ["xlsx"],
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation": ["pptx"],
+  };
+  const allowedKinds = mimeExpects[declaredMime];
+  if (allowedKinds && !allowedKinds.includes(kind)) {
+    return { ok: false, detected: kind, reason: "mismatch" };
+  }
+  const extExpects: Record<string, FileKind[]> = {
+    pdf: ["pdf"], png: ["png"], jpg: ["jpeg"], jpeg: ["jpeg"], gif: ["gif"], webp: ["webp"],
+    mp3: ["mp3"], wav: ["wav"], webm: ["webm"], txt: ["text"], md: ["text"], csv: ["text"],
+    docx: ["docx"], xlsx: ["xlsx"], pptx: ["pptx"],
+  };
+  const extKinds = extExpects[ext];
+  if (extKinds && !extKinds.includes(kind)) return { ok: false, detected: kind, reason: "mismatch" };
+  return { ok: true, detected: kind };
+}
+
+/** Strip PDF metadata trailers (/Info, /Metadata) before sending to a model. */
+export function stripPdfMetadata(bytes: Uint8Array): Uint8Array {
+  if (!startsWith(bytes, [0x25, 0x50, 0x44, 0x46])) return bytes;
+  const text = new TextDecoder("latin1").decode(bytes);
+  const cleaned = text
+    .replace(/\/Info\s+\d+\s+\d+\s+R/g, "")
+    .replace(/\/Metadata\s+\d+\s+\d+\s+R/g, "")
+    .replace(/<<[^<>]*\/(?:Author|Producer|Creator|Title|Subject|Keywords)[\s\S]*?>>/gi, "<< >>");
+  return new TextEncoder().encode(cleaned);
+}
+
+// ---------------------------------------------------------------------------
+// Usage-quota helper (per-user, per-kind). Fails closed on error.
+// ---------------------------------------------------------------------------
+
+export interface QuotaCheck {
+  allowed: boolean;
+  usedCount: number;
+  dailyLimit: number;
+  blockedUntil: string | null;
+}
+
+export async function checkAndRecordQuota(
+  userId: string | null,
+  kind: string,
+  tokens = 0,
+): Promise<QuotaCheck> {
+  if (!userId) return { allowed: true, usedCount: 0, dailyLimit: 0, blockedUntil: null };
+  try {
+    const { data, error } = await admin().rpc("ai_quota_hit", {
+      _user_id: userId, _kind: kind, _tokens: tokens,
+    });
+    if (error) throw error;
+    const row = Array.isArray(data) ? data[0] : data;
+    return {
+      allowed: !!row?.allowed,
+      usedCount: Number(row?.used_count ?? 0),
+      dailyLimit: Number(row?.daily_limit ?? 0),
+      blockedUntil: row?.blocked_until ?? null,
+    };
+  } catch (e) {
+    log("error", "ai_quota_hit_error", { error: String(e), userId, kind });
+    return { allowed: false, usedCount: 0, dailyLimit: 0, blockedUntil: null };
   }
 }

@@ -114,7 +114,8 @@ export const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
 export interface FileValidationResult {
   ok: boolean;
-  reason?: "type" | "size" | "extension" | "empty";
+  reason?: "type" | "size" | "extension" | "empty" | "signature" | "executable" | "macro";
+  detected?: string;
 }
 
 export function validateUploadedFile(file: File): FileValidationResult {
@@ -125,9 +126,100 @@ export function validateUploadedFile(file: File): FileValidationResult {
   const banned = new Set([
     "exe", "sh", "bat", "cmd", "js", "mjs", "cjs", "html", "htm", "svg", "jsp",
     "php", "py", "rb", "pl", "ps1", "vbs", "com", "dll", "jar", "war", "apk", "msi",
+    "docm", "xlsm", "pptm",
   ]);
   if (banned.has(ext)) return { ok: false, reason: "extension" };
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Magic-byte / file-signature verification. The server re-runs this; the
+// client pass exists to reject obviously-hostile uploads before they hit the
+// network. Executable disguises, Office macros, and mismatched extensions
+// are all rejected here.
+// ---------------------------------------------------------------------------
+
+type FileKind = "pdf" | "png" | "jpeg" | "gif" | "webp" | "docx" | "docm" | "xlsx" | "pptx" | "zip"
+  | "mp3" | "wav" | "webm" | "text" | "exe" | "elf" | "macho" | "script" | "unknown";
+
+function startsWith(buf: Uint8Array, sig: number[], offset = 0) {
+  if (buf.length < offset + sig.length) return false;
+  for (let i = 0; i < sig.length; i++) if (buf[offset + i] !== sig[i]) return false;
+  return true;
+}
+
+export function detectFileKind(bytes: Uint8Array): FileKind {
+  if (startsWith(bytes, [0x25, 0x50, 0x44, 0x46])) return "pdf";
+  if (startsWith(bytes, [0x89, 0x50, 0x4e, 0x47])) return "png";
+  if (startsWith(bytes, [0xff, 0xd8, 0xff])) return "jpeg";
+  if (startsWith(bytes, [0x47, 0x49, 0x46, 0x38])) return "gif";
+  if (startsWith(bytes, [0x52, 0x49, 0x46, 0x46]) && startsWith(bytes, [0x57, 0x45, 0x42, 0x50], 8)) return "webp";
+  if (startsWith(bytes, [0x52, 0x49, 0x46, 0x46]) && startsWith(bytes, [0x57, 0x41, 0x56, 0x45], 8)) return "wav";
+  if (startsWith(bytes, [0x49, 0x44, 0x33]) || startsWith(bytes, [0xff, 0xfb])) return "mp3";
+  if (startsWith(bytes, [0x1a, 0x45, 0xdf, 0xa3])) return "webm";
+  if (startsWith(bytes, [0x4d, 0x5a])) return "exe";
+  if (startsWith(bytes, [0x7f, 0x45, 0x4c, 0x46])) return "elf";
+  if (startsWith(bytes, [0xcf, 0xfa, 0xed, 0xfe]) || startsWith(bytes, [0xfe, 0xed, 0xfa, 0xce])) return "macho";
+  if (startsWith(bytes, [0x23, 0x21])) return "script";
+  if (startsWith(bytes, [0x50, 0x4b, 0x03, 0x04])) {
+    const tail = new TextDecoder("latin1").decode(bytes);
+    if (/vbaProject\.bin/i.test(tail)) return "docm";
+    if (/word\/document\.xml/i.test(tail)) return "docx";
+    if (/xl\/workbook\.xml/i.test(tail)) return "xlsx";
+    if (/ppt\/presentation\.xml/i.test(tail)) return "pptx";
+    return "zip";
+  }
+  let printable = 0;
+  const sample = bytes.subarray(0, Math.min(bytes.length, 512));
+  for (const b of sample) if (b === 9 || b === 10 || b === 13 || (b >= 32 && b < 127)) printable++;
+  if (sample.length > 0 && printable / sample.length > 0.9) return "text";
+  return "unknown";
+}
+
+/** Verify head bytes against declared filename. Pure — safe to call in any runtime. */
+export function verifyFileBytes(head: Uint8Array, filename: string): FileValidationResult {
+  const kind = detectFileKind(head);
+  if (kind === "exe" || kind === "elf" || kind === "macho" || kind === "script") {
+    return { ok: false, reason: "executable", detected: kind };
+  }
+  if (kind === "docm") return { ok: false, reason: "macro", detected: kind };
+  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+  const extMap: Record<string, FileKind[]> = {
+    pdf: ["pdf"], png: ["png"], jpg: ["jpeg"], jpeg: ["jpeg"], gif: ["gif"], webp: ["webp"],
+    mp3: ["mp3"], wav: ["wav"], webm: ["webm"], txt: ["text"], md: ["text"], csv: ["text"],
+    docx: ["docx"], xlsx: ["xlsx"], pptx: ["pptx"],
+  };
+  const expected = extMap[ext];
+  if (expected && !expected.includes(kind)) return { ok: false, reason: "signature", detected: kind };
+  return { ok: true, detected: kind };
+}
+
+/** Read the first 4 KB of a File and verify. Uses FileReader for widest compatibility. */
+export async function verifyFileSignature(file: File): Promise<FileValidationResult> {
+  if (file.size === 0) return { ok: false, reason: "empty" };
+  const blob = file.slice(0, 4096);
+  const buf: ArrayBuffer = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as ArrayBuffer);
+    r.onerror = () => reject(r.error);
+    r.readAsArrayBuffer(blob);
+  });
+  return verifyFileBytes(new Uint8Array(buf), file.name);
+}
+
+// ---------------------------------------------------------------------------
+// Unicode normalization + homoglyph mapping — mirrors server logic so the
+// client cannot smuggle homoglyph-encoded jailbreaks past a form validator.
+// ---------------------------------------------------------------------------
+
+const HOMOGLYPHS: Record<string, string> = {
+  "\u0430": "a", "\u0432": "v", "\u0435": "e", "\u043e": "o", "\u0440": "p", "\u0441": "c",
+  "\u0445": "x", "\u0455": "s", "\u0456": "i", "\u043a": "k", "\u0443": "y",
+};
+export function normalizeUnicode(input: string): string {
+  let out = String(input ?? "").normalize("NFKC");
+  out = out.replace(/[\u0080-\uFFFF]/g, (ch) => HOMOGLYPHS[ch] ?? ch);
+  return out.replace(/[\u0300-\u036F\u200B-\u200D\uFEFF]/g, "");
 }
 
 // ---------------------------------------------------------------------------
@@ -135,22 +227,34 @@ export function validateUploadedFile(file: File): FileValidationResult {
 // ---------------------------------------------------------------------------
 
 const JAILBREAK_PATTERNS: RegExp[] = [
-  /ignore\s+(all\s+)?previous\s+instructions/gi,
-  /disregard\s+(the\s+)?(above|previous)/gi,
-  /you\s+are\s+now\s+/gi,
-  /act\s+as\s+(an?\s+)?(admin|root|system|dan|developer)/gi,
-  /reveal\s+(the\s+)?(system\s+)?prompt/gi,
-  /print\s+(the\s+)?(env|environment|secrets?|api[_ ]?keys?)/gi,
-  /developer\s+mode|jailbreak|prompt\s+leak/gi,
-  /<\|(im_start|im_end|endoftext)\|>/gi,
+  /ignore\s+(all\s+)?previous\s+instructions/i,
+  /disregard\s+(the\s+)?(above|previous)/i,
+  /you\s+are\s+now\s+/i,
+  /act\s+as\s+(an?\s+)?(admin|root|system|dan|developer)/i,
+  /reveal\s+(the\s+)?(system\s+)?prompt/i,
+  /print\s+(the\s+)?(env|environment|secrets?|api[_ ]?keys?)/i,
+  /developer\s+mode|jailbreak|prompt\s+leak/i,
+  /<\|(im_start|im_end|endoftext)\|>/i,
 ];
 
 export function detectJailbreak(text: string): { blocked: boolean; findings: string[] } {
-  const t = String(text ?? "");
+  const t = normalizeUnicode(text);
   const findings: string[] = [];
   for (const re of JAILBREAK_PATTERNS) {
     if (re.test(t)) findings.push(re.source.slice(0, 40));
   }
   return { blocked: findings.length >= 2, findings };
+}
+
+// Approved-model allow-list mirror (server is source of truth).
+export const APPROVED_MODELS = [
+  "google/gemini-3-flash-preview",
+  "google/gemini-2.5-pro",
+  "openai/gpt-4o-mini",
+  "openai/gpt-4o",
+  "elevenlabs/tts",
+] as const;
+export function isApprovedModel(model: string): boolean {
+  return (APPROVED_MODELS as readonly string[]).includes(model);
 }
 

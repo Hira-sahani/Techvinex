@@ -109,6 +109,7 @@ const AdminExploreJobs = lazy(() => import("./pages/admin/AdminExploreJobs"));
 const AdminBlogs = lazy(() => import("./pages/admin/AdminBlogs"));
 const AdminSecrets = lazy(() => import("./pages/admin/AdminSecrets"));
 const AdminWebhooks = lazy(() => import("./pages/admin/AdminWebhooks"));
+const AdminAISecurity = lazy(() => import("./pages/admin/AdminAISecurity"));
 const ExploreJobDetail = lazy(() => import("./pages/ExploreJobDetail"));
 const Blog = lazy(() => import("./pages/Blog"));
 const BlogDetail = lazy(() => import("./pages/BlogDetail"));
@@ -248,7 +249,9 @@ const AppLayout = () => {
             <Route path="blogs" element={<AdminBlogs />} />
             <Route path="secrets" element={<AdminSecrets />} />
             <Route path="webhooks" element={<AdminWebhooks />} />
+            <Route path="ai-security" element={<AdminAISecurity />} />
           </Route>
+
 
           <Route path="*" element={<NotFound />} />
         </Routes>

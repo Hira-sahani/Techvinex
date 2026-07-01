@@ -212,6 +212,48 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_usage_quota: {
+        Row: {
+          blocked_until: string | null
+          created_at: string
+          daily_limit: number
+          id: string
+          kind: string
+          monthly_limit: number
+          period_start: string
+          updated_at: string
+          used_count: number
+          used_tokens: number
+          user_id: string
+        }
+        Insert: {
+          blocked_until?: string | null
+          created_at?: string
+          daily_limit?: number
+          id?: string
+          kind: string
+          monthly_limit?: number
+          period_start?: string
+          updated_at?: string
+          used_count?: number
+          used_tokens?: number
+          user_id: string
+        }
+        Update: {
+          blocked_until?: string | null
+          created_at?: string
+          daily_limit?: number
+          id?: string
+          kind?: string
+          monthly_limit?: number
+          period_start?: string
+          updated_at?: string
+          used_count?: number
+          used_tokens?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       applicants: {
         Row: {
           created_at: string
@@ -1588,6 +1630,15 @@ export type Database = {
       admin_get_explore_job_internal_notes: {
         Args: { _job_id: string }
         Returns: string
+      }
+      ai_quota_hit: {
+        Args: { _kind: string; _tokens?: number; _user_id: string }
+        Returns: {
+          allowed: boolean
+          blocked_until: string
+          daily_limit: number
+          used_count: number
+        }[]
       }
       cleanup_expired_rate_buckets: { Args: never; Returns: number }
       get_benchmark_task_secret: {
