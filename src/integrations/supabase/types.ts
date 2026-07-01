@@ -59,6 +59,75 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_safe_actions: {
+        Row: {
+          created_at: string
+          description: string
+          enabled: boolean
+          name: string
+          param_schema: Json
+          rate_per_minute: number
+          required_role: string | null
+          requires_approval: boolean
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          enabled?: boolean
+          name: string
+          param_schema?: Json
+          rate_per_minute?: number
+          required_role?: string | null
+          requires_approval?: boolean
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          enabled?: boolean
+          name?: string
+          param_schema?: Json
+          rate_per_minute?: number
+          required_role?: string | null
+          requires_approval?: boolean
+        }
+        Relationships: []
+      }
+      ai_security_audit: {
+        Row: {
+          created_at: string
+          details: Json
+          event: string
+          id: string
+          job_id: string | null
+          kind: string
+          plan_hash: string | null
+          severity: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          details?: Json
+          event: string
+          id?: string
+          job_id?: string | null
+          kind: string
+          plan_hash?: string | null
+          severity: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          details?: Json
+          event?: string
+          id?: string
+          job_id?: string | null
+          kind?: string
+          plan_hash?: string | null
+          severity?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       applicants: {
         Row: {
           created_at: string

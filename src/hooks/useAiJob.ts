@@ -16,6 +16,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { subscribeRealtime } from "@/lib/realtimeBus";
+import { sanitizeAiJson } from "@/lib/aiSecurity";
 
 export type AiJobKind = "interview" | "tts" | "benchmark";
 export type AiJobStatus = "queued" | "running" | "completed" | "failed" | "cancelled";
@@ -76,7 +77,9 @@ export function useAiJob(jobId: string | null | undefined) {
         { body: { jobId } },
       );
       if (error) throw error;
-      return data ?? null;
+      // Defense-in-depth: strip secrets / tool-call blocks from anything the
+      // model produced before it can reach a render surface.
+      return data ? sanitizeAiJson(data) : null;
     },
     enabled: !!jobId,
     // Poll only while pending — terminal statuses stop polling.
