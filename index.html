@@ -38,10 +38,11 @@
     </script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Defense-in-depth security headers (HSTS / CSP enforcement requires hosting config) -->
+    <!-- Defense-in-depth security headers (HSTS is enforced by host; CSP is enforce-mode here) -->
     <meta http-equiv="X-Content-Type-Options" content="nosniff" />
     <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin" />
     <meta http-equiv="Permissions-Policy" content="geolocation=(), microphone=(self), camera=(self), payment=()" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://browser.sentry-cdn.com; connect-src 'self' https://xfgyzcvrvgsntjenxecp.supabase.co wss://xfgyzcvrvgsntjenxecp.supabase.co https://www.google-analytics.com https://*.ingest.sentry.io https://api.elevenlabs.io https://api.openai.com; media-src 'self' blob: https:; worker-src 'self' blob:; object-src 'none'; upgrade-insecure-requests" />
     <meta name="robots" content="index, follow" />
     <meta name="google-site-verification" content="kgW6m5Bg0qSma5Xq9mYwReKI264mw4XTWjHcivJA4v4" />
     <meta name="google-site-verification" content="rd0Xkbq_z4NMeToUsEegqIIG0U3TmGHy8t3D53fNaao" />

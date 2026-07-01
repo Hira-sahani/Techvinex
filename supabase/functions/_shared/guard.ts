@@ -328,6 +328,10 @@ export async function guard<TBody = unknown>(
       "Referrer-Policy": "no-referrer",
       "X-Frame-Options": "DENY",
       "Vary": "Origin",
+      "Strict-Transport-Security": "max-age=63072000; includeSubDomains; preload",
+      "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'; base-uri 'none'",
+      "Cross-Origin-Opener-Policy": "same-origin",
+      "Cross-Origin-Resource-Policy": "same-site",
     })) if (!merged.has(k)) merged.set(k, v);
     if (!merged.has("Access-Control-Allow-Origin")) {
       merged.set("Access-Control-Allow-Origin", cors["Access-Control-Allow-Origin"]);
