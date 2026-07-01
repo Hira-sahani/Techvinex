@@ -21,11 +21,20 @@ import {
   redactDeep,
   validateToolOutput,
 } from "../_shared/ai-security.ts";
+import {
+  evaluatePolicy,
+  requestHumanApproval,
+  checkApprovalStatus,
+  getActionPolicy,
+} from "../_shared/ai-policy.ts";
 
 const bodySchema = z.object({
   planToken: z.string().min(20).max(8000),
   action: z.string().min(2).max(64),
   params: z.record(z.unknown()).default({}),
+  approvalId: z.string().uuid().optional(),
+  targetUserId: z.string().uuid().optional(),
+  targetOrgId: z.string().uuid().optional(),
 });
 
 // Per-action narrow dispatchers. Each returns { status, body }.
@@ -92,7 +101,8 @@ Deno.serve(withSentry("ai-safe-action", (req) =>
     schema: bodySchema,
     maxBodyBytes: 16 * 1024,
   }, async (ctx) => {
-    const { planToken, action, params } = ctx.body as z.infer<typeof bodySchema>;
+    const { planToken, action, params, approvalId, targetUserId, targetOrgId } =
+      ctx.body as z.infer<typeof bodySchema>;
 
     // 1. Verify plan HMAC.
     let signed;
@@ -107,7 +117,7 @@ Deno.serve(withSentry("ai-safe-action", (req) =>
 
     const enforcer = new PlanEnforcer(signed);
 
-    // 2. Ensure plan owner matches caller when plan is user-scoped.
+    // 2. Plan owner match.
     if (signed.plan.userId && signed.plan.userId !== ctx.userId) {
       await auditSecurity({
         userId: ctx.userId, kind: "safe_action", event: "plan_owner_mismatch", severity: "high",
@@ -116,7 +126,7 @@ Deno.serve(withSentry("ai-safe-action", (req) =>
       return guardJson({ error: "forbidden" }, 403);
     }
 
-    // 3. Enforce allow-list + counters + registry lookup.
+    // 3. Plan allow-list + budgets.
     try {
       enforcer.step();
       enforcer.authorizeTool(action);
@@ -129,7 +139,30 @@ Deno.serve(withSentry("ai-safe-action", (req) =>
       return guardJson({ error: "plan_violation", code: err.code }, 403);
     }
 
-    // 4. Registry check (enabled + approval flag).
+    // 4. Central Policy Engine (identity, RBAC, tenant, risk classification).
+    const { data: roleRow } = ctx.userId
+      ? await ctx.db.from("user_roles").select("role").eq("user_id", ctx.userId).eq("role", "admin").maybeSingle()
+      : { data: null };
+    const decision = evaluatePolicy(action, {
+      userId: ctx.userId,
+      isAdmin: !!roleRow,
+      planHash: signed.hash,
+      planScope: signed.plan.permissionScope,
+      targetUserId: targetUserId ?? null,
+      targetOrgId: targetOrgId ?? null,
+    }, enforcer);
+
+    if (!decision.allow) {
+      await auditSecurity({
+        userId: ctx.userId, kind: "policy", event: "denied",
+        severity: decision.risk === "critical" ? "critical" : "high",
+        planHash: signed.hash,
+        details: { action, code: decision.code, reason: decision.reason },
+      });
+      return guardJson({ error: "policy_denied", code: decision.code, reason: decision.reason }, 403);
+    }
+
+    // 5. Registry gate.
     const { data: reg } = await ctx.db
       .from("ai_safe_actions")
       .select("name,requires_approval,enabled")
@@ -143,14 +176,39 @@ Deno.serve(withSentry("ai-safe-action", (req) =>
       return guardJson({ error: "action_disabled" }, 403);
     }
 
-    // 5. Dispatch, then redact + validate output.
+    // 6. Mandatory Human Approval for high/critical actions.
+    const needsApproval = decision.requiresApproval || reg.requires_approval || getActionPolicy(action).requiresApproval;
+    if (needsApproval) {
+      if (!approvalId) {
+        const req = await requestHumanApproval({
+          userId: ctx.userId, action, risk: decision.risk,
+          reason: `AI requested ${action}`, params, planHash: signed.hash,
+        });
+        return guardJson({ status: "approval_required", approval_id: req.id, risk: decision.risk }, 202);
+      }
+      const status = await checkApprovalStatus(approvalId);
+      if (status !== "approved") {
+        await auditSecurity({
+          userId: ctx.userId, kind: "approval", event: `not_approved:${status}`,
+          severity: "high", planHash: signed.hash, details: { action, approvalId },
+        });
+        return guardJson({ status, error: "approval_not_granted" }, 409);
+      }
+    }
+
+    // 7. Dispatch, redact, validate output.
     try {
       const result = await dispatch(action, params, { db: ctx.db, userId: ctx.userId });
       const safeBody = validateToolOutput(enforcer, redactDeep(result.body), "json");
+      if (approvalId) {
+        await ctx.db.from("ai_approval_requests")
+          .update({ status: "executed", decided_at: new Date().toISOString() })
+          .eq("id", approvalId).eq("status", "approved");
+      }
       await auditSecurity({
         userId: ctx.userId, kind: "safe_action", event: "invoked", severity: "info",
         planHash: signed.hash,
-        details: { action, status: result.status, requires_approval: reg.requires_approval },
+        details: { action, status: result.status, risk: decision.risk, approvalId: approvalId ?? null },
       });
       return guardJson(safeBody as Record<string, unknown>, result.status);
     } catch (e) {
