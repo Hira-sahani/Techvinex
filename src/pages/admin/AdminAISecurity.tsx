@@ -36,7 +36,7 @@ const SEV_COLOR: Record<string, string> = {
 };
 
 const AdminAISecurity = () => {
-  useDocumentMeta({ title: "AI Security · Techvinex Admin", description: "Live view of prompt-injection, jailbreak, file, and quota events across all AI surfaces.", robots: "noindex,nofollow" });
+  useDocumentMeta({ title: "AI Security · Techvinex Admin", description: "Live view of prompt-injection, jailbreak, file, and quota events across all AI surfaces." });
   const [audit, setAudit] = useState<AuditRow[]>([]);
   const [quotas, setQuotas] = useState<QuotaRow[]>([]);
   const [q, setQ] = useState("");
