@@ -15,12 +15,13 @@ const HeroSection = () => {
         </div>
 
         <h1 className="text-3xl sm:text-5xl md:text-6xl font-extrabold text-foreground tracking-tight leading-tight mb-2 animate-fade-in">
+          <span className="sr-only">Techvinex — </span>
           {t("hero.title").split(".")[0]}.
           <span className="text-primary"> {t("hero.title").split(".")[1]}</span>
         </h1>
 
         <p className="text-sm sm:text-lg text-muted-foreground max-w-md mx-auto mb-0 animate-fade-in">
-          {t("hero.subtitle")}
+          <span className="font-semibold text-foreground">Techvinex</span> — {t("hero.subtitle")}
         </p>
 
         <div className="flex items-center justify-center gap-1.5 animate-fade-in">
