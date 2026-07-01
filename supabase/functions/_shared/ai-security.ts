@@ -266,7 +266,7 @@ export interface SanitizeResult {
 }
 
 export function sanitizeExternalContent(input: string, maxLen = 20_000): SanitizeResult {
-  let text = String(input ?? "");
+  let text = normalizeUnicode(String(input ?? ""));
   if (text.length > maxLen) text = text.slice(0, maxLen);
   const findings: string[] = [];
   for (const [re, tag] of INJECTION_PATTERNS) {
