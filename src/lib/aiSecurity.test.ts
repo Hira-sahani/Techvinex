@@ -11,7 +11,8 @@ const mkFile = (data: Uint8Array, name: string, type: string) =>
 
 describe("aiSecurity", () => {
   it("redacts JWTs, sk- keys, bearer tokens, and postgres URLs", () => {
-    const raw = "sk-abcdef01234567890abcdef Bearer aaaaaaaaaaaaaaaa postgres://u:p@h/db eyJhbGciOi.eyJzdWIiOi.abcdefghij";
+    const jwt = "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.abcdefghijKLMNOPQR";
+    const raw = `sk-abcdef01234567890abcdef Bearer aaaaaaaaaaaaaaaaaaaa postgres://u:p@h/db ${jwt}`;
     const out = redactSecrets(raw);
     expect(out).not.toMatch(/sk-/);
     expect(out).not.toMatch(/Bearer /);
