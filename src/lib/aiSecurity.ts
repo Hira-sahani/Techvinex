@@ -217,14 +217,14 @@ export function normalizeUnicode(input: string): string {
 // ---------------------------------------------------------------------------
 
 const JAILBREAK_PATTERNS: RegExp[] = [
-  /ignore\s+(all\s+)?previous\s+instructions/gi,
-  /disregard\s+(the\s+)?(above|previous)/gi,
-  /you\s+are\s+now\s+/gi,
-  /act\s+as\s+(an?\s+)?(admin|root|system|dan|developer)/gi,
-  /reveal\s+(the\s+)?(system\s+)?prompt/gi,
-  /print\s+(the\s+)?(env|environment|secrets?|api[_ ]?keys?)/gi,
-  /developer\s+mode|jailbreak|prompt\s+leak/gi,
-  /<\|(im_start|im_end|endoftext)\|>/gi,
+  /ignore\s+(all\s+)?previous\s+instructions/i,
+  /disregard\s+(the\s+)?(above|previous)/i,
+  /you\s+are\s+now\s+/i,
+  /act\s+as\s+(an?\s+)?(admin|root|system|dan|developer)/i,
+  /reveal\s+(the\s+)?(system\s+)?prompt/i,
+  /print\s+(the\s+)?(env|environment|secrets?|api[_ ]?keys?)/i,
+  /developer\s+mode|jailbreak|prompt\s+leak/i,
+  /<\|(im_start|im_end|endoftext)\|>/i,
 ];
 
 export function detectJailbreak(text: string): { blocked: boolean; findings: string[] } {
