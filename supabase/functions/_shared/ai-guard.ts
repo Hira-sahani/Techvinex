@@ -45,7 +45,7 @@ export interface AiGuardOptions<TBody> extends Omit<GuardConfig<TBody>, "schema"
   blockOnInjection?: boolean;
 }
 
-export interface AiGuardContext<TBody> extends GuardContext<TBody> {
+export interface AiGuardCtx<TBody> extends GuardCtx<TBody> {
   /** The frozen execution plan for this request. */
   plan: PlanEnforcer;
   /** Sanitize a piece of external/untrusted text (already applied to declared fields). */
@@ -101,7 +101,7 @@ function sanitizeFields<T>(body: T, fields: string[]): T {
 export function withAiGuard<TBody>(
   name: string,
   options: AiGuardOptions<TBody>,
-  handler: (ctx: AiGuardContext<TBody>) => Promise<Response> | Response,
+  handler: (ctx: AiGuardCtx<TBody>) => Promise<Response> | Response,
 ): (req: Request) => Promise<Response> {
   const blockOnInjection = options.blockOnInjection !== false;
 
@@ -142,7 +142,7 @@ export function withAiGuard<TBody>(
         const cleanedBody = sanitizeFields(ctx.body as unknown, options.untrustedFields ?? []);
 
         // 4. Hand a rich, plan-aware context to the underlying handler.
-        const aiCtx: AiGuardContext<TBody> = {
+        const aiCtx: AiGuardCtx<TBody> = {
           ...ctx,
           body: cleanedBody as TBody,
           plan,
@@ -171,7 +171,7 @@ export function withAiGuard<TBody>(
           });
           return guardJson({ error: "plan_violation", code: err.code }, 400);
         }
-        captureError(err, { function: name, plan: signed.hash });
+        captureEdgeException(err, { function: name, plan: signed.hash });
         await auditSecurity({
           userId: ctx.userId, kind: name, event: "handler_error",
           severity: "medium", planHash: signed.hash,
