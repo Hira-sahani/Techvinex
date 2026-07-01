@@ -17,8 +17,9 @@
 // going through this wrapper are considered a security regression.
 // ============================================================================
 
-import { guard, guardJson, GuardConfig, GuardContext, z, ZodSchema } from "./guard.ts";
-import { withSentry, captureError } from "./sentry.ts";
+import { guard, guardJson, GuardConfig, GuardCtx, z } from "./guard.ts";
+import { ZodSchema } from "https://esm.sh/zod@3.23.8";
+import { withSentry, captureEdgeException } from "./sentry.ts";
 import {
   createExecutionPlan,
   PlanEnforcer,
