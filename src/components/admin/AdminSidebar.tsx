@@ -24,6 +24,7 @@ const navItems = [
   { label: "Secrets", path: "/admin/secrets", icon: KeyRound },
   { label: "Webhooks", path: "/admin/webhooks", icon: Webhook },
   { label: "AI Security", path: "/admin/ai-security", icon: ShieldAlert },
+  { label: "Malware Scans", path: "/admin/malware-scans", icon: Bug },
   { label: "Settings", path: "/admin/settings", icon: Settings },
 ];
 
