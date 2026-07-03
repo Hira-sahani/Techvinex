@@ -107,7 +107,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const bucket = String(body.bucket ?? "").trim();
     const object_path = String(body.object_path ?? "").trim();
-    const owner_id: string | null = body.owner_id ?? uid;
+    const uploaded_by: string = body.owner_id ?? uid;
     if (!bucket || !object_path) return json({ error: "bucket and object_path required" }, 400);
 
     // Download the object
@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
     if (dlErr || !file) return json({ error: `download failed: ${dlErr?.message ?? "no file"}` }, 404);
     if (file.size > MAX_BYTES) {
       await supabase.from("storage_scan_results").insert({
-        bucket, object_path, owner_id, sha256: null, size_bytes: file.size,
+        bucket, object_path, uploaded_by, sha256: null, size_bytes: file.size,
         verdict: "error", vendor: "virustotal",
         details: { reason: "file exceeds VT public tier 32MB limit" },
       });
@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
 
     if (!VT_KEY) {
       await supabase.from("storage_scan_results").insert({
-        bucket, object_path, owner_id, sha256: hash, size_bytes: file.size,
+        bucket, object_path, uploaded_by, sha256: hash, size_bytes: file.size,
         verdict: "unknown", vendor: "virustotal",
         details: { reason: "VIRUSTOTAL_API_KEY not configured" },
       });
@@ -159,10 +159,10 @@ Deno.serve(async (req) => {
 
     // 4) Persist verdict (trigger notifies admins for malicious/suspicious)
     const { error: insErr } = await supabase.from("storage_scan_results").insert({
-      bucket, object_path, owner_id, sha256: hash, size_bytes: file.size,
+      bucket, object_path, uploaded_by, sha256: hash, size_bytes: file.size,
       verdict, vendor: "virustotal",
       engines_hit, engines_total,
-      analysis_id: analysisId,
+      vendor_scan_id: analysisId,
       details: { stats, removed },
     });
     if (insErr) console.error("scan insert failed", insErr);
