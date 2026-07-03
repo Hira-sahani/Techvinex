@@ -110,6 +110,7 @@ const AdminBlogs = lazy(() => import("./pages/admin/AdminBlogs"));
 const AdminSecrets = lazy(() => import("./pages/admin/AdminSecrets"));
 const AdminWebhooks = lazy(() => import("./pages/admin/AdminWebhooks"));
 const AdminAISecurity = lazy(() => import("./pages/admin/AdminAISecurity"));
+const AdminMalwareScans = lazy(() => import("./pages/admin/AdminMalwareScans"));
 const ExploreJobDetail = lazy(() => import("./pages/ExploreJobDetail"));
 const Blog = lazy(() => import("./pages/Blog"));
 const BlogDetail = lazy(() => import("./pages/BlogDetail"));
@@ -250,6 +251,7 @@ const AppLayout = () => {
             <Route path="secrets" element={<AdminSecrets />} />
             <Route path="webhooks" element={<AdminWebhooks />} />
             <Route path="ai-security" element={<AdminAISecurity />} />
+            <Route path="malware-scans" element={<AdminMalwareScans />} />
           </Route>
 
 

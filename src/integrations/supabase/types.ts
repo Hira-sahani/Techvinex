@@ -1532,6 +1532,66 @@ export type Database = {
         }
         Relationships: []
       }
+      storage_scan_results: {
+        Row: {
+          action_taken: string | null
+          bucket: string
+          content_type: string | null
+          created_at: string
+          details: Json
+          engines_hit: number | null
+          engines_total: number | null
+          id: string
+          object_path: string
+          scanned_at: string
+          sha256: string | null
+          size_bytes: number | null
+          updated_at: string
+          uploaded_by: string | null
+          vendor: string | null
+          vendor_scan_id: string | null
+          verdict: string
+        }
+        Insert: {
+          action_taken?: string | null
+          bucket: string
+          content_type?: string | null
+          created_at?: string
+          details?: Json
+          engines_hit?: number | null
+          engines_total?: number | null
+          id?: string
+          object_path: string
+          scanned_at?: string
+          sha256?: string | null
+          size_bytes?: number | null
+          updated_at?: string
+          uploaded_by?: string | null
+          vendor?: string | null
+          vendor_scan_id?: string | null
+          verdict: string
+        }
+        Update: {
+          action_taken?: string | null
+          bucket?: string
+          content_type?: string | null
+          created_at?: string
+          details?: Json
+          engines_hit?: number | null
+          engines_total?: number | null
+          id?: string
+          object_path?: string
+          scanned_at?: string
+          sha256?: string | null
+          size_bytes?: number | null
+          updated_at?: string
+          uploaded_by?: string | null
+          vendor?: string | null
+          vendor_scan_id?: string | null
+          verdict?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string

@@ -2,7 +2,7 @@ import BrandLogo from "@/components/BrandLogo";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard, Users, FileText, UserCheck, BarChart3,
-  ScrollText, Bell, DollarSign, Settings, LogOut, Brain, Globe, Moon, Sun, PenLine, FlaskConical, KeyRound, Webhook, ShieldAlert,
+  ScrollText, Bell, DollarSign, Settings, LogOut, Brain, Globe, Moon, Sun, PenLine, FlaskConical, KeyRound, Webhook, ShieldAlert, Bug,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
@@ -24,6 +24,7 @@ const navItems = [
   { label: "Secrets", path: "/admin/secrets", icon: KeyRound },
   { label: "Webhooks", path: "/admin/webhooks", icon: Webhook },
   { label: "AI Security", path: "/admin/ai-security", icon: ShieldAlert },
+  { label: "Malware Scans", path: "/admin/malware-scans", icon: Bug },
   { label: "Settings", path: "/admin/settings", icon: Settings },
 ];
 
