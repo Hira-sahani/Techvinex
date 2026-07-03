@@ -51,7 +51,11 @@ Deno.serve((req) =>
 
     if (body.search) {
       // Simple ILIKE over title only — keeps the plan index-friendly.
-      q = q.ilike("title", `%${body.search}%`);
+      // Escape LIKE-pattern metacharacters (\, %, _) so user input can't
+      // smuggle wildcards or force pathological scans. Values are still
+      // bound as parameters by PostgREST — this is defence-in-depth.
+      const safe = body.search.replace(/\\/g, "\\\\").replace(/[%_]/g, (c) => `\\${c}`);
+      q = q.ilike("title", `%${safe}%`);
     }
 
     const { data, count, error } = await q;
