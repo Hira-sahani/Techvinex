@@ -251,6 +251,7 @@ const AppLayout = () => {
             <Route path="secrets" element={<AdminSecrets />} />
             <Route path="webhooks" element={<AdminWebhooks />} />
             <Route path="ai-security" element={<AdminAISecurity />} />
+            <Route path="malware-scans" element={<AdminMalwareScans />} />
           </Route>
 
 
