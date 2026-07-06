@@ -1543,6 +1543,9 @@ export type Database = {
           engines_total: number | null
           id: string
           object_path: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
           scanned_at: string
           sha256: string | null
           size_bytes: number | null
@@ -1562,6 +1565,9 @@ export type Database = {
           engines_total?: number | null
           id?: string
           object_path: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           scanned_at?: string
           sha256?: string | null
           size_bytes?: number | null
@@ -1581,6 +1587,9 @@ export type Database = {
           engines_total?: number | null
           id?: string
           object_path?: string
+          review_note?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
           scanned_at?: string
           sha256?: string | null
           size_bytes?: number | null
@@ -1716,6 +1725,37 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      mark_scan_reviewed: {
+        Args: { _note?: string; _scan_id: string }
+        Returns: {
+          action_taken: string | null
+          bucket: string
+          content_type: string | null
+          created_at: string
+          details: Json
+          engines_hit: number | null
+          engines_total: number | null
+          id: string
+          object_path: string
+          review_note: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          scanned_at: string
+          sha256: string | null
+          size_bytes: number | null
+          updated_at: string
+          uploaded_by: string | null
+          vendor: string | null
+          vendor_scan_id: string | null
+          verdict: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "storage_scan_results"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       rate_limit_hit: {
         Args: { _key: string; _window_ms: number }
