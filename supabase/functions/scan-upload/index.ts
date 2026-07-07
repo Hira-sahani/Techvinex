@@ -14,8 +14,6 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { guard, guardJson, z } from "../_shared/guard.ts";
 import { withSentry } from "../_shared/sentry.ts";
 
-console.log("[scan-upload] boot v3");
-
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const VT_KEY = Deno.env.get("VIRUSTOTAL_API_KEY") ?? "";
