@@ -172,7 +172,7 @@ async function vtLookupHash(hash: string) {
 
 async function vtUpload(bytes: Uint8Array, filename: string) {
   const form = new FormData();
-  form.append("file", new Blob([bytes]), filename);
+  form.append("file", new Blob([bytes as BlobPart]), filename);
   const res = await fetch(`${VT_BASE}/files`, {
     method: "POST",
     headers: { "x-apikey": VT_KEY },
