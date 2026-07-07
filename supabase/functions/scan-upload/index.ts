@@ -35,7 +35,19 @@ const BodySchema = z.object({
   object_path: z.string().min(1).max(1024),
 });
 
-type Verdict = "clean" | "suspicious" | "malicious" | "unknown" | "error";
+export type Verdict = "clean" | "suspicious" | "malicious" | "unknown" | "error";
+
+/** Test seam — allows unit tests to inject a fake persistence client. */
+export interface PersistenceClient {
+  insert: (row: Record<string, unknown>) => Promise<{ error: { message?: string; code?: string } | null }>;
+}
+function defaultPersistence(): PersistenceClient {
+  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
+  return {
+    insert: (row) =>
+      supabase.from("storage_scan_results").insert(row).then(({ error }) => ({ error })),
+  };
+}
 
 interface FinalizeInput {
   ctx: GuardCtx<z.infer<typeof BodySchema>>;
