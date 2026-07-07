@@ -1,0 +1,2 @@
+ALTER TABLE public.storage_scan_results DROP CONSTRAINT storage_scan_results_verdict_check;
+ALTER TABLE public.storage_scan_results ADD CONSTRAINT storage_scan_results_verdict_check CHECK (verdict = ANY (ARRAY['pending','clean','suspicious','malicious','unknown','error']::text[]));
