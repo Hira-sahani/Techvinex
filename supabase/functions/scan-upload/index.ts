@@ -138,7 +138,7 @@ async function sha256Hex(buf: ArrayBuffer): Promise<string> {
     .join("");
 }
 
-function classify(stats: Record<string, number> | undefined): {
+export function classify(stats: Record<string, number> | undefined): {
   verdict: Verdict;
   engines_hit: number;
   engines_total: number;
