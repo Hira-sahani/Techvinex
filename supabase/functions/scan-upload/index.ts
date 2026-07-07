@@ -14,6 +14,8 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import { guard, guardJson, z } from "../_shared/guard.ts";
 import { withSentry } from "../_shared/sentry.ts";
 
+console.log("[scan-upload] boot v3");
+
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const VT_KEY = Deno.env.get("VIRUSTOTAL_API_KEY") ?? "";
@@ -111,20 +113,23 @@ Deno.serve(withSentry("scan-upload", (req) =>
     const uid = ctx.userId!;
     const isAdmin = ctx.roles.includes("admin");
 
-    // Ownership check — service-role read of storage.objects. Admins bypass.
+    // Ownership check — service-role RPC (storage schema is not exposed to
+    // PostgREST). The RPC is EXECUTE-restricted to service_role, so it cannot
+    // be used by authenticated clients to enumerate object owners. Admins bypass.
     if (!isAdmin) {
-      const { data: obj, error: objErr } = await ctx.db
-        .schema("storage")
-        .from("objects")
-        .select("owner")
-        .eq("bucket_id", bucket)
-        .eq("name", object_path)
-        .maybeSingle();
-      if (objErr || !obj) {
-        await ctx.audit("scan_deny_not_found", { bucket, object_path });
+      const { data: ownerId, error: objErr } = await ctx.db.rpc(
+        "storage_object_owner",
+        { _bucket: bucket, _name: object_path },
+      );
+      if (objErr) {
+        await ctx.audit("scan_deny_lookup_failed", { bucket, object_path, err: String(objErr?.message ?? objErr) });
         return guardJson({ error: "not_found", code: "OBJECT" }, 404);
       }
-      if (obj.owner !== uid) {
+      if (!ownerId) {
+        await ctx.audit("scan_deny_not_found", { bucket, object_path, debug: "v2", rpc_data_str: String(ownerId), rpc_type: typeof ownerId });
+        return guardJson({ error: "not_found", code: "OBJECT_V2" }, 404);
+      }
+      if (ownerId !== uid) {
         await ctx.audit("scan_deny_forbidden", { bucket, object_path });
         return guardJson({ error: "forbidden", code: "OWNER" }, 403);
       }

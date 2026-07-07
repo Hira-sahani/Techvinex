@@ -1764,6 +1764,10 @@ export type Database = {
           reset_ms: number
         }[]
       }
+      storage_object_owner: {
+        Args: { _bucket: string; _name: string }
+        Returns: string
+      }
     }
     Enums: {
       app_role:
