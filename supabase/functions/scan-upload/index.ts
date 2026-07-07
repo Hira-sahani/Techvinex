@@ -120,12 +120,12 @@ Deno.serve(withSentry("scan-upload", (req) =>
         { _bucket: bucket, _name: object_path },
       );
       if (objErr) {
-        await ctx.audit("scan_deny_lookup_failed", { bucket, object_path, err: String(objErr?.message ?? objErr) });
+        await ctx.audit("scan_deny_lookup_failed", { bucket, object_path });
         return guardJson({ error: "not_found", code: "OBJECT" }, 404);
       }
       if (!ownerId) {
-        await ctx.audit("scan_deny_not_found", { bucket, object_path, debug: "v2", rpc_data_str: String(ownerId), rpc_type: typeof ownerId });
-        return guardJson({ error: "not_found", code: "OBJECT_V2" }, 404);
+        await ctx.audit("scan_deny_not_found", { bucket, object_path });
+        return guardJson({ error: "not_found", code: "OBJECT" }, 404);
       }
       if (ownerId !== uid) {
         await ctx.audit("scan_deny_forbidden", { bucket, object_path });
