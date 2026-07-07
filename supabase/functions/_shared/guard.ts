@@ -31,7 +31,7 @@ export const corsHeaders = {
 
 export function buildCors(req: Request, extraAllowed: string[] = []): Record<string, string> {
   const origin = req.headers.get("origin");
-  const headers = { ...corsHeaders };
+  const headers: Record<string, string> = { ...corsHeaders };
   if (origin && (extraAllowed.includes(origin) || DEFAULT_ALLOWED_ORIGINS.some((re) => re.test(origin)))) {
     headers["Access-Control-Allow-Origin"] = origin;
     headers["Access-Control-Allow-Credentials"] = "true";
