@@ -44,8 +44,10 @@ export interface PersistenceClient {
 function defaultPersistence(): PersistenceClient {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
   return {
-    insert: (row) =>
-      supabase.from("storage_scan_results").insert(row).then(({ error }) => ({ error })),
+    insert: async (row) => {
+      const { error } = await supabase.from("storage_scan_results").insert(row);
+      return { error };
+    },
   };
 }
 
