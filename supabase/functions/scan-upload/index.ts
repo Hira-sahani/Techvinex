@@ -67,6 +67,8 @@ interface FinalizeInput {
   extraResponse?: Record<string, unknown>;
   /** Was the object removed from storage as part of this outcome? */
   removed?: boolean;
+  /** Test seam: inject persistence client. Defaults to real Supabase. */
+  persistence?: PersistenceClient;
 }
 
 /**
@@ -81,16 +83,15 @@ interface FinalizeInput {
  *       - scan_completed         (persist succeeded)
  *       - scan_persist_failed    (persist failed)
  */
-async function finalize(input: FinalizeInput): Promise<Response> {
+export async function finalize(input: FinalizeInput): Promise<Response> {
   const {
     ctx, bucket, object_path, uploaded_by, sha256, size_bytes, verdict,
     engines_hit = 0, engines_total = 0, vendor_scan_id = null,
     details = {}, httpStatus = 200, extraResponse = {}, removed = false,
+    persistence = defaultPersistence(),
   } = input;
 
-  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
-
-  const { error: insErr } = await supabase.from("storage_scan_results").insert({
+  const { error: insErr } = await persistence.insert({
     bucket, object_path, uploaded_by, sha256, size_bytes,
     verdict, vendor: "virustotal",
     engines_hit, engines_total, vendor_scan_id,
