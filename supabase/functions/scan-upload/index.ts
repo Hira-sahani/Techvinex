@@ -1,4 +1,4 @@
-// VirusTotal-backed upload scanner (Phase A hardened).
+// VirusTotal-backed upload scanner (Phase A hardened, revision 2).
 //
 // Flow: client uploads file to Supabase Storage, then calls this function with
 // { bucket, object_path }. We verify the caller owns the object (or is admin),
@@ -7,12 +7,18 @@
 // public.storage_scan_results; malicious files are deleted from storage.
 // Suspicious/malicious verdicts trigger admin notifications via the DB trigger.
 //
+// Every terminal outcome (clean / suspicious / malicious / unknown / error)
+// flows through finalize(), which is the ONLY code path that persists a row
+// and emits a terminal audit event. Persistence failures are captured via
+// Sentry, emit a `scan_persist_failed` audit row, and return a safe static
+// error to the client — raw DB errors are never returned.
+//
 // All request handling (method, Origin, JWT, RBAC hint, rate limit, schema,
 // body-size, secure headers, audit) goes through `_shared/guard.ts`.
 
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { guard, guardJson, z } from "../_shared/guard.ts";
-import { withSentry } from "../_shared/sentry.ts";
+import { guard, guardJson, z, type GuardCtx } from "../_shared/guard.ts";
+import { withSentry, captureEdgeException } from "../_shared/sentry.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -31,7 +37,88 @@ const BodySchema = z.object({
 
 type Verdict = "clean" | "suspicious" | "malicious" | "unknown" | "error";
 
-async function sha256(buf: ArrayBuffer): Promise<string> {
+interface FinalizeInput {
+  ctx: GuardCtx<z.infer<typeof BodySchema>>;
+  bucket: string;
+  object_path: string;
+  uploaded_by: string;
+  sha256: string | null;
+  size_bytes: number | null;
+  verdict: Verdict;
+  engines_hit?: number;
+  engines_total?: number;
+  vendor_scan_id?: string | null;
+  details?: Record<string, unknown>;
+  /** HTTP status to return on the *success* path. Defaults to 200. */
+  httpStatus?: number;
+  /** Extra fields to add to the response body. */
+  extraResponse?: Record<string, unknown>;
+  /** Was the object removed from storage as part of this outcome? */
+  removed?: boolean;
+}
+
+/**
+ * Single terminal exit point for the scanner.
+ *
+ * Guarantees:
+ *  1. Every terminal outcome persists a row to storage_scan_results.
+ *  2. Insert failures are captured (Sentry + audit) — never silently ignored.
+ *  3. On insert failure the client receives a safe static error, never a raw
+ *     Postgres/PostgREST error string.
+ *  4. Exactly one terminal audit event per invocation:
+ *       - scan_completed         (persist succeeded)
+ *       - scan_persist_failed    (persist failed)
+ */
+async function finalize(input: FinalizeInput): Promise<Response> {
+  const {
+    ctx, bucket, object_path, uploaded_by, sha256, size_bytes, verdict,
+    engines_hit = 0, engines_total = 0, vendor_scan_id = null,
+    details = {}, httpStatus = 200, extraResponse = {}, removed = false,
+  } = input;
+
+  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
+
+  const { error: insErr } = await supabase.from("storage_scan_results").insert({
+    bucket, object_path, uploaded_by, sha256, size_bytes,
+    verdict, vendor: "virustotal",
+    engines_hit, engines_total, vendor_scan_id,
+    details: { ...details, removed },
+  });
+
+  if (insErr) {
+    // Report to Sentry (message is scrubbed by sentry.ts).
+    await captureEdgeException(
+      new Error(`scan_persist_failed: ${insErr.message ?? "unknown"}`),
+      {
+        function_name: "scan-upload",
+        level: "error",
+        tags: { verdict, bucket },
+        extra: { object_path, engines_hit, engines_total },
+      },
+    );
+    // Audit event — no raw DB error, only a short code.
+    await ctx.audit("scan_persist_failed", {
+      bucket, object_path, verdict, engines_hit, engines_total,
+      db_error_code: insErr.code ?? null,
+    });
+    // Safe static response — never expose insErr.message.
+    return guardJson(
+      { error: "persistence_failed", code: "PERSIST" },
+      500,
+    );
+  }
+
+  await ctx.audit("scan_completed", {
+    bucket, object_path, verdict, engines_hit, engines_total, removed,
+  });
+
+  return guardJson(
+    { verdict, engines_hit, engines_total, sha256, removed, ...extraResponse },
+    httpStatus,
+  );
+}
+
+async function sha256Hex(buf: ArrayBuffer): Promise<string> {
   const hash = await crypto.subtle.digest("SHA-256", buf);
   return Array.from(new Uint8Array(hash))
     .map((b) => b.toString(16).padStart(2, "0"))
@@ -141,25 +228,29 @@ Deno.serve(withSentry("scan-upload", (req) =>
       await ctx.audit("scan_download_failed", { bucket, object_path });
       return guardJson({ error: "not_found", code: "OBJECT" }, 404);
     }
+
     if (file.size > MAX_BYTES) {
-      await supabase.from("storage_scan_results").insert({
-        bucket, object_path, uploaded_by: uid, sha256: null, size_bytes: file.size,
-        verdict: "error", vendor: "virustotal",
+      return await finalize({
+        ctx, bucket, object_path, uploaded_by: uid,
+        sha256: null, size_bytes: file.size,
+        verdict: "error",
         details: { reason: "file exceeds VT public tier 32MB limit" },
+        httpStatus: 413,
+        extraResponse: { reason: "file too large" },
       });
-      return guardJson({ verdict: "error", reason: "file too large" }, 413);
     }
 
     const buf = await file.arrayBuffer();
-    const hash = await sha256(buf);
+    const hash = await sha256Hex(buf);
 
     if (!VT_KEY) {
-      await supabase.from("storage_scan_results").insert({
-        bucket, object_path, uploaded_by: uid, sha256: hash, size_bytes: file.size,
-        verdict: "unknown", vendor: "virustotal",
+      return await finalize({
+        ctx, bucket, object_path, uploaded_by: uid,
+        sha256: hash, size_bytes: file.size,
+        verdict: "unknown",
         details: { reason: "VIRUSTOTAL_API_KEY not configured" },
+        extraResponse: { reason: "scanner not configured" },
       });
-      return guardJson({ verdict: "unknown", reason: "scanner not configured" }, 200);
     }
 
     // 1) Hash lookup
@@ -187,20 +278,14 @@ Deno.serve(withSentry("scan-upload", (req) =>
       removed = !rmErr;
     }
 
-    // 4) Persist verdict (trigger notifies admins for malicious/suspicious)
-    const { error: insErr } = await supabase.from("storage_scan_results").insert({
-      bucket, object_path, uploaded_by: uid, sha256: hash, size_bytes: file.size,
-      verdict, vendor: "virustotal",
-      engines_hit, engines_total,
+    // 4) Persist + terminal audit (single exit point).
+    return await finalize({
+      ctx, bucket, object_path, uploaded_by: uid,
+      sha256: hash, size_bytes: file.size,
+      verdict, engines_hit, engines_total,
       vendor_scan_id: analysisId,
-      details: { stats, removed },
+      details: { stats },
+      removed,
     });
-    if (insErr) {
-      await ctx.audit("scan_insert_failed", { bucket, object_path });
-    } else {
-      await ctx.audit("scan_completed", { bucket, object_path, verdict, engines_hit, engines_total, removed });
-    }
-
-    return guardJson({ verdict, engines_hit, engines_total, sha256: hash, removed });
   })
 ));
