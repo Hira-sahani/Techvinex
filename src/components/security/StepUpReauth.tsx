@@ -25,6 +25,14 @@ interface StepUpReauthProps {
  * just call signInWithPassword as a proof-of-knowledge check, and the
  * existing session continues to be used.
  */
+/**
+ * Lightweight step-up reauth — re-verifies the user's password server-side via
+ * the `verify-password` edge function. Unlike a client-side
+ * `signInWithPassword` call, this does NOT rotate the caller's refresh token,
+ * so concurrent tabs/devices stay signed in. On success the caller receives a
+ * short-lived signed re-auth token (5 min) which is stashed in sessionStorage
+ * and can be attached by downstream destructive endpoints if they require it.
+ */
 const StepUpReauth = ({
   open, onOpenChange, onVerified,
   title = "Confirm your identity",
@@ -44,14 +52,22 @@ const StepUpReauth = ({
   const verify = async () => {
     if (!password) return;
     setVerifying(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user?.email) { setVerifying(false); toast.error("No active session"); return; }
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email: user.email, password,
+    const { data, error } = await supabase.functions.invoke("verify-password", {
+      body: { password },
     });
     setVerifying(false);
-    if (error) { toast.error("Password incorrect"); return; }
+    if (error || !data?.ok) {
+      toast.error("Password incorrect");
+      return;
+    }
+    if (data.reauth_token && data.expires_at) {
+      try {
+        sessionStorage.setItem(
+          "stepup_reauth",
+          JSON.stringify({ token: data.reauth_token, expiresAt: data.expires_at }),
+        );
+      } catch { /* storage unavailable — non-fatal */ }
+    }
 
     onOpenChange(false);
     await onVerified();
