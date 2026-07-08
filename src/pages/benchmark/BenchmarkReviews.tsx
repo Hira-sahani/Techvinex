@@ -38,10 +38,12 @@ const BenchmarkReviews = () => {
 
   const openReview = async (result: any) => {
     setSelected(result);
-    // Reviewer/admin: fetch the answer key via guarded RPC.
-    const { data: secret } = await supabase
-      .rpc("get_benchmark_task_secret", { _task_id: result.task_id })
-      .maybeSingle();
+    // Reviewer/admin: fetch the answer key via guarded edge function.
+    const { data: secretRes } = await supabase.functions.invoke(
+      "benchmark-task-secret",
+      { body: { task_id: result.task_id } },
+    );
+    const secret = secretRes?.task;
     if (secret && (secret as any).expected_output && result.benchmark_tasks) {
       (result.benchmark_tasks as any).expected_output = (secret as any).expected_output;
     }

@@ -190,15 +190,18 @@ export function useExploreJobBySlug(slug: string | undefined) {
   });
 }
 
-/** Admin-only: fetches the privileged `internal_notes` column via SECURITY DEFINER RPC. */
+/** Admin-only: fetches the privileged `internal_notes` column via the guarded edge function. */
 export function useExploreJobInternalNotes(jobId: string | undefined) {
   return useQuery({
     queryKey: ["explore-job-internal-notes", jobId],
     queryFn: async () => {
       if (!jobId) return null;
-      const { data, error } = await supabase.rpc("admin_get_explore_job_internal_notes", { _job_id: jobId });
+      const { data, error } = await supabase.functions.invoke(
+        "admin-explore-job-notes",
+        { body: { job_id: jobId } },
+      );
       if (error) throw error;
-      return (data as string | null) ?? null;
+      return ((data as { internal_notes?: string | null } | null)?.internal_notes) ?? null;
     },
     enabled: !!jobId,
   });

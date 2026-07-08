@@ -4,11 +4,30 @@ import { guard, guardJson, z } from "../_shared/guard.ts";
 import { withSentry } from "../_shared/sentry.ts";
 
 // ---- Encryption (AES-256-GCM) ----
-async function getKey(): Promise<CryptoKey> {
-  const seed = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  if (!seed) throw new Error("Encryption seed missing");
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode("secrets-v1::" + seed));
+//
+// Ciphertext format is versioned so we can rotate keys without a data migration:
+//   v2 (current):  "v2.<iv_b64u>.<ct_b64u>"   key = SHA-256("secrets-v2::" + SECRETS_ENCRYPTION_KEY)
+//   v1 (legacy):   "<iv_b64u>.<ct_b64u>"      key = SHA-256("secrets-v1::" + SUPABASE_SERVICE_ROLE_KEY)
+//
+// Writes always use v2. Reads try v2 first, then transparently fall back to v1
+// so pre-rotation ciphertexts stay readable. Every UPDATE (rotate/upsert) rewrites
+// the row with v2, so v1 data is drained over time. Rotation runbook:
+//   1. Generate a new SECRETS_ENCRYPTION_KEY (>=32 random chars) and set it as a secret.
+//   2. Rewrite each stored secret via the admin UI (Rotate) — this re-encrypts under v2.
+//   3. Once all ciphertexts start with "v2.", the old value may be discarded.
+async function keyFromSeed(seed: string, label: string): Promise<CryptoKey> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(label + seed));
   return crypto.subtle.importKey("raw", digest, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
+}
+async function getKeyV2(): Promise<CryptoKey> {
+  const seed = Deno.env.get("SECRETS_ENCRYPTION_KEY") ?? "";
+  if (!seed || seed.length < 32) throw new Error("SECRETS_ENCRYPTION_KEY missing or too short");
+  return keyFromSeed(seed, "secrets-v2::");
+}
+async function getKeyV1(): Promise<CryptoKey | null> {
+  const seed = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  if (!seed) return null;
+  return keyFromSeed(seed, "secrets-v1::");
 }
 const b64u = {
   enc: (b: ArrayBuffer | Uint8Array) => {
@@ -23,16 +42,23 @@ const b64u = {
   },
 };
 async function encrypt(plain: string): Promise<string> {
-  const key = await getKey();
+  const key = await getKeyV2();
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const ct = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, new TextEncoder().encode(plain));
-  return `${b64u.enc(iv)}.${b64u.enc(ct)}`;
+  return `v2.${b64u.enc(iv)}.${b64u.enc(ct)}`;
 }
 async function decrypt(payload: string): Promise<string> {
-  const [ivStr, ctStr] = payload.split(".");
-  if (!ivStr || !ctStr) throw new Error("Bad ciphertext");
-  const key = await getKey();
-  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv: b64u.dec(ivStr) }, key, b64u.dec(ctStr));
+  const parts = payload.split(".");
+  let iv: Uint8Array, ct: Uint8Array, key: CryptoKey | null;
+  if (parts.length === 3 && parts[0] === "v2") {
+    iv = b64u.dec(parts[1]); ct = b64u.dec(parts[2]); key = await getKeyV2();
+  } else if (parts.length === 2) {
+    iv = b64u.dec(parts[0]); ct = b64u.dec(parts[1]); key = await getKeyV1();
+  } else {
+    throw new Error("Bad ciphertext");
+  }
+  if (!key) throw new Error("Decryption key unavailable");
+  const pt = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, ct);
   return new TextDecoder().decode(pt);
 }
 const mask = (v: string) => {
