@@ -73,6 +73,7 @@ const Terms = lazy(() => import("./pages/Terms"));
 const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
 const Opportunities = lazy(() => import("./pages/Opportunities"));
 const OpportunityDetail = lazy(() => import("./pages/OpportunityDetail"));
+const About = lazy(() => import("./pages/About"));
 
 const Notifications = lazy(() => import("./pages/Notifications"));
 const CandidateDashboard = lazy(() => import("./pages/CandidateDashboard"));
