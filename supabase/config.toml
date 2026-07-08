@@ -11,3 +11,7 @@ verify_jwt = false
 
 [functions.public-sitemap]
 verify_jwt = false
+
+[functions.csp-report]
+verify_jwt = false
+
