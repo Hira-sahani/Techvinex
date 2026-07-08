@@ -17,6 +17,7 @@ const footerLinks = {
     { label: "Sales", to: "/#cta" },
   ],
   Techvinex: [
+    { label: "About", to: "/about" },
     { label: "Careers", to: "/explore" },
     { label: "Security", to: "/privacy" },
     { label: "Blog", to: "/blog" },
