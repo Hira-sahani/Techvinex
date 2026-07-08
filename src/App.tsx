@@ -224,12 +224,21 @@ const AppLayout = () => {
             </Suspense>
           }>
             <Route path="dashboard" element={<BenchmarkDashboard />} />
-            <Route path="tasks" element={<BenchmarkTasks />} />
-            <Route path="run" element={<BenchmarkRunTest />} />
             <Route path="results" element={<BenchmarkResults />} />
             <Route path="leaderboard" element={<BenchmarkLeaderboard />} />
-            <Route path="reviews" element={<BenchmarkReviews />} />
-            <Route path="settings" element={<BenchmarkSettings />} />
+            {/* Admin/reviewer only surfaces */}
+            <Route path="tasks" element={
+              <BenchmarkProtectedRoute requiredRoles={["admin", "reviewer"]}><BenchmarkTasks /></BenchmarkProtectedRoute>
+            } />
+            <Route path="run" element={
+              <BenchmarkProtectedRoute requiredRoles={["admin", "reviewer"]}><BenchmarkRunTest /></BenchmarkProtectedRoute>
+            } />
+            <Route path="reviews" element={
+              <BenchmarkProtectedRoute requiredRoles={["admin", "reviewer"]}><BenchmarkReviews /></BenchmarkProtectedRoute>
+            } />
+            <Route path="settings" element={
+              <BenchmarkProtectedRoute requiredRoles={["admin"]}><BenchmarkSettings /></BenchmarkProtectedRoute>
+            } />
           </Route>
 
 
