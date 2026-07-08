@@ -72,15 +72,16 @@ const BenchmarkTasks = () => {
 
   const handleEdit = async (task: BenchmarkTask) => {
     setEditing(task);
-    // Fetch the answer-key columns through the guarded RPC.
-    const { data: secret, error: secretErr } = await supabase
-      .rpc("get_benchmark_task_secret", { _task_id: task.id })
-      .maybeSingle();
-    if (secretErr) {
+    // Fetch the answer-key columns through the guarded edge function.
+    const { data: secretRes, error: secretErr } = await supabase.functions.invoke(
+      "benchmark-task-secret",
+      { body: { task_id: task.id } },
+    );
+    if (secretErr || !secretRes?.task) {
       toast.error("Not authorized to view task answer key");
       return;
     }
-    const s = (secret as any) ?? {};
+    const s = (secretRes.task as any) ?? {};
     setForm({
       title: task.title,
       prompt: task.prompt,
