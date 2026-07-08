@@ -12,13 +12,22 @@ const EmployerProtectedRoute = ({ children }: { children: React.ReactNode }) => 
     if (authLoading) return;
     if (!user) { setHasAccess(false); return; }
 
+    let cancelled = false;
     supabase
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (cancelled) return;
+        if (error) {
+          // Fail closed on any role-lookup error.
+          console.warn("[EmployerProtectedRoute] role lookup failed:", error.message);
+          setHasAccess(false);
+          return;
+        }
         setHasAccess(data?.some((r: any) => r.role === "employer" || r.role === "admin") ?? false);
       });
+    return () => { cancelled = true; };
   }, [user, authLoading]);
 
   if (authLoading || hasAccess === null) {

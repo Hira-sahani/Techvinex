@@ -61,7 +61,8 @@ Deno.serve(withAiGuard("openai-benchmark", {
     if (!aiResponse.ok) {
       if (aiResponse.status === 429) return guardJson({ error: "rate_limited_upstream" }, 429);
       if (aiResponse.status === 402) return guardJson({ error: "credits_exhausted" }, 402);
-      return guardJson({ error: "upstream_error", status: aiResponse.status }, 502);
+      // Do NOT surface upstream provider status to callers.
+      return guardJson({ error: "upstream_error" }, 502);
     }
 
     const aiData = await aiResponse.json();
