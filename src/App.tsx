@@ -188,6 +188,7 @@ const AppLayout = () => {
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/cookie-policy" element={<CookiePolicy />} />
+          <Route path="/about" element={<About />} />
           <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
           <Route path="/jobs/:slug" element={<OpportunityDetail />} />
           <Route path="/opportunities" element={<Opportunities />} />
