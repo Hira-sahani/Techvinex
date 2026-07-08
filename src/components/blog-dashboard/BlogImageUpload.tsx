@@ -1,9 +1,8 @@
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload, X, Image as ImageIcon, Loader2 } from "lucide-react";
+import { Upload, X, Loader2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 
 interface BlogImageUploadProps {
@@ -11,8 +10,11 @@ interface BlogImageUploadProps {
   onChange: (url: string) => void;
 }
 
+type ScanVerdict = "clean" | "suspicious" | "malicious" | "unknown" | "error";
+
 const BlogImageUpload = ({ value, onChange }: BlogImageUploadProps) => {
   const [uploading, setUploading] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -29,24 +31,66 @@ const BlogImageUpload = ({ value, onChange }: BlogImageUploadProps) => {
     }
 
     setUploading(true);
+    let uploadedPath: string | null = null;
     try {
       const ext = file.name.split(".").pop();
       const path = `${crypto.randomUUID()}.${ext}`;
       const { error } = await supabase.storage.from("blog-images").upload(path, file);
       if (error) throw error;
+      uploadedPath = path;
+
+      // Security scan (Phase B3)
+      setUploading(false);
+      setScanning(true);
+      let verdict: ScanVerdict = "unknown";
+      try {
+        const { data: scan, error: scanErr } = await supabase.functions.invoke("scan-upload", {
+          body: { bucket: "blog-images", object_path: path },
+        });
+        if (scanErr) throw scanErr;
+        verdict = (scan?.verdict as ScanVerdict) ?? "unknown";
+      } catch (scanErr: any) {
+        // Scanner unavailable — fall through as unknown; do not block upload.
+        console.warn("scan-upload failed:", scanErr?.message ?? scanErr);
+        verdict = "error";
+      }
+
+      if (verdict === "malicious" || verdict === "suspicious") {
+        // Object is deleted by the edge function on malicious; ensure it's gone
+        // on suspicious too, since we won't attach it.
+        if (verdict === "suspicious") {
+          await supabase.storage.from("blog-images").remove([path]).catch(() => {});
+        }
+        toast.error("Image blocked by security scan");
+        return;
+      }
 
       const { data } = supabase.storage.from("blog-images").getPublicUrl(path);
       onChange(data.publicUrl);
-      toast.success("Image uploaded!");
+
+      if (verdict === "clean") {
+        toast.success("Image uploaded and verified");
+      } else {
+        toast.warning("Image uploaded (security scan unavailable)");
+      }
     } catch (err: any) {
+      // Best-effort cleanup if scanning threw after upload
+      if (uploadedPath) {
+        await supabase.storage.from("blog-images").remove([uploadedPath]).catch(() => {});
+      }
       toast.error(err.message || "Upload failed");
     } finally {
       setUploading(false);
+      setScanning(false);
       if (fileRef.current) fileRef.current.value = "";
     }
   };
 
   const handleRemove = () => onChange("");
+
+  const busy = uploading || scanning;
+  const busyLabel = uploading ? "Uploading..." : scanning ? "Scanning..." : "Click to upload image";
+  const BusyIcon = scanning ? ShieldCheck : Upload;
 
   return (
     <div>
@@ -68,16 +112,16 @@ const BlogImageUpload = ({ value, onChange }: BlogImageUploadProps) => {
         <button
           type="button"
           onClick={() => fileRef.current?.click()}
-          disabled={uploading}
-          className="mt-1 w-full h-24 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-1.5 text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors"
+          disabled={busy}
+          className="mt-1 w-full h-24 border-2 border-dashed border-border rounded-lg flex flex-col items-center justify-center gap-1.5 text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors disabled:opacity-60"
         >
-          {uploading ? (
+          {busy ? (
             <Loader2 className="w-5 h-5 animate-spin" />
           ) : (
-            <Upload className="w-5 h-5" />
+            <BusyIcon className="w-5 h-5" />
           )}
-          <span className="text-[10px]">{uploading ? "Uploading..." : "Click to upload image"}</span>
-          <span className="text-[9px] text-muted-foreground">Max 5MB · JPG, PNG, WebP</span>
+          <span className="text-[10px]">{busyLabel}</span>
+          <span className="text-[9px] text-muted-foreground">Max 5MB · JPG, PNG, WebP · Scanned for malware</span>
         </button>
       )}
     </div>
