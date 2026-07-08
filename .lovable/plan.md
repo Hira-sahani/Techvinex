@@ -1,65 +1,60 @@
 
-# Phase B — Audit & Implementation Plan
+# Phase C — Audit & Implementation Plan
 
 ## Audit findings
 
-**B1. Benchmark auth (current state)**
-- Route guard: `BenchmarkProtectedRoute` only checks `user` is logged in — any authenticated user (candidate, employer) with a stray session can hit `/benchmark/*`.
-- Login page (`BenchmarkLogin.tsx`) does check role membership in {admin, reviewer, viewer} and signs out on fail — but that only covers the login *entry* path. A logged-in candidate visiting `/benchmark/dashboard` directly bypasses that.
-- Reviewer/admin-only surfaces mixed with viewer-safe ones on the same shell: `BenchmarkTasks` (edit tasks), `BenchmarkReviews`, `BenchmarkSettings` should be admin/reviewer only; `Dashboard`, `Results`, `Leaderboard` are fine for viewer+.
-- `benchmark_tasks` secret fields are already RLS-locked server-side via `get_benchmark_task_secret` (admin/reviewer). So the DB is safe; this is a UI-guard gap only.
+**C1. `verify-admin` edge function** — already hardened. Uses `guard()` with `requireAuth`, `requireRoles: ["admin"]`, `POST`-only, `rateLimit` 30/min bucketed by user+ip, `guardJson` responses, `withSentry` wrapper, and an `admin_verify_ok` audit event. Guard emits standard 401/403 for missing auth/role. **No change required.**
 
-**B2. Blog Dashboard auth (current state)**
-- `BlogDashboardProtectedRoute` only checks `user` — any logged-in user can hit `/blog-dashboard/*`.
-- `/blog-dashboard/login` already redirects to `/admin/login` (memory: blog-dashboard-redirect).
-- `blogs` table RLS + `blog-images` storage policies require `has_role(auth.uid(),'admin')`, so writes are blocked server-side, but the UI still renders and lets users try, which is misleading and a soft info-leak.
-- Required role: **admin** (matches DB + storage policies).
+**C2. `AdminProtectedRoute` / `EmployerProtectedRoute`** — both share the same pattern I refined in Phase B for benchmark/blog. Two gaps:
+- `.then(({ data }) => …)` swallows `error`. On a network/RLS error, `data` is `null` → `hasAccess = false`, which is *fail-closed* by luck, but the state transitions to `false` silently with no logging.
+- No `cancelled` flag → if `user` changes fast (logout during load), a stale resolver can set `hasAccess=true`. Small race, but fixable.
+- Loading/error states already render the loader and never leak children before the role query settles — verified fail-closed on `null`/`false`.
 
-**B3. Blog image upload security**
-- `BlogImageUpload.tsx` uploads directly to `blog-images` bucket, sets `onChange(publicUrl)` immediately. No scan is invoked.
-- `scan-upload` edge function already exists, allow-lists `blog-images`, is guard-hardened, persists results, deletes malicious files. Verdicts: `clean|suspicious|malicious|unknown|error`.
-- Gap: upload UI never calls it, so a malicious image URL can be attached to a blog and published.
+Fix: mirror the Phase B pattern — capture `error`, log to console on failure, `cancelled` guard on unmount/user-change, explicit fail-closed on error. No API/signature change.
 
-**B4. Storage policies (current state, from migrations)**
-- `blog-images`: public SELECT (anon+authenticated), admin-only INSERT/UPDATE/DELETE. Aligned with intent (public read for site visitors, admin-only writes). No unauthorized write path.
-- Note: `scan-upload` deletes malicious objects with service role, which bypasses RLS — correct by design.
+**C3. `openai-benchmark`** — leaks upstream detail in two places:
+- Line 64: `{ error: "upstream_error", status: aiResponse.status }` returns OpenAI's raw HTTP status to the client. Recommend dropping `status` from the response body (still log to Sentry via `withAiGuard`'s error path) and returning a generic `502` body.
+- Lines 62–63: `rate_limited_upstream` / `credits_exhausted` are safe (no provider name, no key material). Keep as-is; they're actionable for the UI without exposing internals.
+- Everything else (auth, rate limit, schema, plan enforcement, prompt-injection wrapping via `ctx.wrap`, secret redaction via `ctx.redact`) is already correct.
+- Note: `insertError` correctly returns `save_failed` without DB detail.
+
+Fix: strip `status` field. No functional change to happy path.
+
+**C4. Reliability — idempotency + rate-bucket cleanup** — `public.cleanup_expired_rate_buckets()` exists and cleans both `rate_limit_buckets` and `idempotency_keys`. Execute grant is `service_role` only. **No scheduler (pg_cron) is registered**, so the function is never invoked on a schedule. Rows accumulate until manually run.
+
+Options:
+- (a) Schedule via pg_cron in a migration. `pg_cron` availability on this project is unverified; blindly enabling extensions is out of scope for Phase C (touches production config).
+- (b) Document required action for the operator: run `select public.cleanup_expired_rate_buckets();` on a schedule (Supabase Dashboard → Database → Cron, or an external cron hitting an edge function). Add a lightweight edge function `admin-cleanup` gated to admin + `guard()` so ops can trigger it on demand without shell access. Non-destructive to prod config.
+
+I will implement (b): a small admin-only edge function that invokes the existing SQL function via service role. This is additive and safe.
 
 ## Implementation plan
 
-**B1 — Split benchmark routes by role**
-1. Enhance `BenchmarkProtectedRoute` to accept `requiredRoles` prop (default: any of admin/reviewer/viewer). Fetch `user_roles`, gate on membership, redirect to `/benchmark/login` if missing role.
-2. In `App.tsx`, wrap admin/reviewer-only routes (`tasks`, `reviews`, `settings`, `run` — since running a test writes results) with `requiredRoles={["admin","reviewer"]}`. Keep `dashboard`, `results`, `leaderboard` open to all three.
-3. Keep existing `BenchmarkLogin` role check as defense in depth.
+1. **C2** — Update `AdminProtectedRoute.tsx` and `EmployerProtectedRoute.tsx`:
+   - Destructure `{ data, error }`, log `error` via `console.warn`, fail closed on error.
+   - Add `cancelled` guard.
+   - Keep loading behavior identical (TechvinexLoader).
+2. **C3** — Update `supabase/functions/openai-benchmark/index.ts`:
+   - Replace the leaky line 64 with `return guardJson({ error: "upstream_error" }, 502);`.
+3. **C4** — Add `supabase/functions/admin-cleanup/index.ts`:
+   - `guard`: POST only, `requireAuth`, `requireRoles: ["admin"]`, tight rate limit (5/min).
+   - Calls `ctx.db.rpc("cleanup_expired_rate_buckets")` and returns `{ ok: true, removed: <count> }`.
+   - Audit event `admin_cleanup_run`.
+   - Document scheduling recommendation in a top-of-file comment.
+   - No `config.toml` edit needed (default `verify_jwt=false` per project convention; we validate in guard).
+4. **C1** — No change; note in report.
 
-**B2 — Blog Dashboard: require admin**
-1. Update `BlogDashboardProtectedRoute` to check `has_role(user,'admin')`, redirect non-admins to `/admin/login`. Same pattern as `AdminProtectedRoute`.
-
-**B3 — Wire BlogImageUpload → scan-upload**
-1. After successful storage upload, call `supabase.functions.invoke('scan-upload', { body: { bucket:'blog-images', object_path: path } })`.
-2. Handle verdicts:
-   - `clean` → set publicUrl, success toast.
-   - `malicious` → object is already deleted by the edge function; clear value, error toast "Image blocked by security scan".
-   - `suspicious` → block by default (treat like malicious for UI), error toast; keep object deletion consistent by not attaching it.
-   - `unknown` / `error` → allow attach with a warning toast ("Security scan unavailable; image accepted") — preserves current UX when VirusTotal isn't configured; **do not block** so the tool remains usable in dev.
-3. Show scanning state in the button (`Scanning…` after `Uploading…`).
-4. No change to non-image flows.
-
-**B4 — Storage review**
-- Policies verified already correct; no migration needed. Document the current matrix in the report; only act if audit reveals a gap (none found).
-
-## Test & verification
-- Run `bunx vitest run` after B1 and B2 (ProtectedRoute tests exist; extend if signatures change).
-- Playwright smoke: log in as candidate → hit `/benchmark/tasks` → expect redirect to `/benchmark/login`. Log in as admin → all routes render.
-- Manual: upload a benign image via blog dashboard → verify scan verdict logged in `storage_scan_results` and image attaches. (Malicious path can't be exercised without VT key; verify `unknown` path allows attach + persists row.)
+## Tests & verification
+- Run `bunx vitest run` — expect 172 pass (no test relies on internals we're changing; error-path branch is additive). If the response-shape change in `openai-benchmark` is covered anywhere, adjust.
+- Grep for consumers of `upstream_error` `status` field before removing (nothing should switch on it).
 
 ## Files to change
-- `src/components/benchmark/BenchmarkProtectedRoute.tsx` — add role gating.
-- `src/App.tsx` — pass `requiredRoles` to admin/reviewer benchmark routes.
-- `src/components/blog-dashboard/BlogDashboardProtectedRoute.tsx` — require admin.
-- `src/components/blog-dashboard/BlogImageUpload.tsx` — call `scan-upload` after upload; verdict-aware UX.
-- (Optional) test updates for the two protected-route components.
+- `src/components/admin/AdminProtectedRoute.tsx`
+- `src/components/employer/EmployerProtectedRoute.tsx`
+- `supabase/functions/openai-benchmark/index.ts`
+- `supabase/functions/admin-cleanup/index.ts` (new)
 
 ## Out of scope
-- Any DB/RLS/storage migration (policies already correct).
-- Secrets/prod config changes.
-- Any Phase C item.
+- pg_cron scheduling (touches prod extensions).
+- Any `verify-admin` change.
+- Any Phase D item.
