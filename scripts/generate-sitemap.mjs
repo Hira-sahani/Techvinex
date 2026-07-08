@@ -23,6 +23,7 @@ const STATIC_FALLBACK = `<?xml version="1.0" encoding="UTF-8"?>
   <url><loc>${BASE}/explore</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
   <url><loc>${BASE}/opportunities</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
   <url><loc>${BASE}/blog</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>${BASE}/about</loc><changefreq>monthly</changefreq><priority>0.7</priority></url>
   <url><loc>${BASE}/privacy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
   <url><loc>${BASE}/terms</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
   <url><loc>${BASE}/cookie-policy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>

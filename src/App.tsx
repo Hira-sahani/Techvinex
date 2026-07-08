@@ -73,6 +73,7 @@ const Terms = lazy(() => import("./pages/Terms"));
 const CookiePolicy = lazy(() => import("./pages/CookiePolicy"));
 const Opportunities = lazy(() => import("./pages/Opportunities"));
 const OpportunityDetail = lazy(() => import("./pages/OpportunityDetail"));
+const About = lazy(() => import("./pages/About"));
 
 const Notifications = lazy(() => import("./pages/Notifications"));
 const CandidateDashboard = lazy(() => import("./pages/CandidateDashboard"));
@@ -187,6 +188,7 @@ const AppLayout = () => {
           <Route path="/privacy" element={<Privacy />} />
           <Route path="/terms" element={<Terms />} />
           <Route path="/cookie-policy" element={<CookiePolicy />} />
+          <Route path="/about" element={<About />} />
           <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
           <Route path="/jobs/:slug" element={<OpportunityDetail />} />
           <Route path="/opportunities" element={<Opportunities />} />
