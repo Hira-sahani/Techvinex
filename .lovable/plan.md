@@ -1,89 +1,65 @@
-# Enterprise AI Agent Security Architecture
 
-Scope: harden every AI-touching surface in Techvinex (interview agent, benchmark runner, TTS worker, async job pipeline) against prompt injection, tool injection, and data exfiltration. Introduce a shared security layer used by every edge function that talks to a model.
+# Phase B — Audit & Implementation Plan
 
-## 1. Shared Security Layer (`supabase/functions/_shared/ai-security.ts`)
+## Audit findings
 
-New module exporting:
+**B1. Benchmark auth (current state)**
+- Route guard: `BenchmarkProtectedRoute` only checks `user` is logged in — any authenticated user (candidate, employer) with a stray session can hit `/benchmark/*`.
+- Login page (`BenchmarkLogin.tsx`) does check role membership in {admin, reviewer, viewer} and signs out on fail — but that only covers the login *entry* path. A logged-in candidate visiting `/benchmark/dashboard` directly bypasses that.
+- Reviewer/admin-only surfaces mixed with viewer-safe ones on the same shell: `BenchmarkTasks` (edit tasks), `BenchmarkReviews`, `BenchmarkSettings` should be admin/reviewer only; `Dashboard`, `Results`, `Leaderboard` are fine for viewer+.
+- `benchmark_tasks` secret fields are already RLS-locked server-side via `get_benchmark_task_secret` (admin/reviewer). So the DB is safe; this is a UI-guard gap only.
 
-- `createExecutionPlan(kind, userId)` — returns a frozen `ExecutionPlan` object: allowed tools, max tool calls, max steps, allowed output types, allowed egress destinations, permission scope. Deep-frozen with `Object.freeze` + sealed properties. Signed with HMAC (`AI_PLAN_SIGNING_SECRET`, auto-generated) so downstream code rejects tampered plans.
-- `enforcePlan(plan, requestedTool)` — throws `PlanViolationError` if a tool call is not in the plan or exceeds counters.
-- `sanitizeExternalContent(text)` — strips/escapes known injection patterns (`ignore previous instructions`, `system:`, `<|im_start|>`, tool-call JSON blocks, base64 payloads > 2KB, zero-width chars, homoglyph runs). Returns `{ safe, findings[] }`.
-- `detectPromptInjection(text)` — heuristic + regex scorer, threshold-based block.
-- `redactSecrets(text)` — masks anything matching JWT, `sk-...`, `service_role`, Supabase URL, connection strings, `Bearer <token>`, emails when scope is public.
-- `wrapExternalContent(text)` — wraps untrusted text in `<untrusted_content>…</untrusted_content>` XML fence + a preamble telling the model to treat contents strictly as data.
-- `validateToolOutput(plan, output)` — enforces output type + size + no-egress rules.
-- `AuditLogger` — appends structured entries to `ai_security_audit` table.
+**B2. Blog Dashboard auth (current state)**
+- `BlogDashboardProtectedRoute` only checks `user` — any logged-in user can hit `/blog-dashboard/*`.
+- `/blog-dashboard/login` already redirects to `/admin/login` (memory: blog-dashboard-redirect).
+- `blogs` table RLS + `blog-images` storage policies require `has_role(auth.uid(),'admin')`, so writes are blocked server-side, but the UI still renders and lets users try, which is misleading and a soft info-leak.
+- Required role: **admin** (matches DB + storage policies).
 
-## 2. Database (`ai_security_audit`, `ai_safe_actions`)
+**B3. Blog image upload security**
+- `BlogImageUpload.tsx` uploads directly to `blog-images` bucket, sets `onChange(publicUrl)` immediately. No scan is invoked.
+- `scan-upload` edge function already exists, allow-lists `blog-images`, is guard-hardened, persists results, deletes malicious files. Verdicts: `clean|suspicious|malicious|unknown|error`.
+- Gap: upload UI never calls it, so a malicious image URL can be attached to a blog and published.
 
-Migration adds:
+**B4. Storage policies (current state, from migrations)**
+- `blog-images`: public SELECT (anon+authenticated), admin-only INSERT/UPDATE/DELETE. Aligned with intent (public read for site visitors, admin-only writes). No unauthorized write path.
+- Note: `scan-upload` deletes malicious objects with service role, which bypasses RLS — correct by design.
 
-- `public.ai_security_audit` (id, user_id, job_id, kind, event, severity, plan_hash, details jsonb, created_at) with RLS: admin-only SELECT, service_role INSERT. GRANT block per project rules.
-- `public.ai_safe_actions` registry table listing whitelisted operations the agent may invoke, with parameter schema + required role.
-- Indexes on `(user_id, created_at desc)` and `(severity, created_at desc)`.
+## Implementation plan
 
-## 3. Safe Actions API (`supabase/functions/ai-safe-action/index.ts`)
+**B1 — Split benchmark routes by role**
+1. Enhance `BenchmarkProtectedRoute` to accept `requiredRoles` prop (default: any of admin/reviewer/viewer). Fetch `user_roles`, gate on membership, redirect to `/benchmark/login` if missing role.
+2. In `App.tsx`, wrap admin/reviewer-only routes (`tasks`, `reviews`, `settings`, `run` — since running a test writes results) with `requiredRoles={["admin","reviewer"]}`. Keep `dashboard`, `results`, `leaderboard` open to all three.
+3. Keep existing `BenchmarkLogin` role check as defense in depth.
 
-Single choke-point edge function. Accepts `{ action, params, planToken }`.
+**B2 — Blog Dashboard: require admin**
+1. Update `BlogDashboardProtectedRoute` to check `has_role(user,'admin')`, redirect non-admins to `/admin/login`. Same pattern as `AdminProtectedRoute`.
 
-- Verifies JWT (real user, not service role).
-- Verifies plan HMAC and that `action` is in `plan.allowedTools`.
-- Looks up action in `ai_safe_actions`; validates params with Zod schema stored per action.
-- Enforces per-user + per-IP rate limit via existing `PgRateStore`.
-- Executes the action through a narrow, hand-written dispatcher — never dynamic SQL, never raw table access. Initial whitelist:
-  - `fetch_public_job(jobId)`
-  - `fetch_benchmark_task_public(taskId)`
-  - `record_interview_turn(jobId, text)`
-  - `flag_content_for_review(payload)`
-- Writes an `ai_security_audit` entry for every call (allowed or denied).
-- Never returns secrets; response filtered through `redactSecrets`.
+**B3 — Wire BlogImageUpload → scan-upload**
+1. After successful storage upload, call `supabase.functions.invoke('scan-upload', { body: { bucket:'blog-images', object_path: path } })`.
+2. Handle verdicts:
+   - `clean` → set publicUrl, success toast.
+   - `malicious` → object is already deleted by the edge function; clear value, error toast "Image blocked by security scan".
+   - `suspicious` → block by default (treat like malicious for UI), error toast; keep object deletion consistent by not attaching it.
+   - `unknown` / `error` → allow attach with a warning toast ("Security scan unavailable; image accepted") — preserves current UX when VirusTotal isn't configured; **do not block** so the tool remains usable in dev.
+3. Show scanning state in the button (`Scanning…` after `Uploading…`).
+4. No change to non-image flows.
 
-High-risk actions (payouts, admin ops, secret access) are explicitly absent — agent has no path to them.
+**B4 — Storage review**
+- Policies verified already correct; no migration needed. Document the current matrix in the report; only act if audit reveals a gap (none found).
 
-## 4. Sandboxed Model Invocation
+## Test & verification
+- Run `bunx vitest run` after B1 and B2 (ProtectedRoute tests exist; extend if signatures change).
+- Playwright smoke: log in as candidate → hit `/benchmark/tasks` → expect redirect to `/benchmark/login`. Log in as admin → all routes render.
+- Manual: upload a benign image via blog dashboard → verify scan verdict logged in `storage_scan_results` and image attaches. (Malicious path can't be exercised without VT key; verify `unknown` path allows attach + persists row.)
 
-Refactor `ai-job-worker` and `ai-interview`:
+## Files to change
+- `src/components/benchmark/BenchmarkProtectedRoute.tsx` — add role gating.
+- `src/App.tsx` — pass `requiredRoles` to admin/reviewer benchmark routes.
+- `src/components/blog-dashboard/BlogDashboardProtectedRoute.tsx` — require admin.
+- `src/components/blog-dashboard/BlogImageUpload.tsx` — call `scan-upload` after upload; verdict-aware UX.
+- (Optional) test updates for the two protected-route components.
 
-1. Build execution plan for the job kind.
-2. Load any external content (resume text, web page, RAG chunk) → run through `sanitizeExternalContent` + `wrapExternalContent`.
-3. Call model with `system` prompt that references the plan and forbids following instructions inside `<untrusted_content>`.
-4. If model requests a tool, route through `ai-safe-action` — never execute inline. Enforce `plan.maxToolCalls` counter.
-5. Run response through `validateToolOutput` + `redactSecrets` before persisting to `ai_jobs.result`.
-6. On any violation → mark job `failed` with reason `security_violation`, log audit entry `severity=high`.
-
-Worker never receives or forwards service-role key to the model context. All privileged DB writes happen in the worker after Safe Action validation, not from model output.
-
-## 5. Client-Side Guardrails
-
-- `src/lib/aiSecurity.ts` — client mirror of `redactSecrets` + response-size cap; used by `useAiJob` and interview UI before rendering.
-- Render assistant output through existing markdown renderer with `rehype-sanitize` allowlist (no `<script>`, no `javascript:` URLs, no `data:` beyond images).
-- Strip any tool-call JSON from displayed content.
-
-## 6. Rate Limiting & Human Approval
-
-- Every Safe Action: 30 calls / user / minute, 200 / IP / minute (via `PgRateStore`).
-- Actions flagged `requires_approval=true` in registry create an `ai_approvals` row and return `pending`; a human must approve in admin UI before execution. Initial approval-required set: `flag_content_for_review` when severity ≥ high.
-
-## 7. Least Privilege & Zero Trust
-
-- `ai-job-worker` keeps service-role but only writes to `ai_jobs` and `ai_security_audit`. All other DB access moves behind Safe Actions using a scoped anon+JWT client.
-- Remove any direct `from("<any table>")` calls made from model-driven code paths.
-- Add `SECURITY.md` documenting the trust boundary.
-
-## 8. Verification
-
-- New tests under `src/lib/aiSecurity.*.test.tsx` covering redaction + injection detection.
-- Deno test for `_shared/ai-security.ts` covering plan freezing, HMAC verify, sanitizer, validator.
-- Manual: run existing benchmark flow end-to-end; confirm audit rows appear and blocked-injection sample is rejected.
-
-## 9. Security Report (delivered in chat after implementation)
-
-Sections: vulnerabilities found, fixes shipped, residual risk, security score, OWASP LLM Top 10 mapping (LLM01–LLM10).
-
-## Technical notes
-
-- HMAC secret provisioned via `secrets--generate_secret` as `AI_PLAN_SIGNING_SECRET` (32 bytes).
-- All migrations follow the required order: CREATE TABLE → GRANT → ENABLE RLS → CREATE POLICY.
-- No changes to `supabase/config.toml`, generated client, or types.
-- No new npm dependencies on the client; edge functions use existing `@supabase/supabase-js` + Web Crypto.
+## Out of scope
+- Any DB/RLS/storage migration (policies already correct).
+- Secrets/prod config changes.
+- Any Phase C item.
