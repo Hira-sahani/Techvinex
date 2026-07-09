@@ -343,6 +343,8 @@ const About = () => {
                       onClick={() => {
                         setSubmitted(false);
                         setForm({ name: "", email: "", message: "" });
+                        setErrors({});
+                        setTouched({});
                       }}
                     >
                       Send another message
