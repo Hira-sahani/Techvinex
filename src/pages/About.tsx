@@ -1,9 +1,16 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Linkedin, Sparkles, Target, Globe } from "lucide-react";
+import { ArrowLeft, Linkedin, Sparkles, Target, Globe, Mail, MessageSquare, Send, ArrowRight } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import useDocumentMeta from "@/hooks/useDocumentMeta";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import founderPhoto from "@/assets/founder-abhishek-sahani.jpg";
+
+const CONTACT_EMAIL = "support@techvinexx.com";
 
 const FOUNDER_NAME = "Abhishek Sahani";
 const FOUNDER_TITLE = "Founder & CEO, Techvinex";
@@ -40,6 +47,12 @@ const About = () => {
       jobTitle: "Founder & CEO",
       sameAs: [FOUNDER_LINKEDIN],
     },
+    contactPoint: {
+      "@type": "ContactPoint",
+      email: CONTACT_EMAIL,
+      contactType: "customer support",
+      availableLanguage: ["English"],
+    },
   };
 
   useDocumentMeta({
@@ -51,6 +64,19 @@ const About = () => {
     image: `${SITE_URL}/founder-abhishek-sahani.jpg`,
     jsonLd: [personSchema, organizationSchema],
   });
+
+  const [form, setForm] = useState({ name: "", email: "", message: "" });
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const subject = encodeURIComponent(`Inquiry from ${form.name || "Techvinex About page"}`);
+    const body = encodeURIComponent(
+      `Name: ${form.name}\nEmail: ${form.email}\n\nMessage:\n${form.message}`,
+    );
+    window.location.href = `mailto:${CONTACT_EMAIL}?subject=${subject}&body=${body}`;
+    setSubmitted(true);
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
@@ -185,6 +211,141 @@ const About = () => {
                   <p className="text-sm text-muted-foreground">{p.desc}</p>
                 </div>
               ))}
+            </div>
+          </section>
+
+          {/* Contact CTA */}
+          <section
+            aria-labelledby="contact-cta"
+            className="mt-14 sm:mt-20 rounded-2xl border border-border bg-card overflow-hidden"
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
+              {/* Copy + direct email */}
+              <div className="p-6 sm:p-10 lg:border-r border-border">
+                <p className="text-xs sm:text-sm font-semibold tracking-widest uppercase text-primary mb-3">
+                  Get in touch
+                </p>
+                <h2
+                  id="contact-cta"
+                  className="text-2xl sm:text-4xl font-extrabold text-foreground tracking-tight mb-4"
+                >
+                  Let&apos;s build the future of hiring together
+                </h2>
+                <p className="text-sm sm:text-base text-muted-foreground mb-8 leading-relaxed">
+                  Whether you&apos;re a company looking to scale your team, a candidate ready for
+                  your next opportunity, or a partner exploring collaboration — we&apos;d love to
+                  hear from you.
+                </p>
+
+                <div className="space-y-4">
+                  <a
+                    href={`mailto:${CONTACT_EMAIL}`}
+                    className="group inline-flex items-center gap-3 rounded-xl border border-border bg-background px-5 py-4 hover:bg-secondary transition-colors w-full sm:w-auto"
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <Mail size={18} className="text-primary" />
+                    </div>
+                    <div className="min-w-0 text-left">
+                      <p className="text-xs text-muted-foreground">Email us directly</p>
+                      <p className="text-sm font-semibold text-foreground truncate">{CONTACT_EMAIL}</p>
+                    </div>
+                    <ArrowRight
+                      size={16}
+                      className="ml-auto text-muted-foreground group-hover:text-foreground transition-colors shrink-0"
+                    />
+                  </a>
+
+                  <div className="inline-flex items-center gap-3 rounded-xl border border-border bg-background px-5 py-4 w-full sm:w-auto">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <MessageSquare size={18} className="text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Typical response time</p>
+                      <p className="text-sm font-semibold text-foreground">Within 24 hours</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact form */}
+              <div className="p-6 sm:p-10 bg-secondary/30">
+                {submitted ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center py-10">
+                    <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+                      <Mail size={24} className="text-primary" />
+                    </div>
+                    <h3 className="text-xl font-bold text-foreground mb-2">Message ready to send</h3>
+                    <p className="text-sm text-muted-foreground max-w-xs mb-6">
+                      Your email client should open with the message pre-filled. If it didn&apos;t,
+                      you can always reach us at{" "}
+                      <a href={`mailto:${CONTACT_EMAIL}`} className="text-primary font-medium">
+                        {CONTACT_EMAIL}
+                      </a>
+                      .
+                    </p>
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setSubmitted(false);
+                        setForm({ name: "", email: "", message: "" });
+                      }}
+                    >
+                      Send another message
+                    </Button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleFormSubmit} className="space-y-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                      <div className="space-y-2">
+                        <Label htmlFor="contact-name">Name</Label>
+                        <Input
+                          id="contact-name"
+                          type="text"
+                          placeholder="Your name"
+                          required
+                          value={form.name}
+                          onChange={(e) => setForm({ ...form, name: e.target.value })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="contact-email">Email</Label>
+                        <Input
+                          id="contact-email"
+                          type="email"
+                          placeholder="you@company.com"
+                          required
+                          value={form.email}
+                          onChange={(e) => setForm({ ...form, email: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="contact-message">Message</Label>
+                      <Textarea
+                        id="contact-message"
+                        placeholder="Tell us how we can help..."
+                        required
+                        rows={5}
+                        value={form.message}
+                        onChange={(e) => setForm({ ...form, message: e.target.value })}
+                      />
+                    </div>
+                    <Button
+                      type="submit"
+                      className="w-full rounded-full py-6 text-base font-semibold gradient-cta border-0 text-primary-foreground hover:opacity-90 transition-opacity"
+                    >
+                      <Send size={18} /> Send message
+                    </Button>
+                    <p className="text-xs text-muted-foreground text-center">
+                      By reaching out, you agree to our{" "}
+                      <Link to="/privacy" className="text-primary hover:underline">
+                        Privacy Policy
+                      </Link>
+                      .
+                    </p>
+                  </form>
+                )}
+              </div>
             </div>
           </section>
         </div>
