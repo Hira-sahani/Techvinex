@@ -47,6 +47,12 @@ const About = () => {
       jobTitle: "Founder & CEO",
       sameAs: [FOUNDER_LINKEDIN],
     },
+    contactPoint: {
+      "@type": "ContactPoint",
+      email: CONTACT_EMAIL,
+      contactType: "customer support",
+      availableLanguage: ["English"],
+    },
   };
 
   useDocumentMeta({
