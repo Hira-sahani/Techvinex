@@ -59,6 +59,19 @@ const About = () => {
     jsonLd: [personSchema, organizationSchema],
   });
 
+  const [form, setForm] = useState({ name: "", email: "", message: "" });
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const subject = encodeURIComponent(`Inquiry from ${form.name || "Techvinex About page"}`);
+    const body = encodeURIComponent(
+      `Name: ${form.name}\nEmail: ${form.email}\n\nMessage:\n${form.message}`,
+    );
+    window.location.href = `mailto:${CONTACT_EMAIL}?subject=${subject}&body=${body}`;
+    setSubmitted(true);
+  };
+
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
       <Navbar />
