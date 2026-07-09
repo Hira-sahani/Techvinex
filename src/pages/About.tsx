@@ -349,7 +349,7 @@ const About = () => {
                     </Button>
                   </div>
                 ) : (
-                  <form onSubmit={handleFormSubmit} className="space-y-5">
+                  <form onSubmit={handleFormSubmit} className="space-y-5" noValidate>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div className="space-y-2">
                         <Label htmlFor="contact-name">Name</Label>
@@ -357,10 +357,18 @@ const About = () => {
                           id="contact-name"
                           type="text"
                           placeholder="Your name"
-                          required
                           value={form.name}
-                          onChange={(e) => setForm({ ...form, name: e.target.value })}
+                          onChange={(e) => handleChange("name", e.target.value)}
+                          onBlur={() => handleBlur("name")}
+                          aria-invalid={!!errors.name}
+                          aria-describedby={errors.name ? "contact-name-error" : undefined}
+                          className={errors.name ? "border-destructive focus-visible:ring-destructive" : ""}
                         />
+                        {errors.name && (
+                          <p id="contact-name-error" className="text-xs text-destructive">
+                            {errors.name}
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="contact-email">Email</Label>
@@ -368,10 +376,18 @@ const About = () => {
                           id="contact-email"
                           type="email"
                           placeholder="you@company.com"
-                          required
                           value={form.email}
-                          onChange={(e) => setForm({ ...form, email: e.target.value })}
+                          onChange={(e) => handleChange("email", e.target.value)}
+                          onBlur={() => handleBlur("email")}
+                          aria-invalid={!!errors.email}
+                          aria-describedby={errors.email ? "contact-email-error" : undefined}
+                          className={errors.email ? "border-destructive focus-visible:ring-destructive" : ""}
                         />
+                        {errors.email && (
+                          <p id="contact-email-error" className="text-xs text-destructive">
+                            {errors.email}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -379,11 +395,19 @@ const About = () => {
                       <Textarea
                         id="contact-message"
                         placeholder="Tell us how we can help..."
-                        required
                         rows={5}
                         value={form.message}
-                        onChange={(e) => setForm({ ...form, message: e.target.value })}
+                        onChange={(e) => handleChange("message", e.target.value)}
+                        onBlur={() => handleBlur("message")}
+                        aria-invalid={!!errors.message}
+                        aria-describedby={errors.message ? "contact-message-error" : undefined}
+                        className={errors.message ? "border-destructive focus-visible:ring-destructive" : ""}
                       />
+                      {errors.message && (
+                        <p id="contact-message-error" className="text-xs text-destructive">
+                          {errors.message}
+                        </p>
+                      )}
                     </div>
                     <Button
                       type="submit"
