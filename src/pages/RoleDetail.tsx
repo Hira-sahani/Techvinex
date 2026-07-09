@@ -1,7 +1,8 @@
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useParams, useNavigate, Link, Navigate } from "react-router-dom";
 import { MapPin, Briefcase, Users, CheckCircle2, ChevronLeft, ChevronRight, LinkIcon, Sparkles } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useRoles } from "@/hooks/useRoles";
+import { useExploreJobById } from "@/hooks/useExploreJobs";
 import JobDetailSkeleton from "@/components/skeletons/JobDetailSkeleton";
 import TechvinexLoaderInline from "@/components/TechvinexLoaderInline";
 import { toast } from "sonner";
@@ -23,10 +24,27 @@ const RoleDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { data: rolesData = [], isLoading: rolesLoading } = useRoles();
+  const { data: rolesData = [], isLoading: rolesLoading, error: rolesError } = useRoles();
   const role = rolesData.find((r) => r.id === id);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { completedKeys, loading } = useApplicationSteps();
+
+  // Fallback: if the id doesn't match a legacy role, it may be an explore_jobs id.
+  // Only query when legacy lookup has finished and produced no match.
+  const legacyResolved = !rolesLoading && !rolesError;
+  const exploreEnabled = legacyResolved && !role && !!id;
+  const { data: exploreJob, isLoading: exploreLoading } = useExploreJobById(exploreEnabled ? id : undefined);
+
+  if (import.meta.env.DEV) {
+    console.debug("[RoleDetail] resolve", {
+      id,
+      rolesLoading,
+      legacyMatch: !!role,
+      exploreEnabled,
+      exploreLoading,
+      exploreMatch: !!exploreJob,
+    });
+  }
 
   const completedCount = completedKeys.length;
   const progressPercent = Math.round((completedCount / applicationSteps.length) * 100);
@@ -37,7 +55,26 @@ const RoleDetail = () => {
 
   const similarRoles = rolesData.filter((r) => r.id !== id).slice(0, 6);
 
-  if (rolesLoading) return <JobDetailSkeleton />;
+  // Show skeleton while either lookup is still in progress.
+  if (rolesLoading || (exploreEnabled && exploreLoading)) return <JobDetailSkeleton />;
+
+  // If the id belongs to an explore job, forward to the canonical detail page
+  // so shared/legacy `/role/<uuid>` links keep working.
+  if (!role && exploreJob) {
+    return <Navigate to={`/jobs/${exploreJob.slug ?? exploreJob.id}`} replace />;
+  }
+
+  if (rolesError) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-4">
+        <div className="text-center">
+          <p className="text-2xl font-bold text-foreground mb-2">Couldn't load this opportunity</p>
+          <p className="text-muted-foreground mb-6">There was a problem reaching the server.</p>
+          <button onClick={() => window.location.reload()} className="px-6 py-2 rounded-xl gradient-cta text-primary-foreground font-medium">Retry</button>
+        </div>
+      </div>
+    );
+  }
 
   if (!role) {
     return (

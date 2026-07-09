@@ -203,8 +203,14 @@ const Explore = () => {
   const paginatedJobs = filteredJobs.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
 
   const handleJobClick = (job: DisplayJob) => {
-    if (job.source === "explore" && job.slug) {
-      navigate(`/jobs/${job.slug}`);
+    if (import.meta.env.DEV) {
+      console.debug("[Explore] card click", { id: job.id, slug: job.slug, source: job.source });
+    }
+    if (job.source === "explore") {
+      // Always route through /jobs/:identifier. Prefer slug, fall back to id
+      // so explore rows without a slug still resolve to the correct detail page
+      // (OpportunityDetail accepts either).
+      navigate(`/jobs/${job.slug ?? job.id}`);
     } else {
       navigate(`/role/${job.id}`);
     }
