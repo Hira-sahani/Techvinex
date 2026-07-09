@@ -66,10 +66,65 @@ const About = () => {
   });
 
   const [form, setForm] = useState({ name: "", email: "", message: "" });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitted, setSubmitted] = useState(false);
+
+  const validateField = (name: string, value: string) => {
+    switch (name) {
+      case "name": {
+        if (!value.trim()) return "Please enter your name.";
+        if (value.trim().length < 2) return "Name must be at least 2 characters.";
+        if (value.trim().length > 100) return "Name must be less than 100 characters.";
+        return "";
+      }
+      case "email": {
+        if (!value.trim()) return "Please enter your email address.";
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(value.trim())) return "Please enter a valid email address.";
+        if (value.trim().length > 255) return "Email must be less than 255 characters.";
+        return "";
+      }
+      case "message": {
+        if (!value.trim()) return "Please enter a message.";
+        if (value.trim().length < 10) return "Message must be at least 10 characters.";
+        if (value.trim().length > 1000) return "Message must be less than 1000 characters.";
+        return "";
+      }
+      default:
+        return "";
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    (Object.keys(form) as Array<keyof typeof form>).forEach((key) => {
+      const error = validateField(key, form[key]);
+      if (error) newErrors[key] = error;
+    });
+    setErrors(newErrors);
+    return newErrors;
+  };
+
+  const handleChange = (name: string, value: string) => {
+    setForm((prev) => ({ ...prev, [name]: value }));
+    if (touched[name]) {
+      setErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
+    }
+  };
+
+  const handleBlur = (name: string) => {
+    setTouched((prev) => ({ ...prev, [name]: true }));
+    setErrors((prev) => ({ ...prev, [name]: validateField(name, form[name as keyof typeof form]) }));
+  };
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const formErrors = validateForm();
+    if (Object.keys(formErrors).length > 0) {
+      setTouched({ name: true, email: true, message: true });
+      return;
+    }
     const subject = encodeURIComponent(`Inquiry from ${form.name || "Techvinex About page"}`);
     const body = encodeURIComponent(
       `Name: ${form.name}\nEmail: ${form.email}\n\nMessage:\n${form.message}`,
@@ -288,13 +343,15 @@ const About = () => {
                       onClick={() => {
                         setSubmitted(false);
                         setForm({ name: "", email: "", message: "" });
+                        setErrors({});
+                        setTouched({});
                       }}
                     >
                       Send another message
                     </Button>
                   </div>
                 ) : (
-                  <form onSubmit={handleFormSubmit} className="space-y-5">
+                  <form onSubmit={handleFormSubmit} className="space-y-5" noValidate>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                       <div className="space-y-2">
                         <Label htmlFor="contact-name">Name</Label>
@@ -302,10 +359,18 @@ const About = () => {
                           id="contact-name"
                           type="text"
                           placeholder="Your name"
-                          required
                           value={form.name}
-                          onChange={(e) => setForm({ ...form, name: e.target.value })}
+                          onChange={(e) => handleChange("name", e.target.value)}
+                          onBlur={() => handleBlur("name")}
+                          aria-invalid={!!errors.name}
+                          aria-describedby={errors.name ? "contact-name-error" : undefined}
+                          className={errors.name ? "border-destructive focus-visible:ring-destructive" : ""}
                         />
+                        {errors.name && (
+                          <p id="contact-name-error" className="text-xs text-destructive">
+                            {errors.name}
+                          </p>
+                        )}
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="contact-email">Email</Label>
@@ -313,10 +378,18 @@ const About = () => {
                           id="contact-email"
                           type="email"
                           placeholder="you@company.com"
-                          required
                           value={form.email}
-                          onChange={(e) => setForm({ ...form, email: e.target.value })}
+                          onChange={(e) => handleChange("email", e.target.value)}
+                          onBlur={() => handleBlur("email")}
+                          aria-invalid={!!errors.email}
+                          aria-describedby={errors.email ? "contact-email-error" : undefined}
+                          className={errors.email ? "border-destructive focus-visible:ring-destructive" : ""}
                         />
+                        {errors.email && (
+                          <p id="contact-email-error" className="text-xs text-destructive">
+                            {errors.email}
+                          </p>
+                        )}
                       </div>
                     </div>
                     <div className="space-y-2">
@@ -324,11 +397,19 @@ const About = () => {
                       <Textarea
                         id="contact-message"
                         placeholder="Tell us how we can help..."
-                        required
                         rows={5}
                         value={form.message}
-                        onChange={(e) => setForm({ ...form, message: e.target.value })}
+                        onChange={(e) => handleChange("message", e.target.value)}
+                        onBlur={() => handleBlur("message")}
+                        aria-invalid={!!errors.message}
+                        aria-describedby={errors.message ? "contact-message-error" : undefined}
+                        className={errors.message ? "border-destructive focus-visible:ring-destructive" : ""}
                       />
+                      {errors.message && (
+                        <p id="contact-message-error" className="text-xs text-destructive">
+                          {errors.message}
+                        </p>
+                      )}
                     </div>
                     <Button
                       type="submit"
