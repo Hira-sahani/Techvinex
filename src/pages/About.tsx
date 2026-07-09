@@ -428,9 +428,18 @@ const About = () => {
                     </div>
                     <Button
                       type="submit"
-                      className="w-full rounded-full py-6 text-base font-semibold gradient-cta border-0 text-primary-foreground hover:opacity-90 transition-opacity"
+                      disabled={submitting}
+                      className="w-full rounded-full py-6 text-base font-semibold gradient-cta border-0 text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-70"
                     >
-                      <Send size={18} /> Send message
+                      {submitting ? (
+                        <>
+                          <Loader2 size={18} className="animate-spin" /> Sending...
+                        </>
+                      ) : (
+                        <>
+                          <Send size={18} /> Send message
+                        </>
+                      )}
                     </Button>
                     <p className="text-xs text-muted-foreground text-center">
                       By reaching out, you agree to our{" "}
