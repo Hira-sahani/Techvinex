@@ -59,12 +59,30 @@ const OpportunityDetail = () => {
   const [submitting, setSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  const { data: job, isLoading } = useQuery({
+  const { data: job, isLoading, isFetching, error: fetchError } = useQuery({
     queryKey: ["opportunity", slug],
+    enabled: !!slug,
+    retry: 1,
     queryFn: async () => {
-      const { data, error } = await supabase.from("explore_jobs").select("*").eq("slug", slug).maybeSingle();
-      if (error) throw error;
-      return data;
+      if (!slug) return null;
+      // Try slug first; fall back to id when the URL segment is a UUID
+      // (shared links from admin/analytics sometimes use the raw id).
+      const bySlug = await supabase.from("explore_jobs").select("*").eq("slug", slug).maybeSingle();
+      if (import.meta.env.DEV) {
+        console.debug("[OpportunityDetail] slug lookup", { slug, hasData: !!bySlug.data, error: bySlug.error });
+      }
+      if (bySlug.error) throw bySlug.error;
+      if (bySlug.data) return bySlug.data;
+      const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
+      if (looksLikeUuid) {
+        const byId = await supabase.from("explore_jobs").select("*").eq("id", slug).maybeSingle();
+        if (import.meta.env.DEV) {
+          console.debug("[OpportunityDetail] id fallback", { slug, hasData: !!byId.data, error: byId.error });
+        }
+        if (byId.error) throw byId.error;
+        return byId.data ?? null;
+      }
+      return null;
     },
   });
 
@@ -144,8 +162,22 @@ const OpportunityDetail = () => {
     }
   };
 
-  if (isLoading) {
+  // Show skeleton while the query is in-flight — including the first fetch
+  // triggered by a fresh navigation, direct URL load, or refresh.
+  if (isLoading || isFetching) {
     return <JobDetailSkeleton />;
+  }
+  if (fetchError) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-3 px-6 text-center">
+        <p className="text-slate-800 font-semibold">Couldn't load this opportunity</p>
+        <p className="text-slate-500 text-sm max-w-sm">There was a problem reaching the server. Please check your connection and try again.</p>
+        <div className="flex gap-2 mt-2">
+          <button onClick={() => window.location.reload()} className="text-sm px-4 py-2 rounded-lg text-white" style={{ background: BRAND }}>Retry</button>
+          <Link to="/opportunities" className="text-sm px-4 py-2 rounded-lg border border-slate-200">Browse all</Link>
+        </div>
+      </div>
+    );
   }
   if (!job) {
     return (
