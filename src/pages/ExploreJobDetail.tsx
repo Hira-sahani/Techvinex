@@ -14,7 +14,7 @@ const ExploreJobDetail = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { data: job, isLoading } = useExploreJobBySlug(slug);
+  const { data: job, isLoading, isFetching, error } = useExploreJobBySlug(slug);
   const { data: bookmarks = [] } = useUserBookmarks(user?.id);
   const bookmarkMutation = useBookmarkJob();
   const trackEvent = useTrackJobEvent();
@@ -26,9 +26,28 @@ const ExploreJobDetail = () => {
     if (job) {
       trackEvent.mutate({ jobId: job.id, eventType: "view", userId: user?.id });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job?.id]);
 
-  if (isLoading) return <JobDetailSkeleton />;
+  if (import.meta.env.DEV) {
+    console.debug("[ExploreJobDetail] resolve", { slug, isLoading, isFetching, hasJob: !!job, error });
+  }
+
+  if (isLoading || isFetching) return <JobDetailSkeleton />;
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center px-6">
+          <p className="text-xl font-bold text-foreground mb-2">Couldn't load this job</p>
+          <p className="text-sm text-muted-foreground mb-4">There was a problem reaching the server.</p>
+          <div className="flex gap-2 justify-center">
+            <Button onClick={() => window.location.reload()}>Retry</Button>
+            <Button variant="outline" onClick={() => navigate("/")}>Browse jobs</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (!job) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
