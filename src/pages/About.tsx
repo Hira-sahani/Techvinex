@@ -66,10 +66,65 @@ const About = () => {
   });
 
   const [form, setForm] = useState({ name: "", email: "", message: "" });
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitted, setSubmitted] = useState(false);
+
+  const validateField = (name: string, value: string) => {
+    switch (name) {
+      case "name": {
+        if (!value.trim()) return "Please enter your name.";
+        if (value.trim().length < 2) return "Name must be at least 2 characters.";
+        if (value.trim().length > 100) return "Name must be less than 100 characters.";
+        return "";
+      }
+      case "email": {
+        if (!value.trim()) return "Please enter your email address.";
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(value.trim())) return "Please enter a valid email address.";
+        if (value.trim().length > 255) return "Email must be less than 255 characters.";
+        return "";
+      }
+      case "message": {
+        if (!value.trim()) return "Please enter a message.";
+        if (value.trim().length < 10) return "Message must be at least 10 characters.";
+        if (value.trim().length > 1000) return "Message must be less than 1000 characters.";
+        return "";
+      }
+      default:
+        return "";
+    }
+  };
+
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {};
+    (Object.keys(form) as Array<keyof typeof form>).forEach((key) => {
+      const error = validateField(key, form[key]);
+      if (error) newErrors[key] = error;
+    });
+    setErrors(newErrors);
+    return newErrors;
+  };
+
+  const handleChange = (name: string, value: string) => {
+    setForm((prev) => ({ ...prev, [name]: value }));
+    if (touched[name]) {
+      setErrors((prev) => ({ ...prev, [name]: validateField(name, value) }));
+    }
+  };
+
+  const handleBlur = (name: string) => {
+    setTouched((prev) => ({ ...prev, [name]: true }));
+    setErrors((prev) => ({ ...prev, [name]: validateField(name, form[name as keyof typeof form]) }));
+  };
 
   const handleFormSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    const formErrors = validateForm();
+    if (Object.keys(formErrors).length > 0) {
+      setTouched({ name: true, email: true, message: true });
+      return;
+    }
     const subject = encodeURIComponent(`Inquiry from ${form.name || "Techvinex About page"}`);
     const body = encodeURIComponent(
       `Name: ${form.name}\nEmail: ${form.email}\n\nMessage:\n${form.message}`,
