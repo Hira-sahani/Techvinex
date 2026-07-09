@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Linkedin, Sparkles, Target, Globe, Mail, MessageSquare, Send, ArrowRight } from "lucide-react";
+import { ArrowLeft, Linkedin, Sparkles, Target, Globe, Mail, MessageSquare, Send, ArrowRight, Loader2 } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import useDocumentMeta from "@/hooks/useDocumentMeta";
@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 import founderPhoto from "@/assets/founder-abhishek-sahani.jpg";
 
 const CONTACT_EMAIL = "support@techvinexx.com";
@@ -69,6 +71,7 @@ const About = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   const validateField = (name: string, value: string) => {
     switch (name) {
@@ -118,19 +121,31 @@ const About = () => {
     setErrors((prev) => ({ ...prev, [name]: validateField(name, form[name as keyof typeof form]) }));
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const formErrors = validateForm();
     if (Object.keys(formErrors).length > 0) {
       setTouched({ name: true, email: true, message: true });
       return;
     }
-    const subject = encodeURIComponent(`Inquiry from ${form.name || "Techvinex About page"}`);
-    const body = encodeURIComponent(
-      `Name: ${form.name}\nEmail: ${form.email}\n\nMessage:\n${form.message}`,
-    );
-    window.location.href = `mailto:${CONTACT_EMAIL}?subject=${subject}&body=${body}`;
-    setSubmitted(true);
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from("contact_messages").insert({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        message: form.message.trim(),
+        source: "about",
+        user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
+      });
+      if (error) throw error;
+      setSubmitted(true);
+      toast.success("Message sent! We'll get back to you soon.");
+    } catch (err) {
+      console.error("Contact form submission failed:", err);
+      toast.error("Couldn't send your message. Please email us directly.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -413,9 +428,18 @@ const About = () => {
                     </div>
                     <Button
                       type="submit"
-                      className="w-full rounded-full py-6 text-base font-semibold gradient-cta border-0 text-primary-foreground hover:opacity-90 transition-opacity"
+                      disabled={submitting}
+                      className="w-full rounded-full py-6 text-base font-semibold gradient-cta border-0 text-primary-foreground hover:opacity-90 transition-opacity disabled:opacity-70"
                     >
-                      <Send size={18} /> Send message
+                      {submitting ? (
+                        <>
+                          <Loader2 size={18} className="animate-spin" /> Sending...
+                        </>
+                      ) : (
+                        <>
+                          <Send size={18} /> Send message
+                        </>
+                      )}
                     </Button>
                     <p className="text-xs text-muted-foreground text-center">
                       By reaching out, you agree to our{" "}
