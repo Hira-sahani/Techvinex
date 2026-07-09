@@ -7,7 +7,7 @@ import founderPhoto from "@/assets/founder-abhishek-sahani.jpg";
 
 const FOUNDER_NAME = "Abhishek Sahani";
 const FOUNDER_TITLE = "Founder & CEO, Techvinex";
-const FOUNDER_LINKEDIN = "https://www.linkedin.com/in/abhishek-sahani";
+const FOUNDER_LINKEDIN = "https://www.linkedin.com/in/hira-sahani-9b1374247?utm_source=share&utm_campaign=share_via&utm_content=profile&utm_medium=android_app";
 const SITE_URL = "https://www.techvinex.com";
 
 const About = () => {
