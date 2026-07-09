@@ -178,7 +178,7 @@ export function useExploreJobById(id: string | undefined) {
         console.debug("[useExploreJobById]", { id, hasData: !!data, error });
       }
       if (error) throw error;
-      return (data ?? null) as ExploreJob | null;
+      return (data ?? null) as unknown as ExploreJob | null;
     },
     enabled: !!id,
     retry: 1,
@@ -213,7 +213,7 @@ export function useExploreJobBySlug(slug: string | undefined) {
           .eq("id", slug)
           .maybeSingle();
         if (byIdErr) throw byIdErr;
-        return (byId ?? null) as ExploreJob | null;
+        return (byId ?? null) as unknown as ExploreJob | null;
       }
       return null;
     },
