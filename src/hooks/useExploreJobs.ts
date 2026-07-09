@@ -169,11 +169,19 @@ export function useExploreJobById(id: string | undefined) {
     queryKey: ["explore-job", id],
     queryFn: async () => {
       if (!id) return null;
-      const { data, error } = await supabase.from("explore_jobs").select(PUBLIC_COLUMNS).eq("id", id).single();
+      const { data, error } = await supabase
+        .from("explore_jobs")
+        .select(PUBLIC_COLUMNS)
+        .eq("id", id)
+        .maybeSingle();
+      if (import.meta.env.DEV) {
+        console.debug("[useExploreJobById]", { id, hasData: !!data, error });
+      }
       if (error) throw error;
-      return data as unknown as ExploreJob;
+      return (data ?? null) as ExploreJob | null;
     },
     enabled: !!id,
+    retry: 1,
   });
 }
 
@@ -182,11 +190,35 @@ export function useExploreJobBySlug(slug: string | undefined) {
     queryKey: ["explore-job-slug", slug],
     queryFn: async () => {
       if (!slug) return null;
-      const { data, error } = await supabase.from("explore_jobs").select(PUBLIC_COLUMNS).eq("slug", slug).single();
+      // Slug is unique, but a shared link could contain either a slug or an id.
+      // Try slug first, then fall back to id so both `/jobs/<slug>` and
+      // `/jobs/<uuid>` resolve to the same detail page.
+      const { data, error } = await supabase
+        .from("explore_jobs")
+        .select(PUBLIC_COLUMNS)
+        .eq("slug", slug)
+        .maybeSingle();
+      if (import.meta.env.DEV) {
+        console.debug("[useExploreJobBySlug]", { slug, hasData: !!data, error });
+      }
       if (error) throw error;
-      return data as unknown as ExploreJob;
+      if (data) return data as unknown as ExploreJob;
+
+      // UUID fallback: some cards navigate with id when slug is missing.
+      const looksLikeUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
+      if (looksLikeUuid) {
+        const { data: byId, error: byIdErr } = await supabase
+          .from("explore_jobs")
+          .select(PUBLIC_COLUMNS)
+          .eq("id", slug)
+          .maybeSingle();
+        if (byIdErr) throw byIdErr;
+        return (byId ?? null) as ExploreJob | null;
+      }
+      return null;
     },
     enabled: !!slug,
+    retry: 1,
   });
 }
 
