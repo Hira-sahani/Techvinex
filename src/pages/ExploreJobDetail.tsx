@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import PageDotLoader from "@/components/PageDotLoader";
+import JobDetailSkeleton from "@/components/skeletons/JobDetailSkeleton";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import { useEffect } from "react";
@@ -28,7 +28,7 @@ const ExploreJobDetail = () => {
     }
   }, [job?.id]);
 
-  if (isLoading) return <PageDotLoader />;
+  if (isLoading) return <JobDetailSkeleton />;
   if (!job) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">

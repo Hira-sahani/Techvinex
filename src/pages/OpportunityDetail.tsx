@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { ArrowLeft, Sparkles, MapPin, Clock, Check, UserPlus } from "lucide-react";
 import useDocumentMeta from "@/hooks/useDocumentMeta";
 import { z } from "zod";
+import JobDetailSkeleton from "@/components/skeletons/JobDetailSkeleton";
 
 const BRAND = "#5B4CF0";
 const BRAND_SOFT = "#EEEBFE";
@@ -144,7 +145,7 @@ const OpportunityDetail = () => {
   };
 
   if (isLoading) {
-    return <div className="min-h-screen bg-white flex items-center justify-center text-slate-400">Loading…</div>;
+    return <JobDetailSkeleton />;
   }
   if (!job) {
     return (
