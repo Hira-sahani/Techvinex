@@ -1,9 +1,16 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowLeft, Linkedin, Sparkles, Target, Globe } from "lucide-react";
+import { ArrowLeft, Linkedin, Sparkles, Target, Globe, Mail, MessageSquare, Send, ArrowRight } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import useDocumentMeta from "@/hooks/useDocumentMeta";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
 import founderPhoto from "@/assets/founder-abhishek-sahani.jpg";
+
+const CONTACT_EMAIL = "support@techvinexx.com";
 
 const FOUNDER_NAME = "Abhishek Sahani";
 const FOUNDER_TITLE = "Founder & CEO, Techvinex";
