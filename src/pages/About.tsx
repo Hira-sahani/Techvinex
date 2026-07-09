@@ -121,19 +121,31 @@ const About = () => {
     setErrors((prev) => ({ ...prev, [name]: validateField(name, form[name as keyof typeof form]) }));
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const formErrors = validateForm();
     if (Object.keys(formErrors).length > 0) {
       setTouched({ name: true, email: true, message: true });
       return;
     }
-    const subject = encodeURIComponent(`Inquiry from ${form.name || "Techvinex About page"}`);
-    const body = encodeURIComponent(
-      `Name: ${form.name}\nEmail: ${form.email}\n\nMessage:\n${form.message}`,
-    );
-    window.location.href = `mailto:${CONTACT_EMAIL}?subject=${subject}&body=${body}`;
-    setSubmitted(true);
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from("contact_messages").insert({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        message: form.message.trim(),
+        source: "about",
+        user_agent: typeof navigator !== "undefined" ? navigator.userAgent : null,
+      });
+      if (error) throw error;
+      setSubmitted(true);
+      toast.success("Message sent! We'll get back to you soon.");
+    } catch (err) {
+      console.error("Contact form submission failed:", err);
+      toast.error("Couldn't send your message. Please email us directly.");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
