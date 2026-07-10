@@ -86,7 +86,7 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
       sessionPathRef.current = null;
     }, []);
 
-    useImperativeHandle(ref, () => ({ commit, discard }), [commit, discard]);
+    useImperativeHandle(ref, () => ({ commit, discard, getStatus: () => statusRef.current }), [commit, discard]);
 
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
