@@ -474,6 +474,7 @@ const Explore = () => {
             )}
 
             {/* Job Grid */}
+            <h2 className="sr-only">Open roles</h2>
             {paginatedJobs.length > 0 ? (
               <div className="grid grid-cols-1 gap-3">
                 {paginatedJobs.map((job) => {
@@ -489,9 +490,9 @@ const Explore = () => {
                       <div className="mb-auto">
                         <div className="flex items-start justify-between gap-2 mb-1">
                           <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <h3 className="font-semibold text-foreground text-[15px] leading-snug line-clamp-2">
+                            <h2 className="font-semibold text-foreground text-[15px] leading-snug line-clamp-2">
                               {job.title}
-                            </h3>
+                            </h2>
                             {job.featured && (
                               <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20 text-[10px] gap-0.5 flex-shrink-0">
                                 <Star size={8} className="fill-yellow-500" /> Featured

@@ -117,7 +117,7 @@ const BlogDetail = () => {
             <ArrowLeft className="w-4 h-4" />
             <span className="text-xs">Back</span>
           </Link>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleShare}>
+          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Share article" onClick={handleShare}>
             <Share2 className="w-4 h-4" />
           </Button>
         </div>
