@@ -174,6 +174,7 @@ const AppLayout = () => {
           <Route path="/" element={<Explore />} />
           <Route path="/login" element={<Login />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
           {import.meta.env.DEV && <Route path="/auth-test" element={<div>AuthTest removed from production build.</div>} />}
           <Route path="/onboarding" element={<Onboarding />} />
           <Route path="/home" element={<ProtectedRoute><Index /></ProtectedRoute>} />
