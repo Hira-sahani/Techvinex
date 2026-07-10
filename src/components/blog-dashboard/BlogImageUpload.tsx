@@ -13,13 +13,18 @@ interface BlogImageUploadProps {
   onChange: (url: string) => void;
 }
 
-/** Imperative API used by the parent form to commit or discard session uploads. */
+/** Imperative API used by the parent form to commit, discard, or inspect status. */
 export interface BlogImageUploadHandle {
   /** Called on successful save — clears session tracking without deleting. */
   commit: () => void;
   /** Called on explicit Cancel — deletes any unsaved session upload (never the original). */
   discard: () => Promise<void>;
+  /** Returns current upload/scan status so parent form can gate submit. */
+  getStatus: () => UploadStatus;
 }
+
+/** idle: nothing selected. uploading/scanning: in progress. clean: scanner verified. unverified: uploaded but scanner not configured. failed: last attempt rejected/errored — parent MUST block save. */
+export type UploadStatus = "idle" | "uploading" | "scanning" | "clean" | "unverified" | "failed";
 
 type ScanVerdict = "clean" | "suspicious" | "malicious" | "unknown" | "error";
 
@@ -45,6 +50,9 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
   ({ value, originalValue = "", onChange }, ref) => {
     const [uploading, setUploading] = useState(false);
     const [scanning, setScanning] = useState(false);
+    // Tracks the outcome of the most recent upload attempt. Parent form reads
+    // this via getStatus() to gate blog create/update.
+    const statusRef = useRef<UploadStatus>(value ? "unverified" : "idle");
     const fileRef = useRef<HTMLInputElement>(null);
     // Path of an image uploaded in THIS session that has not yet been saved.
     // Anything else (originalValue) is off-limits to auto-cleanup.
@@ -78,7 +86,7 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
       sessionPathRef.current = null;
     }, []);
 
-    useImperativeHandle(ref, () => ({ commit, discard }), [commit, discard]);
+    useImperativeHandle(ref, () => ({ commit, discard, getStatus: () => statusRef.current }), [commit, discard]);
 
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
@@ -102,6 +110,7 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
       const previousSessionPath = sessionPathRef.current;
 
       setUploading(true);
+      statusRef.current = "uploading";
       let uploadedPath: string | null = null;
       try {
         const ext = file.name.split(".").pop() || "bin";
@@ -121,6 +130,7 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
 
         setUploading(false);
         setScanning(true);
+        statusRef.current = "scanning";
         let verdict: ScanVerdict = "unknown";
         let scannerConfigured = false;
         try {
@@ -169,6 +179,7 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
           // Server-side deletion is authoritative; the object is already gone
           // (or was rejected). Drop our session tracking so cancel-cleanup is a no-op.
           sessionPathRef.current = null;
+          statusRef.current = "failed";
           toast.error(verdict === "error" ? "Upload rejected by security scanner" : "Image blocked by security scan");
           return;
         }
@@ -177,12 +188,15 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
         onChange(data.publicUrl);
 
         if (verdict === "clean") {
+          statusRef.current = "clean";
           toast.success("Image uploaded and verified");
         } else if (scannerConfigured) {
-          // scanner_configured=true but verdict unknown — still uncertain.
-          toast.warning("Image uploaded (verdict pending)");
+          // scanner_configured=true but verdict unknown — still uncertain. Treat as unverified (block save).
+          statusRef.current = "failed";
+          toast.warning("Image uploaded but scan verdict pending — save blocked until re-upload succeeds");
         } else {
-          // Honest: scanner not configured. Do NOT claim malware protection.
+          // Scanner not configured. Allow save but mark as unverified (parent shows warning, not success gate).
+          statusRef.current = "unverified";
           toast.warning("Image uploaded — malware scanner not configured");
         }
       } catch (err: any) {
@@ -190,6 +204,7 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
           await removeObject(uploadedPath);
           sessionPathRef.current = null;
         }
+        statusRef.current = "failed";
         toast.error(err.message || "Upload failed");
       } finally {
         setUploading(false);
@@ -205,6 +220,7 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
         await removeObject(sessionPath);
         sessionPathRef.current = null;
       }
+      statusRef.current = "idle";
       onChange("");
     };
 
