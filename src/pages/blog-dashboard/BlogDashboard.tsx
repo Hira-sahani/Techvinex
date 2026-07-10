@@ -53,8 +53,17 @@ const BlogDashboard = () => {
     read_time: "5 min read", status: "draft",
   });
 
-  const resetForm = () => {
+  // Original image_url at the time the form was opened. Used by the upload
+  // component to decide which paths are safe to delete on cancel.
+  const [originalImageUrl, setOriginalImageUrl] = useState("");
+  const imageUploadRef = useRef<BlogImageUploadHandle>(null);
+
+  const resetForm = async () => {
+    // Discard any unsaved session upload BEFORE clearing state so the
+    // component still has the path available. Never deletes originalImageUrl.
+    try { await imageUploadRef.current?.discard(); } catch { /* best-effort */ }
     setForm({ title: "", slug: "", short_description: "", content: "", image_url: "", category: "company", author: "Atlas Team", read_time: "5 min read", status: "draft" });
+    setOriginalImageUrl("");
     setEditing(null);
     setShowForm(false);
   };
@@ -65,7 +74,15 @@ const BlogDashboard = () => {
       content: blog.content || "", image_url: blog.image_url || "", category: blog.category || "company",
       author: blog.author || "Atlas Team", read_time: blog.read_time || "5 min read", status: blog.status || "draft",
     });
+    setOriginalImageUrl(blog.image_url || "");
     setEditing(blog);
+    setShowForm(true);
+  };
+
+  const openNew = () => {
+    setForm({ title: "", slug: "", short_description: "", content: "", image_url: "", category: "company", author: "Atlas Team", read_time: "5 min read", status: "draft" });
+    setOriginalImageUrl("");
+    setEditing(null);
     setShowForm(true);
   };
 
@@ -79,7 +96,12 @@ const BlogDashboard = () => {
         await createBlog.mutateAsync(form);
         toast.success("Blog created!");
       }
-      resetForm();
+      // Session upload is now referenced by a persisted row — commit without deleting.
+      imageUploadRef.current?.commit();
+      setForm({ title: "", slug: "", short_description: "", content: "", image_url: "", category: "company", author: "Atlas Team", read_time: "5 min read", status: "draft" });
+      setOriginalImageUrl("");
+      setEditing(null);
+      setShowForm(false);
     } catch (e: any) {
       toast.error(e.message || "Error saving blog");
     }
