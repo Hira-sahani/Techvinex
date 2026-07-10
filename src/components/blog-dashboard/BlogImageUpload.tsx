@@ -110,6 +110,9 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
         if (error) throw error;
         uploadedPath = path;
         sessionPathRef.current = path;
+        // [DIAG] Storage upload succeeded.
+        toast.success(`[diag] storage upload OK · ${path}`, { duration: 5000 });
+        console.info("[scan-upload:diag] storage upload OK", { path });
 
         // Purge the previous unsaved upload (if it wasn't the original).
         if (previousSessionPath && previousSessionPath !== originalPathRef.current) {
