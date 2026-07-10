@@ -82,6 +82,9 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
 
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
+      // [DIAG] handleUpload entry.
+      toast.info(`[diag] handleUpload start · file=${file?.name ?? "none"}`, { duration: 5000 });
+      console.info("[scan-upload:diag] handleUpload start", { hasFile: !!file, name: file?.name, type: file?.type, size: file?.size });
       if (!file) return;
 
       if (!ALLOWED_MIME.has(file.type)) {
