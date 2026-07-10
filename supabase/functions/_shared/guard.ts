@@ -8,7 +8,7 @@
 //     schema:z.object({...}) }, async ({ userId, body }) => { ... }));
 
 import { z, type ZodSchema } from "npm:zod@3.23.8";
-import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2.45.0";
 import { admin, log, rateLimit, setRateStore, PgRateStore, withIdempotency } from "./abuse-prevention.ts";
 
 // One-time: distributed limiter shared across instances.
