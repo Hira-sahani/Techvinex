@@ -110,6 +110,7 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
       const previousSessionPath = sessionPathRef.current;
 
       setUploading(true);
+      statusRef.current = "uploading";
       let uploadedPath: string | null = null;
       try {
         const ext = file.name.split(".").pop() || "bin";
