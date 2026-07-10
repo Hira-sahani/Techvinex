@@ -6,7 +6,7 @@
 // port. Tests only exercise pure helpers.
 
 import { assertEquals, assertMatch, assertStringIncludes } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { classify, finalize, type PersistenceClient } from "./index.ts";
+import { classify, finalize, sniffAllowedImage, type PersistenceClient } from "./index.ts";
 
 // Minimal in-memory audit collector matching GuardCtx.audit shape.
 function makeCtx() {
