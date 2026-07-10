@@ -61,6 +61,7 @@ const AdminBlogs = () => {
         await createBlog.mutateAsync(form);
         toast.success("Blog created");
       }
+      imageUploadRef.current?.commit();
       resetForm();
     } catch (e: any) {
       toast.error(e.message || "Error saving blog");
