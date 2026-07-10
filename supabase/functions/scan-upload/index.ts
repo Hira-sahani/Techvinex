@@ -25,6 +25,10 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const VT_KEY = Deno.env.get("VIRUSTOTAL_API_KEY") ?? "";
 const VT_BASE = "https://www.virustotal.com/api/v3";
 const MAX_BYTES = 32 * 1024 * 1024; // VT public tier upload cap
+// Defensive server-side size cap that mirrors the bucket-level 5 MB limit.
+// Storage already enforces it; we re-check because storage limits are
+// bucket-config and could drift (Cloud UI is the only place to set them today).
+const BUCKET_MAX_BYTES = 5 * 1024 * 1024;
 
 // Buckets scannable via this endpoint. Kept explicit to prevent scan-any-object
 // abuse and to bound cost. Extend deliberately as new buckets appear.
@@ -34,6 +38,28 @@ const BodySchema = z.object({
   bucket: z.enum(ALLOWED_BUCKETS),
   object_path: z.string().min(1).max(1024),
 });
+
+/**
+ * Magic-byte sniff for the four image formats we accept.
+ * Rejects anything else — including SVG (text `<?xml`/`<svg …>`), which is
+ * an XSS vector on a public bucket. Returns the detected mime, or null if
+ * the signature does not match any allowed format.
+ */
+export function sniffAllowedImage(bytes: Uint8Array): "image/jpeg" | "image/png" | "image/webp" | "image/gif" | null {
+  if (bytes.length < 12) return null;
+  // JPEG: FF D8 FF
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 &&
+      bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a) return "image/png";
+  // GIF: "GIF87a" or "GIF89a"
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38 &&
+      (bytes[4] === 0x37 || bytes[4] === 0x39) && bytes[5] === 0x61) return "image/gif";
+  // WebP: "RIFF" .... "WEBP"
+  if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+      bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) return "image/webp";
+  return null;
+}
 
 export type Verdict = "clean" | "suspicious" | "malicious" | "unknown" | "error";
 
