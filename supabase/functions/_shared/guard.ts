@@ -7,7 +7,7 @@
 //     requireRoles:["admin"], rateLimit:{ key:"x", limit:30, windowMs:60_000 },
 //     schema:z.object({...}) }, async ({ userId, body }) => { ... }));
 
-import { z, ZodSchema } from "https://esm.sh/zod@3.23.8";
+import { z, type ZodSchema } from "npm:zod@3.23.8";
 import { createClient, SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { admin, log, rateLimit, setRateStore, PgRateStore, withIdempotency } from "./abuse-prevention.ts";
 
