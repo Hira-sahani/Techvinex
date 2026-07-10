@@ -112,16 +112,44 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
         let verdict: ScanVerdict = "unknown";
         let scannerConfigured = false;
         try {
+          // [DIAG] Log the invocation inputs (non-sensitive: bucket name + object path only).
+          console.info("[scan-upload:diag] invoking", { bucket: BUCKET, object_path: path });
           const { data: scan, error: scanErr } = await supabase.functions.invoke("scan-upload", {
             body: { bucket: BUCKET, object_path: path },
           });
+          // [DIAG] Log raw returned data + error shape (no headers, no tokens).
+          console.info("[scan-upload:diag] result", { data: scan, error: scanErr });
           if (scanErr) throw scanErr;
           verdict = (scan?.verdict as ScanVerdict) ?? "unknown";
           scannerConfigured = scan?.scanner_configured === true;
         } catch (scanErr: any) {
-          console.warn("scan-upload failed:", scanErr?.message ?? scanErr);
+          // [DIAG] Extract safe, non-secret diagnostic details from the FunctionsHttpError.
+          const errName: string = scanErr?.name ?? "Error";
+          const errMsg: string = scanErr?.message ?? String(scanErr);
+          const ctx = scanErr?.context;
+          let status: number | string = "n/a";
+          let bodyText = "";
+          try {
+            if (ctx && typeof ctx === "object" && "status" in ctx) {
+              status = (ctx as { status?: number }).status ?? "n/a";
+            }
+            if (ctx && typeof (ctx as Response).clone === "function") {
+              // ctx is a Response — read a short, safe snippet of the body.
+              const cloned = (ctx as Response).clone();
+              bodyText = await cloned.text().catch(() => "");
+              if (bodyText.length > 500) bodyText = bodyText.slice(0, 500) + "…";
+            }
+          } catch {
+            // Ignore body read failures — diagnostics must not break the flow.
+          }
+          console.warn("[scan-upload:diag] failed", { name: errName, message: errMsg, status, body: bodyText });
+          toast.error(
+            `scan-upload ${errName}: ${errMsg} · status=${status}${bodyText ? ` · body=${bodyText}` : ""}`,
+            { duration: 15000 },
+          );
           verdict = "error";
         }
+
 
         if (verdict === "malicious" || verdict === "suspicious" || verdict === "error") {
           // Server-side deletion is authoritative; the object is already gone
