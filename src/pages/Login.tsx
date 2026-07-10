@@ -28,9 +28,12 @@ const Login = () => {
     if (!email) { setEmailError("Please enter your email"); ok = false; }
     else if (!isValidEmail(email)) { setEmailError("Invalid email address"); ok = false; }
     else setEmailError("");
-    if (!password) { setPasswordError("Please enter your password"); ok = false; }
-    else if (mode === "signup" && password.length < 8) { setPasswordError("Password must be at least 8 characters"); ok = false; }
-    else setPasswordError("");
+    if (mode === "login") {
+      if (!password) { setPasswordError("Please enter your password"); ok = false; }
+      else setPasswordError("");
+    } else {
+      setPasswordError("");
+    }
     return ok;
   };
 
@@ -53,10 +56,15 @@ const Login = () => {
   const handleSignup = async () => {
     if (!validate("signup")) return;
     setLoading(true);
-    const { data, error } = await supabase.auth.signUp({
+    // Passwordless signup via email confirmation link.
+    // The Magic Link email template in Supabase must use {{ .ConfirmationURL }}
+    // (not {{ .Token }}) so users receive a clickable link rather than a code.
+    const { error } = await supabase.auth.signInWithOtp({
       email,
-      password,
-      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
+      },
     });
     setLoading(false);
     if (error) {
@@ -64,13 +72,7 @@ const Login = () => {
       else toast.error(error.message);
       return;
     }
-    // If email confirmation is required, session is null; show check-inbox.
-    if (!data.session) {
-      setShowCheckInbox(true);
-    } else {
-      toast.success("Account created!");
-      navigate("/");
-    }
+    setShowCheckInbox(true);
   };
 
 
@@ -158,7 +160,7 @@ const Login = () => {
               />
             </div>
 
-            {(authMode === "login" || authMode === "signup") && (
+            {authMode === "login" && (
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-medium">Password</Label>
@@ -168,9 +170,9 @@ const Login = () => {
                   <Input
                     type={passwordVisible ? "text" : "password"}
                     value={password}
-                    autoComplete={authMode === "login" ? "current-password" : "new-password"}
+                    autoComplete="current-password"
                     onChange={(e) => { setPassword(e.target.value); setPasswordError(""); }}
-                    placeholder={authMode === "signup" ? "At least 8 characters" : "••••••••"}
+                    placeholder="••••••••"
                     className={`h-10 text-sm pr-9 ${passwordError ? "border-destructive" : ""}`}
                   />
                   <button type="button" onClick={() => setPasswordVisible(!passwordVisible)}
