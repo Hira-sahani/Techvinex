@@ -9,6 +9,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
+import useDocumentMeta from "@/hooks/useDocumentMeta";
 
 import ApplyStepResume from "@/components/apply/ApplyStepResume";
 import ApplyStepWorkAuth from "@/components/apply/ApplyStepWorkAuth";
@@ -34,6 +35,15 @@ const ApplyRole = () => {
   const [interviewPhase, setInterviewPhase] = useState<string>("info");
 
   const { completedKeys, loading, profileData, refetch } = useApplicationSteps();
+
+  useDocumentMeta({
+    title: role ? `Apply for ${role.title}` : "Apply for a role",
+    description: role
+      ? `Apply for ${role.title} on Techvinex. Complete your resume, work authorization, and AI interview to submit your application.`
+      : "Apply for a role on Techvinex — upload your resume, complete work authorization, and finish an AI interview to submit.",
+    noindex: true,
+  });
+
 
   const [resumeForm, setResumeForm] = useState({
     resumeName: "",

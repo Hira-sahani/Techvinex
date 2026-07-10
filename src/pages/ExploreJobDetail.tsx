@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import JobDetailSkeleton from "@/components/skeletons/JobDetailSkeleton";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import useDocumentMeta from "@/hooks/useDocumentMeta";
 import { useEffect } from "react";
 
 const ExploreJobDetail = () => {
@@ -28,6 +29,38 @@ const ExploreJobDetail = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job?.id]);
+
+  useDocumentMeta({
+    title: job ? `${job.title}${job.company_name ? ` at ${job.company_name}` : ""}` : "Job details",
+    description: job
+      ? (job.short_description || `Apply for ${job.title}${job.company_name ? ` at ${job.company_name}` : ""}${job.location ? ` — ${job.location}` : ""}. AI matched hiring on Techvinex.`).slice(0, 160)
+      : "Explore AI matched job opportunities on Techvinex.",
+    url: job ? `/explore/${job.slug}` : undefined,
+    type: job ? "article" : "website",
+    jsonLd: job
+      ? {
+          "@context": "https://schema.org",
+          "@type": "JobPosting",
+          title: job.title,
+          description: (job.description || job.short_description || "").slice(0, 5000),
+          datePosted: (job as any).created_at || new Date().toISOString(),
+          employmentType: job.job_type || "FULL_TIME",
+          hiringOrganization: {
+            "@type": "Organization",
+            name: job.company_name || "Techvinex",
+            sameAs: "https://www.techvinex.com/",
+          },
+          jobLocation: {
+            "@type": "Place",
+            address: { "@type": "PostalAddress", addressLocality: job.location || "Remote" },
+          },
+          ...(job.location && /remote/i.test(job.location)
+            ? { jobLocationType: "TELECOMMUTE", applicantLocationRequirements: { "@type": "Country", name: "Worldwide" } }
+            : {}),
+          directApply: !!job.allow_direct_apply,
+        }
+      : undefined,
+  });
 
   if (import.meta.env.DEV) {
     console.debug("[ExploreJobDetail] resolve", { slug, isLoading, isFetching, hasJob: !!job, error });

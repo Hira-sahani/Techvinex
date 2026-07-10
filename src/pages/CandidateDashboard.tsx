@@ -10,6 +10,7 @@ import { CandidateDashboardSkeleton } from "@/components/skeletons/DashboardSkel
 import { Progress } from "@/components/ui/progress";
 import { DashboardDataBoundary } from "@/components/dashboard/DashboardDataBoundary";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import useDocumentMeta from "@/hooks/useDocumentMeta";
 import { ArrowRight, Zap, Target } from "lucide-react";
 import ApplicationPipeline from "@/components/dashboard/ApplicationPipeline";
 import DashboardStats from "@/components/dashboard/DashboardStats";
@@ -81,6 +82,13 @@ const CandidateDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const userId = user?.id ?? "";
+
+  useDocumentMeta({
+    title: "Candidate Dashboard",
+    description: "Track your job applications, offers, interviews, and profile strength on your Techvinex candidate dashboard.",
+    noindex: true,
+  });
+
 
   const query = useDashboardData<CandidateData>({
     fetcher: () => fetchCandidate(userId),
