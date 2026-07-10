@@ -1,60 +1,145 @@
 
-# Phase C — Audit & Implementation Plan
+# Migrate Techvinex runtime to external Supabase (`yparkrguxoektihjpynr`)
 
-## Audit findings
+Goal: the deployed app on Vercel talks exclusively to your own Supabase project `yparkrguxoektihjpynr`. Lovable stays as a code editor synced to GitHub. Lovable Cloud (`xfgyzcvrvgsntjenxecp`) remains attached to the project but is no longer the production backend.
 
-**C1. `verify-admin` edge function** — already hardened. Uses `guard()` with `requireAuth`, `requireRoles: ["admin"]`, `POST`-only, `rateLimit` 30/min bucketed by user+ip, `guardJson` responses, `withSentry` wrapper, and an `admin_verify_ok` audit event. Guard emits standard 401/403 for missing auth/role. **No change required.**
+Nothing is changed in this plan — this is read-only.
 
-**C2. `AdminProtectedRoute` / `EmployerProtectedRoute`** — both share the same pattern I refined in Phase B for benchmark/blog. Two gaps:
-- `.then(({ data }) => …)` swallows `error`. On a network/RLS error, `data` is `null` → `hasAccess = false`, which is *fail-closed* by luck, but the state transitions to `false` silently with no logging.
-- No `cancelled` flag → if `user` changes fast (logout during load), a stale resolver can set `hasAccess=true`. Small race, but fixable.
-- Loading/error states already render the loader and never leak children before the role query settles — verified fail-closed on `null`/`false`.
+---
 
-Fix: mirror the Phase B pattern — capture `error`, log to console on failure, `cancelled` guard on unmount/user-change, explicit fail-closed on error. No API/signature change.
+## 1. Source of truth model
 
-**C3. `openai-benchmark`** — leaks upstream detail in two places:
-- Line 64: `{ error: "upstream_error", status: aiResponse.status }` returns OpenAI's raw HTTP status to the client. Recommend dropping `status` from the response body (still log to Sentry via `withAiGuard`'s error path) and returning a generic `502` body.
-- Lines 62–63: `rate_limited_upstream` / `credits_exhausted` are safe (no provider name, no key material). Keep as-is; they're actionable for the UI without exposing internals.
-- Everything else (auth, rate limit, schema, plan enforcement, prompt-injection wrapping via `ctx.wrap`, secret redaction via `ctx.redact`) is already correct.
-- Note: `insertError` correctly returns `save_failed` without DB detail.
+```text
+Lovable editor  ──►  GitHub (main)  ──►  Vercel (production)
+                                          │
+                                          └──►  Supabase yparkrguxoektihjpynr
+```
 
-Fix: strip `status` field. No functional change to happy path.
+- GitHub `main` = source of truth for code.
+- Vercel builds from GitHub, injects **its own** `VITE_SUPABASE_*` env vars pointing at `yparkrguxoektihjpynr`. Lovable's `.env` is never used at production build time.
+- Supabase CLI (run locally or from GitHub Actions) is the only path that pushes migrations, edge functions, storage config, and secrets to `yparkrguxoektihjpynr`. Lovable's Supabase tools continue to target the Cloud project and are simply not used for production changes.
 
-**C4. Reliability — idempotency + rate-bucket cleanup** — `public.cleanup_expired_rate_buckets()` exists and cleans both `rate_limit_buckets` and `idempotency_keys`. Execute grant is `service_role` only. **No scheduler (pg_cron) is registered**, so the function is never invoked on a schedule. Rows accumulate until manually run.
+---
 
-Options:
-- (a) Schedule via pg_cron in a migration. `pg_cron` availability on this project is unverified; blindly enabling extensions is out of scope for Phase C (touches production config).
-- (b) Document required action for the operator: run `select public.cleanup_expired_rate_buckets();` on a schedule (Supabase Dashboard → Database → Cron, or an external cron hitting an edge function). Add a lightweight edge function `admin-cleanup` gated to admin + `guard()` so ops can trigger it on demand without shell access. Non-destructive to prod config.
+## 2. Replace Lovable-managed Supabase env usage
 
-I will implement (b): a small admin-only edge function that invokes the existing SQL function via service role. This is additive and safe.
+Client reads `import.meta.env.VITE_SUPABASE_URL` / `VITE_SUPABASE_PUBLISHABLE_KEY` / `VITE_SUPABASE_PROJECT_ID` (see `src/integrations/supabase/client.ts`). These are injected at Vite build time — whichever environment builds decides which backend the app talks to.
 
-## Implementation plan
+- **Local dev (optional against external):** create `.env.local` (git-ignored, overrides `.env`) with the `yparkrguxoektihjpynr` URL + anon key. Do not edit `.env` — Lovable regenerates it.
+- **Vercel:** set `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_PROJECT_ID` for Production + Preview + Development in Vercel → Settings → Environment Variables, using values from `yparkrguxoektihjpynr`.
+- **Lovable preview:** will keep pointing at Cloud because Lovable rewrites `.env`. Acceptable — Lovable preview becomes a scratch environment, Vercel preview URLs become the real staging.
 
-1. **C2** — Update `AdminProtectedRoute.tsx` and `EmployerProtectedRoute.tsx`:
-   - Destructure `{ data, error }`, log `error` via `console.warn`, fail closed on error.
-   - Add `cancelled` guard.
-   - Keep loading behavior identical (TechvinexLoader).
-2. **C3** — Update `supabase/functions/openai-benchmark/index.ts`:
-   - Replace the leaky line 64 with `return guardJson({ error: "upstream_error" }, 502);`.
-3. **C4** — Add `supabase/functions/admin-cleanup/index.ts`:
-   - `guard`: POST only, `requireAuth`, `requireRoles: ["admin"]`, tight rate limit (5/min).
-   - Calls `ctx.db.rpc("cleanup_expired_rate_buckets")` and returns `{ ok: true, removed: <count> }`.
-   - Audit event `admin_cleanup_run`.
-   - Document scheduling recommendation in a top-of-file comment.
-   - No `config.toml` edit needed (default `verify_jwt=false` per project convention; we validate in guard).
-4. **C1** — No change; note in report.
+No code changes needed; the indirection through `import.meta.env` already supports this.
 
-## Tests & verification
-- Run `bunx vitest run` — expect 172 pass (no test relies on internals we're changing; error-path branch is additive). If the response-shape change in `openai-benchmark` is covered anywhere, adjust.
-- Grep for consumers of `upstream_error` `status` field before removing (nothing should switch on it).
+---
 
-## Files to change
-- `src/components/admin/AdminProtectedRoute.tsx`
-- `src/components/employer/EmployerProtectedRoute.tsx`
-- `supabase/functions/openai-benchmark/index.ts`
-- `supabase/functions/admin-cleanup/index.ts` (new)
+## 3. External Supabase CLI linking and migration deployment
 
-## Out of scope
-- pg_cron scheduling (touches prod extensions).
-- Any `verify-admin` change.
-- Any Phase D item.
+Prereq: install Supabase CLI locally (`brew install supabase/tap/supabase` or `npm i -g supabase`), log in (`supabase login`), and generate a Personal Access Token for CI.
+
+- `supabase link --project-ref yparkrguxoektihjpynr` (run in a **local clone** of the GitHub repo, not from Lovable — Lovable's `supabase/config.toml` `project_id` is auto-generated and will drift, see §8).
+- Migrations live in `supabase/migrations/`. Apply history to the new project once with `supabase db push`. Verify with `supabase db diff`.
+- Ongoing rule: any DB change goes through a migration committed to GitHub; `supabase db push` runs from a GitHub Action on merge to `main`. Never author production schema via the Lovable migration tool after cutover (it targets Cloud).
+
+---
+
+## 4. Edge Function deployment
+
+- All edge functions in `supabase/functions/*` are shipped to `yparkrguxoektihjpynr` with `supabase functions deploy <name> --project-ref yparkrguxoektihjpynr`, or bulk `supabase functions deploy --project-ref yparkrguxoektihjpynr` in CI.
+- Functions currently in the repo: `ai-interview`, `ai-job-worker`, `ai-approval-decide`, `ai-safe-action`, `admin-*`, `benchmark-task-secret`, `openai-benchmark`, `elevenlabs-tts`, `enqueue-ai-job`, `get-ai-job-status`, `scan-upload`, `verify-admin`, `verify-password`, `webhook-receiver`, `public-explore-jobs`, `public-sentry-config`, `public-sitemap`, `csp-report`.
+- `verify_jwt` overrides in `supabase/config.toml` (`public-explore-jobs`, `ai-job-worker`, `public-sentry-config`, `public-sitemap`, `csp-report`) must be preserved. See §8 — this file is regenerated by Lovable Cloud, so CI must own the authoritative copy for `yparkrguxoektihjpynr`.
+- Add a GitHub Action `deploy-supabase.yml` triggered on push to `main` that runs migrations + function deploys against `yparkrguxoektihjpynr` using `SUPABASE_ACCESS_TOKEN` and `SUPABASE_DB_PASSWORD` secrets.
+
+---
+
+## 5. Storage buckets and policies
+
+Cloud has one bucket: `blog-images` (public). Recreate in `yparkrguxoektihjpynr`:
+
+- Via CLI/dashboard: create bucket `blog-images`, public = true.
+- Port any storage RLS policies. Search current migrations for `storage.objects` policies (blog-images upload rules, malware-scan triggers `notify_admins_on_bad_scan`, `storage_object_owner` function) and re-apply. These should already be in `supabase/migrations/` — verify none were created ad-hoc via the Lovable UI.
+- If any policy is missing from migrations, capture it now with `supabase db diff` against Cloud before cutover, commit as a new migration.
+
+---
+
+## 6. Required secrets (Supabase Edge Function secrets, on `yparkrguxoektihjpynr`)
+
+Set via `supabase secrets set --project-ref yparkrguxoektihjpynr KEY=VALUE`. Mirror everything in Cloud's current secrets list except the auto-managed `SUPABASE_*` values (Supabase provides those automatically to functions):
+
+- `OPENAI_API_KEY`
+- `ELEVENLABS_API_KEY`
+- `LOVABLE_API_KEY` (if you keep using Lovable AI Gateway from edge functions; otherwise drop and refactor to direct providers)
+- `GOOGLE_SEARCH_CONSOLE_API_KEY`
+- `SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN`
+- `AI_PLAN_SIGNING_SECRET`
+- `SECRETS_ENCRYPTION_KEY` (must match the value used to encrypt rows in the `secrets` table if that data is migrated — otherwise re-encrypt after generating a new one)
+- Any webhook signing secrets referenced by rows in `webhook_endpoints.secret_key_name`
+
+Supabase auto-injects into functions and doesn't need manual set: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_DB_URL`, `SUPABASE_JWKS`, `SUPABASE_PUBLISHABLE_KEYS`, `SUPABASE_SECRET_KEYS`.
+
+---
+
+## 7. Vercel environment variables
+
+Set for **Production + Preview + Development**:
+
+| Name | Source |
+|---|---|
+| `VITE_SUPABASE_URL` | `https://yparkrguxoektihjpynr.supabase.co` |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | anon key from `yparkrguxoektihjpynr` API settings |
+| `VITE_SUPABASE_PROJECT_ID` | `yparkrguxoektihjpynr` |
+| `VITE_SITE_URL` | production custom domain |
+
+Also update `vercel.json` Content-Security-Policy `connect-src` and the `Reporting-Endpoints` / `report-uri` (both currently hardcode `xfgyzcvrvgsntjenxecp.supabase.co`) to `yparkrguxoektihjpynr.supabase.co`. This is a repo edit that must land before the Vercel cutover — flagged here, not executed.
+
+Google OAuth (independent of Lovable): in `yparkrguxoektihjpynr` → Auth → Providers → Google, add Client ID + Secret. In Google Cloud Console, add authorized redirect URI `https://yparkrguxoektihjpynr.supabase.co/auth/v1/callback`. Add Vercel domains to Supabase Auth → URL Configuration.
+
+---
+
+## 8. Preventing Lovable Cloud from overwriting production config
+
+Lovable regenerates these files based on the Cloud project:
+
+- `.env` — always rewritten to Cloud values.
+- `src/integrations/supabase/client.ts` — auto-generated header, do not edit.
+- `src/integrations/supabase/types.ts` — regenerated on every Cloud migration approval.
+- `supabase/config.toml` — `project_id` and any per-function config auto-written; currently already shows `project_id = "yparkrguxoektihjpynr"` in the repo but Lovable may rewrite it back to the Cloud ref.
+
+Mitigations:
+
+1. **Never rely on committed `.env`.** Vercel envs win at build. Locally use `.env.local` (git-ignored, precedence over `.env`).
+2. **Do not run the Lovable `supabase--migration` tool after cutover.** All schema changes go through hand-authored migration files in `supabase/migrations/` and are applied via CLI/CI to `yparkrguxoektihjpynr`. Same for storage bucket creation and secrets.
+3. **CI as the enforcer.** GitHub Actions `deploy-supabase.yml` re-applies migrations and re-deploys functions on every push to `main`; if Lovable auto-generates something Cloud-shaped, CI overwrites it against `yparkrguxoektihjpynr` on the next push.
+4. **`supabase/config.toml` conflict.** If Lovable rewrites `project_id`, add a `.github/workflows` guard that fails CI when `project_id != "yparkrguxoektihjpynr"`, and a pre-commit note in `CONTRIBUTING`. Do **not** delete the file — CLI needs it.
+5. **Types file.** Accept that Lovable will regenerate `src/integrations/supabase/types.ts` from Cloud; keep the two schemas identical by always applying the same migration to Cloud as well, OR regenerate types locally with `supabase gen types typescript --project-id yparkrguxoektihjpynr > src/integrations/supabase/types.ts` and commit — Lovable will rewrite it on next Cloud migration, so treat local runs as authoritative and re-run after any Lovable edit.
+6. **Client file.** The auto-generated `client.ts` already reads from env vars, so no protection needed as long as Vercel envs are set. Just avoid editing it.
+
+---
+
+## 9. Exact limitations of continuing to use Lovable after this change
+
+- **Lovable preview URL** (`id-preview--*.lovable.app` and the published `explore-kindly.lovable.app`) will continue to hit Cloud `xfgyzcvrvgsntjenxecp`, not `yparkrguxoektihjpynr`. Treat the Lovable published URL as stale; retire it or add a banner. Real staging = Vercel preview deploys.
+- **Any Lovable tool that writes to Supabase writes to Cloud, not to your project:** `supabase--migration`, `supabase--storage_create_bucket`, `supabase--deploy_edge_functions`, `supabase--curl_edge_functions`, secrets tools, `configure_auth`, `configure_social_auth`. Using them post-cutover creates drift.
+- **Auto-regenerated files** (`.env`, `client.ts`, `types.ts`, sometimes `config.toml`) will keep tracking Cloud. Every Lovable session may produce a commit that resets them — CI + `.env.local` neutralize this at runtime but the repo diff noise persists.
+- **Google OAuth, SMTP, auth email templates, custom domains, RLS policies added via the Lovable UI** only apply to Cloud. All of that must be reconfigured in the `yparkrguxoektihjpynr` dashboard and, where possible, captured as migrations.
+- **Secrets tools** (`add_secret`, `fetch_secrets`, `update_secret`) manage Cloud edge function secrets. Production secrets live in `yparkrguxoektihjpynr` and are set via `supabase secrets set` / dashboard.
+- **Lovable AI Gateway (`LOVABLE_API_KEY`)** is a Cloud-scoped credential. Using it from edge functions on `yparkrguxoektihjpynr` works as long as the key is copied there, but rotation via `lovable_api_key--rotate` rotates the Cloud key, not any external copy — after each rotation you must re-copy it into `yparkrguxoektihjpynr` secrets. Consider replacing with direct provider SDKs (OpenAI, ElevenLabs) to remove the dependency.
+- **Lovable-managed connectors** (Google Search Console, ElevenLabs currently) work only from Cloud edge functions. Any function that must run against `yparkrguxoektihjpynr` needs the raw provider API key set directly as a Supabase secret there.
+- **Cloud cannot be disconnected**, so the Cloud project remains billable/attached even if unused. It will keep receiving auto-generated migrations and edge function deploys triggered by Lovable actions. To minimize noise, avoid running Lovable database/edge-function tools after cutover.
+- **Version history / rollback in Lovable** reverts *code*, not the external Supabase state — DB rollback must be handled via migrations or Supabase PITR on `yparkrguxoektihjpynr`.
+
+---
+
+## 10. Execution order (for reference, not executed here)
+
+1. Freeze Lovable Cloud writes (stop using migration/secrets tools).
+2. Snapshot Cloud: dump schema, storage policies, secret names, auth config, oauth settings, storage bucket contents.
+3. Apply migrations to `yparkrguxoektihjpynr`; create `blog-images` bucket; set secrets; configure auth + Google provider; port storage policies.
+4. Update `vercel.json` CSP hosts + report endpoints in a PR.
+5. Set Vercel env vars for `yparkrguxoektihjpynr`; deploy to a Vercel preview; smoke-test auth, edge functions, storage upload, blog CRUD, benchmark, AI interview.
+6. Cut custom domain DNS to Vercel.
+7. Add GitHub Actions to apply migrations + deploy edge functions to `yparkrguxoektihjpynr` on push to `main`.
+8. Add CI guard on `supabase/config.toml` `project_id`.
+9. Document the "do not use Lovable Supabase tools" rule in `CONTRIBUTING.md`.
+
+Awaiting approval before making any changes.
