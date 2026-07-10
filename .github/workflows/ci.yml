@@ -11,6 +11,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Guard — supabase/config.toml project_id
+        run: node scripts/check-supabase-config.mjs
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
