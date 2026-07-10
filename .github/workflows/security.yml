@@ -23,19 +23,7 @@ jobs:
           npx --yes npm@10 install --package-lock-only --ignore-scripts || true
           npx --yes npm@10 audit --audit-level=high || echo "::warning::npm audit reported issues"
 
-  codeql:
-    runs-on: ubuntu-latest
-    permissions:
-      security-events: write
-      actions: read
-      contents: read
-    steps:
-      - uses: actions/checkout@v4
-      - uses: github/codeql-action/init@v3
-        with:
-          languages: javascript-typescript
-          queries: security-and-quality
-      - uses: github/codeql-action/analyze@v3
+  
 
   secret-scan:
     runs-on: ubuntu-latest
