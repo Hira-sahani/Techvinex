@@ -220,6 +220,7 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
         await removeObject(sessionPath);
         sessionPathRef.current = null;
       }
+      statusRef.current = "idle";
       onChange("");
     };
 
