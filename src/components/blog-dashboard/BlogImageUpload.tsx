@@ -13,13 +13,18 @@ interface BlogImageUploadProps {
   onChange: (url: string) => void;
 }
 
-/** Imperative API used by the parent form to commit or discard session uploads. */
+/** Imperative API used by the parent form to commit, discard, or inspect status. */
 export interface BlogImageUploadHandle {
   /** Called on successful save — clears session tracking without deleting. */
   commit: () => void;
   /** Called on explicit Cancel — deletes any unsaved session upload (never the original). */
   discard: () => Promise<void>;
+  /** Returns current upload/scan status so parent form can gate submit. */
+  getStatus: () => UploadStatus;
 }
+
+/** idle: nothing selected. uploading/scanning: in progress. clean: scanner verified. unverified: uploaded but scanner not configured. failed: last attempt rejected/errored — parent MUST block save. */
+export type UploadStatus = "idle" | "uploading" | "scanning" | "clean" | "unverified" | "failed";
 
 type ScanVerdict = "clean" | "suspicious" | "malicious" | "unknown" | "error";
 
