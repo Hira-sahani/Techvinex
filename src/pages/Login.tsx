@@ -22,9 +22,6 @@ const Login = () => {
   const [passwordError, setPasswordError] = useState("");
   const [showCheckInbox, setShowCheckInbox] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
-  const [otpStep, setOtpStep] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
-  const [otpError, setOtpError] = useState("");
   const [resending, setResending] = useState(false);
 
   const validate = (mode: "login" | "signup") => {
