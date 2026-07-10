@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { AdminBlogsSkeleton } from "@/components/skeletons/DashboardSkeletons";
+import { useRef } from "react";
+import BlogImageUpload, { type BlogImageUploadHandle } from "@/components/blog-dashboard/BlogImageUpload";
 
 const statusColors: Record<string, string> = {
   draft: "bg-amber-500/10 text-amber-600",
