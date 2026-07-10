@@ -130,6 +130,7 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
 
         setUploading(false);
         setScanning(true);
+        statusRef.current = "scanning";
         let verdict: ScanVerdict = "unknown";
         let scannerConfigured = false;
         try {
