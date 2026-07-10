@@ -193,7 +193,7 @@ const BlogDashboard = () => {
             <h1 className="text-lg font-bold text-foreground">Blog Posts</h1>
             <p className="text-xs text-muted-foreground">Manage all Atlas blog content</p>
           </div>
-          <Button size="sm" className="gap-1.5 h-8 text-xs" onClick={() => { resetForm(); setShowForm(true); }}>
+          <Button size="sm" className="gap-1.5 h-8 text-xs" onClick={openNew}>
             <Plus className="w-3.5 h-3.5" /> New Post
           </Button>
         </div>
@@ -280,7 +280,7 @@ const BlogDashboard = () => {
                 </Select>
               </div>
             </div>
-            <BlogImageUpload value={form.image_url} onChange={(url) => setForm(f => ({ ...f, image_url: url }))} />
+            <BlogImageUpload ref={imageUploadRef} value={form.image_url} originalValue={originalImageUrl} onChange={(url) => setForm(f => ({ ...f, image_url: url }))} />
             <div>
               <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Short Description</Label>
               <Textarea className="mt-1 bg-muted/30 min-h-[60px] text-xs" value={form.short_description} onChange={e => setForm(f => ({ ...f, short_description: e.target.value }))} />
@@ -329,7 +329,7 @@ const BlogDashboard = () => {
             <div className="text-center py-16">
               <p className="text-sm text-muted-foreground">No posts found</p>
               <div className="flex items-center justify-center gap-2 mt-3">
-                <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => { resetForm(); setShowForm(true); }}>
+                <Button variant="outline" size="sm" className="text-xs h-8" onClick={openNew}>
                   {blogs.length === 0 ? "Create your first post" : "New post"}
                 </Button>
                 {(search || activeCat !== "All") && (
