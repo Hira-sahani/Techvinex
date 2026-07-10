@@ -125,11 +125,13 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
         let scannerConfigured = false;
         try {
           // [DIAG] Log the invocation inputs (non-sensitive: bucket name + object path only).
+          toast.info(`[diag] invoking scan-upload · ${path}`, { duration: 5000 });
           console.info("[scan-upload:diag] invoking", { bucket: BUCKET, object_path: path });
           const { data: scan, error: scanErr } = await supabase.functions.invoke("scan-upload", {
             body: { bucket: BUCKET, object_path: path },
           });
           // [DIAG] Log raw returned data + error shape (no headers, no tokens).
+          toast.info(`[diag] scan-upload returned · verdict=${scan?.verdict ?? "n/a"} · err=${scanErr ? "yes" : "no"}`, { duration: 6000 });
           console.info("[scan-upload:diag] result", { data: scan, error: scanErr });
           if (scanErr) throw scanErr;
           verdict = (scan?.verdict as ScanVerdict) ?? "unknown";
