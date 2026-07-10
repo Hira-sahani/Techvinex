@@ -163,7 +163,7 @@ const Login = () => {
               />
             </div>
 
-            {authMode === "login" && (
+            {(authMode === "login" || authMode === "signup") && (
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-medium">Password</Label>
@@ -173,9 +173,9 @@ const Login = () => {
                   <Input
                     type={passwordVisible ? "text" : "password"}
                     value={password}
-                    autoComplete="current-password"
+                    autoComplete={authMode === "login" ? "current-password" : "new-password"}
                     onChange={(e) => { setPassword(e.target.value); setPasswordError(""); }}
-                    placeholder="••••••••"
+                    placeholder={authMode === "signup" ? "At least 8 characters" : "••••••••"}
                     className={`h-10 text-sm pr-9 ${passwordError ? "border-destructive" : ""}`}
                   />
                   <button type="button" onClick={() => setPasswordVisible(!passwordVisible)}
@@ -184,10 +184,12 @@ const Login = () => {
                     {passwordVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-                <button type="button" onClick={handleForgotPassword}
-                  className="text-[11px] text-primary hover:underline block text-right pt-0.5">
-                  Forgot password?
-                </button>
+                {authMode === "login" && (
+                  <button type="button" onClick={handleForgotPassword}
+                    className="text-[11px] text-primary hover:underline block text-right pt-0.5">
+                    Forgot password?
+                  </button>
+                )}
               </div>
             )}
 
