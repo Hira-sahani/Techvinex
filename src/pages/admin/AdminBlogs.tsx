@@ -136,10 +136,13 @@ const AdminBlogs = () => {
               <Input className="h-8 mt-1 bg-muted/30" value={form.read_time} onChange={e => setForm(f => ({ ...f, read_time: e.target.value }))} />
             </div>
           </div>
-          <div>
-            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Image URL</Label>
-            <Input className="h-8 mt-1 bg-muted/30" value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} placeholder="https://..." />
-          </div>
+          <BlogImageUpload
+            value={form.image_url}
+            originalValue={editing?.image_url || ""}
+            onChange={(url) => setForm(f => ({ ...f, image_url: url }))}
+            ref={imageUploadRef}
+          />
+
           <div>
             <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Short Description</Label>
             <Textarea className="mt-1 bg-muted/30 min-h-[60px]" value={form.short_description} onChange={e => setForm(f => ({ ...f, short_description: e.target.value }))} />
