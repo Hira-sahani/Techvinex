@@ -66,7 +66,10 @@ const AdminBlogs = () => {
     } catch (e: any) {
       const msg = e?.message || "";
       if (msg.includes("blogs_slug_key") || msg.includes("duplicate key")) {
-        toast.error("Ye slug pehle se use ho raha hai — koi dusra slug daalein");
+        toast.error(
+          `Is title/slug ka blog pehle se maujood hai (slug: "${form.slug}"). Title ya slug badal ke dobara try karein.`,
+          { duration: 6000 }
+        );
       } else {
         toast.error(msg || "Error saving blog");
       }
