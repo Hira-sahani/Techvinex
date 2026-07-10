@@ -1,5 +1,5 @@
 // Deploy touch: trigger fresh Vercel build from main (no functional change).
-import { useState, useRef, forwardRef, useImperativeHandle, useCallback, useEffect } from "react";
+import { useState, useRef, forwardRef, useImperativeHandle, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -13,18 +13,13 @@ interface BlogImageUploadProps {
   onChange: (url: string) => void;
 }
 
-/** Imperative API used by the parent form to commit, discard, or inspect status. */
+/** Imperative API used by the parent form to commit or discard unsaved session uploads. */
 export interface BlogImageUploadHandle {
   /** Called on successful save — clears session tracking without deleting. */
   commit: () => void;
   /** Called on explicit Cancel — deletes any unsaved session upload (never the original). */
   discard: () => Promise<void>;
-  /** Returns current upload/scan status so parent form can gate submit. */
-  getStatus: () => UploadStatus;
 }
-
-/** idle: nothing selected. uploading/scanning: in progress. clean: scanner verified. unverified: uploaded but scanner not configured. failed: last attempt rejected/errored — parent MUST block save. */
-export type UploadStatus = "idle" | "uploading" | "scanning" | "clean" | "unverified" | "failed";
 
 type ScanVerdict = "clean" | "suspicious" | "malicious" | "unknown" | "error";
 
@@ -50,20 +45,11 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
   ({ value, originalValue = "", onChange }, ref) => {
     const [uploading, setUploading] = useState(false);
     const [scanning, setScanning] = useState(false);
-    // Tracks the outcome of the most recent upload attempt. Parent form reads
-    // this via getStatus() to gate blog create/update.
-    const statusRef = useRef<UploadStatus>(value ? "unverified" : "idle");
     const fileRef = useRef<HTMLInputElement>(null);
     // Path of an image uploaded in THIS session that has not yet been saved.
     // Anything else (originalValue) is off-limits to auto-cleanup.
     const sessionPathRef = useRef<string | null>(null);
     const originalPathRef = useRef<string | null>(pathFromPublicUrl(originalValue));
-
-    // [DIAG] Mount toast — confirms this exact component is the one rendered.
-    useEffect(() => {
-      toast.info("[diag] BlogImageUpload mounted", { duration: 4000 });
-      console.info("[scan-upload:diag] BlogImageUpload mounted");
-    }, []);
 
     // Keep originalPathRef fresh if the parent switches records without unmounting.
     if (pathFromPublicUrl(originalValue) !== originalPathRef.current) {
@@ -86,13 +72,10 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
       sessionPathRef.current = null;
     }, []);
 
-    useImperativeHandle(ref, () => ({ commit, discard, getStatus: () => statusRef.current }), [commit, discard]);
+    useImperativeHandle(ref, () => ({ commit, discard }), [commit, discard]);
 
     const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      // [DIAG] handleUpload entry.
-      toast.info(`[diag] handleUpload start · file=${file?.name ?? "none"}`, { duration: 5000 });
-      console.info("[scan-upload:diag] handleUpload start", { hasFile: !!file, name: file?.name, type: file?.type, size: file?.size });
       if (!file) return;
 
       if (!ALLOWED_MIME.has(file.type)) {
@@ -110,7 +93,7 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
       const previousSessionPath = sessionPathRef.current;
 
       setUploading(true);
-      statusRef.current = "uploading";
+      setScanning(true);
       let uploadedPath: string | null = null;
       try {
         const ext = file.name.split(".").pop() || "bin";
@@ -119,92 +102,36 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
         if (error) throw error;
         uploadedPath = path;
         sessionPathRef.current = path;
-        // [DIAG] Storage upload succeeded.
-        toast.success(`[diag] storage upload OK · ${path}`, { duration: 5000 });
-        console.info("[scan-upload:diag] storage upload OK", { path });
 
         // Purge the previous unsaved upload (if it wasn't the original).
         if (previousSessionPath && previousSessionPath !== originalPathRef.current) {
           await removeObject(previousSessionPath);
         }
 
-        setUploading(false);
-        setScanning(true);
-        statusRef.current = "scanning";
-        let verdict: ScanVerdict = "unknown";
-        let scannerConfigured = false;
-        try {
-          // [DIAG] Log the invocation inputs (non-sensitive: bucket name + object path only).
-          toast.info(`[diag] invoking scan-upload · ${path}`, { duration: 5000 });
-          console.info("[scan-upload:diag] invoking", { bucket: BUCKET, object_path: path });
-          const { data: scan, error: scanErr } = await supabase.functions.invoke("scan-upload", {
-            body: { bucket: BUCKET, object_path: path },
-          });
-          // [DIAG] Log raw returned data + error shape (no headers, no tokens).
-          toast.info(`[diag] scan-upload returned · verdict=${scan?.verdict ?? "n/a"} · err=${scanErr ? "yes" : "no"}`, { duration: 6000 });
-          console.info("[scan-upload:diag] result", { data: scan, error: scanErr });
-          if (scanErr) throw scanErr;
-          verdict = (scan?.verdict as ScanVerdict) ?? "unknown";
-          scannerConfigured = scan?.scanner_configured === true;
-        } catch (scanErr: any) {
-          // [DIAG] Extract safe, non-secret diagnostic details from the FunctionsHttpError.
-          const errName: string = scanErr?.name ?? "Error";
-          const errMsg: string = scanErr?.message ?? String(scanErr);
-          const ctx = scanErr?.context;
-          let status: number | string = "n/a";
-          let bodyText = "";
-          try {
-            if (ctx && typeof ctx === "object" && "status" in ctx) {
-              status = (ctx as { status?: number }).status ?? "n/a";
-            }
-            if (ctx && typeof (ctx as Response).clone === "function") {
-              // ctx is a Response — read a short, safe snippet of the body.
-              const cloned = (ctx as Response).clone();
-              bodyText = await cloned.text().catch(() => "");
-              if (bodyText.length > 500) bodyText = bodyText.slice(0, 500) + "…";
-            }
-          } catch {
-            // Ignore body read failures — diagnostics must not break the flow.
-          }
-          console.warn("[scan-upload:diag] failed", { name: errName, message: errMsg, status, body: bodyText });
-          toast.error(
-            `scan-upload ${errName}: ${errMsg} · status=${status}${bodyText ? ` · body=${bodyText}` : ""}`,
-            { duration: 15000 },
-          );
-          verdict = "error";
-        }
-
-
-        if (verdict === "malicious" || verdict === "suspicious" || verdict === "error") {
-          // Server-side deletion is authoritative; the object is already gone
-          // (or was rejected). Drop our session tracking so cancel-cleanup is a no-op.
-          sessionPathRef.current = null;
-          statusRef.current = "failed";
-          toast.error(verdict === "error" ? "Upload rejected by security scanner" : "Image blocked by security scan");
-          return;
-        }
-
         const { data } = supabase.storage.from(BUCKET).getPublicUrl(path);
         onChange(data.publicUrl);
 
-        if (verdict === "clean") {
-          statusRef.current = "clean";
-          toast.success("Image uploaded and verified");
-        } else if (scannerConfigured) {
-          // scanner_configured=true but verdict unknown — still uncertain. Treat as unverified (block save).
-          statusRef.current = "failed";
-          toast.warning("Image uploaded but scan verdict pending — save blocked until re-upload succeeds");
-        } else {
-          // Scanner not configured. Allow save but mark as unverified (parent shows warning, not success gate).
-          statusRef.current = "unverified";
-          toast.warning("Image uploaded — malware scanner not configured");
+        // Best-effort malware scan. Trusted admin creation is not blocked
+        // regardless of scan outcome; failures are logged only.
+        try {
+          const { data: scan } = await supabase.functions.invoke("scan-upload", {
+            body: { bucket: BUCKET, object_path: path },
+          });
+          const verdict = (scan?.verdict as ScanVerdict) ?? "unknown";
+          if (verdict === "clean") {
+            toast.success("Image uploaded and verified");
+          } else {
+            toast.warning("Image uploaded — malware scanner returned a non-clean verdict");
+          }
+        } catch {
+          // Scan is best-effort; storage upload already succeeded.
+          toast.warning("Image uploaded — malware scan unavailable");
         }
       } catch (err: any) {
         if (uploadedPath) {
           await removeObject(uploadedPath);
           sessionPathRef.current = null;
         }
-        statusRef.current = "failed";
         toast.error(err.message || "Upload failed");
       } finally {
         setUploading(false);
@@ -220,7 +147,6 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
         await removeObject(sessionPath);
         sessionPathRef.current = null;
       }
-      statusRef.current = "idle";
       onChange("");
     };
 

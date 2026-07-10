@@ -53,19 +53,6 @@ const AdminBlogs = () => {
 
   const handleSave = async () => {
     if (!form.title || !form.slug) { toast.error("Title and slug are required"); return; }
-    // [DIAG] Trace image state at save time.
-    const uploadStatus = imageUploadRef.current?.getStatus?.() ?? "idle";
-    toast.info(`[diag] handleSave · image_url=${form.image_url ? "set" : "empty"} · status=${uploadStatus}`, { duration: 6000 });
-    console.info("[scan-upload:diag] handleSave", { image_url: form.image_url, status: uploadStatus });
-    // Gate: if an upload was attempted but scanning failed/pending, block save.
-    if (uploadStatus === "uploading" || uploadStatus === "scanning") {
-      toast.error("Image upload/scan still in progress — wait a moment and try again");
-      return;
-    }
-    if (uploadStatus === "failed") {
-      toast.error("Image failed the security scan or was not verified. Remove it and re-upload before saving.");
-      return;
-    }
     try {
       if (editing) {
         await updateBlog.mutateAsync({ id: editing.id, ...form });
