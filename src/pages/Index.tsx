@@ -15,9 +15,9 @@ const Index = () => {
     return (
       <div className="min-h-screen bg-background pb-20 md:pb-0">
         <Navbar />
-        <div className="pt-16">
+        <main className="pt-16">
           <DashboardSection />
-        </div>
+        </main>
       </div>
     );
   }
@@ -25,11 +25,13 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background pb-20 md:pb-0">
       <Navbar />
-      <HeroSection />
-      <SEOContent />
-      <ApexSection />
-      <FeaturesSection />
-      <CTASection />
+      <main>
+        <HeroSection />
+        <SEOContent />
+        <ApexSection />
+        <FeaturesSection />
+        <CTASection />
+      </main>
       <Footer />
     </div>
   );
