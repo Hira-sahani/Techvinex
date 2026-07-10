@@ -25,6 +25,10 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const VT_KEY = Deno.env.get("VIRUSTOTAL_API_KEY") ?? "";
 const VT_BASE = "https://www.virustotal.com/api/v3";
 const MAX_BYTES = 32 * 1024 * 1024; // VT public tier upload cap
+// Defensive server-side size cap that mirrors the bucket-level 5 MB limit.
+// Storage already enforces it; we re-check because storage limits are
+// bucket-config and could drift (Cloud UI is the only place to set them today).
+const BUCKET_MAX_BYTES = 5 * 1024 * 1024;
 
 // Buckets scannable via this endpoint. Kept explicit to prevent scan-any-object
 // abuse and to bound cost. Extend deliberately as new buckets appear.
@@ -34,6 +38,28 @@ const BodySchema = z.object({
   bucket: z.enum(ALLOWED_BUCKETS),
   object_path: z.string().min(1).max(1024),
 });
+
+/**
+ * Magic-byte sniff for the four image formats we accept.
+ * Rejects anything else — including SVG (text `<?xml`/`<svg …>`), which is
+ * an XSS vector on a public bucket. Returns the detected mime, or null if
+ * the signature does not match any allowed format.
+ */
+export function sniffAllowedImage(bytes: Uint8Array): "image/jpeg" | "image/png" | "image/webp" | "image/gif" | null {
+  if (bytes.length < 12) return null;
+  // JPEG: FF D8 FF
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  // PNG: 89 50 4E 47 0D 0A 1A 0A
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 &&
+      bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a) return "image/png";
+  // GIF: "GIF87a" or "GIF89a"
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38 &&
+      (bytes[4] === 0x37 || bytes[4] === 0x39) && bytes[5] === 0x61) return "image/gif";
+  // WebP: "RIFF" .... "WEBP"
+  if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+      bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50) return "image/webp";
+  return null;
+}
 
 export type Verdict = "clean" | "suspicious" | "malicious" | "unknown" | "error";
 
@@ -237,6 +263,12 @@ Deno.serve(withSentry("scan-upload", (req) =>
 
     const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
+    // Helper: server-side delete, returns whether removal succeeded.
+    const removeObject = async (): Promise<boolean> => {
+      const { error: rmErr } = await supabase.storage.from(bucket).remove([object_path]);
+      return !rmErr;
+    };
+
     // Download the object
     const { data: file, error: dlErr } = await supabase.storage.from(bucket).download(object_path);
     if (dlErr || !file) {
@@ -244,7 +276,22 @@ Deno.serve(withSentry("scan-upload", (req) =>
       return guardJson({ error: "not_found", code: "OBJECT" }, 404);
     }
 
+    // S6 — Defensive size gate that mirrors the bucket limit.
+    if (file.size > BUCKET_MAX_BYTES) {
+      const removed = await removeObject();
+      return await finalize({
+        ctx, bucket, object_path, uploaded_by: uid,
+        sha256: null, size_bytes: file.size,
+        verdict: "error",
+        details: { reason: `file exceeds ${BUCKET_MAX_BYTES}B bucket cap` },
+        httpStatus: 413,
+        extraResponse: { reason: "file too large" },
+        removed,
+      });
+    }
+
     if (file.size > MAX_BYTES) {
+      const removed = await removeObject();
       return await finalize({
         ctx, bucket, object_path, uploaded_by: uid,
         sha256: null, size_bytes: file.size,
@@ -252,55 +299,92 @@ Deno.serve(withSentry("scan-upload", (req) =>
         details: { reason: "file exceeds VT public tier 32MB limit" },
         httpStatus: 413,
         extraResponse: { reason: "file too large" },
+        removed,
       });
     }
 
     const buf = await file.arrayBuffer();
+    const bytes = new Uint8Array(buf);
     const hash = await sha256Hex(buf);
 
+    // S6 — Magic-byte allowlist. Rejects SVG, PDFs, executables masquerading
+    // as image/* MIME. Any mismatch → server delete + terminal error verdict.
+    const sniffed = sniffAllowedImage(bytes);
+    if (!sniffed) {
+      const removed = await removeObject();
+      return await finalize({
+        ctx, bucket, object_path, uploaded_by: uid,
+        sha256: hash, size_bytes: file.size,
+        verdict: "malicious", // treat mismatched signature as hostile
+        details: { reason: "signature does not match allowed image formats" },
+        httpStatus: 400,
+        extraResponse: { reason: "unsupported file signature" },
+        removed,
+      });
+    }
+
     if (!VT_KEY) {
+      // Scanner unconfigured. Per policy: do NOT fail-closed here (that would
+      // block every legitimate upload). Passes through with verdict=unknown.
+      // The client MUST NOT claim malware protection is active in this state.
       return await finalize({
         ctx, bucket, object_path, uploaded_by: uid,
         sha256: hash, size_bytes: file.size,
         verdict: "unknown",
-        details: { reason: "VIRUSTOTAL_API_KEY not configured" },
-        extraResponse: { reason: "scanner not configured" },
+        details: { reason: "VIRUSTOTAL_API_KEY not configured", sniffed },
+        extraResponse: { reason: "scanner not configured", scanner_configured: false },
       });
     }
 
-    // 1) Hash lookup
+    // Scanner is configured. Any transport/unknown outcome from here on
+    // must fail closed: delete + reject.
     let stats: Record<string, number> | undefined;
     let analysisId: string | null = null;
+    let scannerOutage = false;
     try {
       const hit = await vtLookupHash(hash);
       stats = hit?.data?.attributes?.last_analysis_stats;
-    } catch (_e) { /* fall through to upload */ }
+    } catch (_e) { scannerOutage = true; }
 
-    // 2) Upload + poll if unknown
     if (!stats) {
       try {
-        analysisId = await vtUpload(new Uint8Array(buf), object_path.split("/").pop() ?? "upload.bin");
+        analysisId = await vtUpload(bytes, object_path.split("/").pop() ?? "upload.bin");
         stats = await vtPollAnalysis(analysisId);
-      } catch (_e) { /* leave stats undefined -> unknown */ }
+        if (!stats) scannerOutage = true;
+      } catch (_e) { scannerOutage = true; }
+    }
+
+    // S5 — fail closed when the scanner is configured but produced no verdict.
+    if (!stats) {
+      const removed = await removeObject();
+      return await finalize({
+        ctx, bucket, object_path, uploaded_by: uid,
+        sha256: hash, size_bytes: file.size,
+        verdict: "error",
+        vendor_scan_id: analysisId,
+        details: { reason: "scanner outage or timeout", scanner_outage: scannerOutage },
+        httpStatus: 502,
+        extraResponse: { reason: "scanner_outage", scanner_configured: true },
+        removed,
+      });
     }
 
     const { verdict, engines_hit, engines_total } = classify(stats);
 
-    // 3) Delete malicious files
+    // S3 — Server-delete on BOTH malicious and suspicious (previously only malicious).
     let removed = false;
-    if (verdict === "malicious") {
-      const { error: rmErr } = await supabase.storage.from(bucket).remove([object_path]);
-      removed = !rmErr;
+    if (verdict === "malicious" || verdict === "suspicious") {
+      removed = await removeObject();
     }
 
-    // 4) Persist + terminal audit (single exit point).
     return await finalize({
       ctx, bucket, object_path, uploaded_by: uid,
       sha256: hash, size_bytes: file.size,
       verdict, engines_hit, engines_total,
       vendor_scan_id: analysisId,
-      details: { stats },
+      details: { stats, sniffed },
       removed,
+      extraResponse: { scanner_configured: true },
     });
   })
 ));

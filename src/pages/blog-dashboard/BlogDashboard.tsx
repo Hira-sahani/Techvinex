@@ -1,5 +1,5 @@
 import BrandLogo from "@/components/BrandLogo";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Search, Edit2, Trash2, Play, Pause, LogOut, Menu, X as XIcon } from "lucide-react";
 import { useBlogs, useCreateBlog, useUpdateBlog, useDeleteBlog, type Blog } from "@/hooks/useBlogs";
@@ -14,7 +14,7 @@ import { BlogDashboardSkeleton } from "@/components/skeletons/DashboardSkeletons
 import { DashboardDataBoundary } from "@/components/dashboard/DashboardDataBoundary";
 import { useQueryAsDashboardData } from "@/hooks/useQueryAsDashboardData";
 import RichTextEditor from "@/components/blog-dashboard/RichTextEditor";
-import BlogImageUpload from "@/components/blog-dashboard/BlogImageUpload";
+import BlogImageUpload, { type BlogImageUploadHandle } from "@/components/blog-dashboard/BlogImageUpload";
 
 const NAV_ITEMS = ["Atlas", "Research", "Enterprise", "Blog"];
 const BLOG_CATEGORIES = [
@@ -53,8 +53,17 @@ const BlogDashboard = () => {
     read_time: "5 min read", status: "draft",
   });
 
-  const resetForm = () => {
+  // Original image_url at the time the form was opened. Used by the upload
+  // component to decide which paths are safe to delete on cancel.
+  const [originalImageUrl, setOriginalImageUrl] = useState("");
+  const imageUploadRef = useRef<BlogImageUploadHandle>(null);
+
+  const resetForm = async () => {
+    // Discard any unsaved session upload BEFORE clearing state so the
+    // component still has the path available. Never deletes originalImageUrl.
+    try { await imageUploadRef.current?.discard(); } catch { /* best-effort */ }
     setForm({ title: "", slug: "", short_description: "", content: "", image_url: "", category: "company", author: "Atlas Team", read_time: "5 min read", status: "draft" });
+    setOriginalImageUrl("");
     setEditing(null);
     setShowForm(false);
   };
@@ -65,7 +74,15 @@ const BlogDashboard = () => {
       content: blog.content || "", image_url: blog.image_url || "", category: blog.category || "company",
       author: blog.author || "Atlas Team", read_time: blog.read_time || "5 min read", status: blog.status || "draft",
     });
+    setOriginalImageUrl(blog.image_url || "");
     setEditing(blog);
+    setShowForm(true);
+  };
+
+  const openNew = () => {
+    setForm({ title: "", slug: "", short_description: "", content: "", image_url: "", category: "company", author: "Atlas Team", read_time: "5 min read", status: "draft" });
+    setOriginalImageUrl("");
+    setEditing(null);
     setShowForm(true);
   };
 
@@ -79,7 +96,12 @@ const BlogDashboard = () => {
         await createBlog.mutateAsync(form);
         toast.success("Blog created!");
       }
-      resetForm();
+      // Session upload is now referenced by a persisted row — commit without deleting.
+      imageUploadRef.current?.commit();
+      setForm({ title: "", slug: "", short_description: "", content: "", image_url: "", category: "company", author: "Atlas Team", read_time: "5 min read", status: "draft" });
+      setOriginalImageUrl("");
+      setEditing(null);
+      setShowForm(false);
     } catch (e: any) {
       toast.error(e.message || "Error saving blog");
     }
@@ -171,7 +193,7 @@ const BlogDashboard = () => {
             <h1 className="text-lg font-bold text-foreground">Blog Posts</h1>
             <p className="text-xs text-muted-foreground">Manage all Atlas blog content</p>
           </div>
-          <Button size="sm" className="gap-1.5 h-8 text-xs" onClick={() => { resetForm(); setShowForm(true); }}>
+          <Button size="sm" className="gap-1.5 h-8 text-xs" onClick={openNew}>
             <Plus className="w-3.5 h-3.5" /> New Post
           </Button>
         </div>
@@ -258,7 +280,7 @@ const BlogDashboard = () => {
                 </Select>
               </div>
             </div>
-            <BlogImageUpload value={form.image_url} onChange={(url) => setForm(f => ({ ...f, image_url: url }))} />
+            <BlogImageUpload ref={imageUploadRef} value={form.image_url} originalValue={originalImageUrl} onChange={(url) => setForm(f => ({ ...f, image_url: url }))} />
             <div>
               <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Short Description</Label>
               <Textarea className="mt-1 bg-muted/30 min-h-[60px] text-xs" value={form.short_description} onChange={e => setForm(f => ({ ...f, short_description: e.target.value }))} />
@@ -307,7 +329,7 @@ const BlogDashboard = () => {
             <div className="text-center py-16">
               <p className="text-sm text-muted-foreground">No posts found</p>
               <div className="flex items-center justify-center gap-2 mt-3">
-                <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => { resetForm(); setShowForm(true); }}>
+                <Button variant="outline" size="sm" className="text-xs h-8" onClick={openNew}>
                   {blogs.length === 0 ? "Create your first post" : "New post"}
                 </Button>
                 {(search || activeCat !== "All") && (

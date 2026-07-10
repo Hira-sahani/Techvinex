@@ -6,7 +6,7 @@
 // port. Tests only exercise pure helpers.
 
 import { assertEquals, assertMatch, assertStringIncludes } from "https://deno.land/std@0.224.0/assert/mod.ts";
-import { classify, finalize, type PersistenceClient } from "./index.ts";
+import { classify, finalize, sniffAllowedImage, type PersistenceClient } from "./index.ts";
 
 // Minimal in-memory audit collector matching GuardCtx.audit shape.
 function makeCtx() {
@@ -148,4 +148,69 @@ Deno.test("finalize (error verdict, oversized file): 413 + persisted", async () 
   assertStringIncludes(body.reason, "file too large");
   assertEquals(rows.length, 1);
   assertEquals(audits[0].action, "scan_completed");
+});
+
+// ---------- S6: magic-byte sniff ----------
+Deno.test("sniffAllowedImage: JPEG signature accepted", () => {
+  const bytes = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  assertEquals(sniffAllowedImage(bytes), "image/jpeg");
+});
+Deno.test("sniffAllowedImage: PNG signature accepted", () => {
+  const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
+  assertEquals(sniffAllowedImage(bytes), "image/png");
+});
+Deno.test("sniffAllowedImage: GIF signature accepted", () => {
+  const gif87 = new Uint8Array([0x47, 0x49, 0x46, 0x38, 0x37, 0x61, 0, 0, 0, 0, 0, 0]);
+  const gif89 = new Uint8Array([0x47, 0x49, 0x46, 0x38, 0x39, 0x61, 0, 0, 0, 0, 0, 0]);
+  assertEquals(sniffAllowedImage(gif87), "image/gif");
+  assertEquals(sniffAllowedImage(gif89), "image/gif");
+});
+Deno.test("sniffAllowedImage: WebP signature accepted", () => {
+  const bytes = new Uint8Array([0x52, 0x49, 0x46, 0x46, 0, 0, 0, 0, 0x57, 0x45, 0x42, 0x50]);
+  assertEquals(sniffAllowedImage(bytes), "image/webp");
+});
+Deno.test("sniffAllowedImage: SVG text rejected (starts with '<')", () => {
+  const svg = new TextEncoder().encode("<?xml version=\"1.0\"?><svg xmlns=");
+  assertEquals(sniffAllowedImage(svg), null);
+});
+Deno.test("sniffAllowedImage: PE / executable rejected", () => {
+  const mz = new Uint8Array([0x4d, 0x5a, 0x90, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+  assertEquals(sniffAllowedImage(mz), null);
+});
+Deno.test("sniffAllowedImage: PDF rejected", () => {
+  const pdf = new TextEncoder().encode("%PDF-1.4\n%...");
+  assertEquals(sniffAllowedImage(pdf), null);
+});
+Deno.test("sniffAllowedImage: too-short buffer rejected", () => {
+  assertEquals(sniffAllowedImage(new Uint8Array([0xff, 0xd8])), null);
+});
+
+// ---------- S3: suspicious verdict removal is now server-side ----------
+Deno.test("finalize (suspicious + removed=true): persists removal flag on suspicious", async () => {
+  const { ctx, audits } = makeCtx();
+  const { client, rows } = okPersistence();
+  const res = await finalize({
+    ctx, bucket: "blog-images", object_path: "u/susp.png",
+    uploaded_by: "user-1", sha256: "sus", size_bytes: 100,
+    verdict: "suspicious", engines_hit: 2, engines_total: 65,
+    removed: true, persistence: client,
+  });
+  const body = await res.json();
+  assertEquals(body.verdict, "suspicious");
+  assertEquals(body.removed, true);
+  const details = (rows[0] as { details: { removed: boolean } }).details;
+  assertEquals(details.removed, true);
+  assertEquals(audits[0].details.removed, true);
+});
+
+// ---------- classify: 1 malicious → suspicious ----------
+Deno.test("classify: 1 malicious → suspicious (borderline)", () => {
+  const r = classify({ malicious: 1, harmless: 60, suspicious: 0, undetected: 5, timeout: 0 });
+  assertEquals(r.verdict, "suspicious");
+  assertEquals(r.engines_hit, 1);
+});
+Deno.test("classify: 2 suspicious → suspicious", () => {
+  const r = classify({ malicious: 0, harmless: 60, suspicious: 2, undetected: 5, timeout: 0 });
+  assertEquals(r.verdict, "suspicious");
+  assertEquals(r.engines_hit, 2);
 });
