@@ -51,6 +51,12 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
     const sessionPathRef = useRef<string | null>(null);
     const originalPathRef = useRef<string | null>(pathFromPublicUrl(originalValue));
 
+    // [DIAG] Mount toast — confirms this exact component is the one rendered.
+    useEffect(() => {
+      toast.info("[diag] BlogImageUpload mounted", { duration: 4000 });
+      console.info("[scan-upload:diag] BlogImageUpload mounted");
+    }, []);
+
     // Keep originalPathRef fresh if the parent switches records without unmounting.
     if (pathFromPublicUrl(originalValue) !== originalPathRef.current) {
       originalPathRef.current = pathFromPublicUrl(originalValue);
