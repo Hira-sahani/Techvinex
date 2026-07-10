@@ -103,7 +103,7 @@ const AdminBlogs = () => {
       <div className="space-y-5">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold">{editing ? "Edit Blog" : "New Blog"}</h2>
-          <Button variant="ghost" size="sm" onClick={resetForm}>Cancel</Button>
+          <Button variant="ghost" size="sm" onClick={async () => { await imageUploadRef.current?.discard(); resetForm(); }}>Cancel</Button>
         </div>
         <div className="grid gap-4 max-w-2xl">
           <div className="grid grid-cols-2 gap-3">
