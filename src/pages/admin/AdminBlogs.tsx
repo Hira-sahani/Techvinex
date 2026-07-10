@@ -64,7 +64,12 @@ const AdminBlogs = () => {
       imageUploadRef.current?.commit();
       resetForm();
     } catch (e: any) {
-      toast.error(e.message || "Error saving blog");
+      const msg = e?.message || "";
+      if (msg.includes("blogs_slug_key") || msg.includes("duplicate key")) {
+        toast.error("Ye slug pehle se use ho raha hai — koi dusra slug daalein");
+      } else {
+        toast.error(msg || "Error saving blog");
+      }
     }
   };
 
