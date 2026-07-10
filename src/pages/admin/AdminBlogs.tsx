@@ -8,6 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { AdminBlogsSkeleton } from "@/components/skeletons/DashboardSkeletons";
+import { useRef } from "react";
+import BlogImageUpload, { type BlogImageUploadHandle } from "@/components/blog-dashboard/BlogImageUpload";
 
 const statusColors: Record<string, string> = {
   draft: "bg-amber-500/10 text-amber-600",
@@ -24,6 +26,7 @@ const AdminBlogs = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Blog | null>(null);
+  const imageUploadRef = useRef<BlogImageUploadHandle>(null);
 
   // Form state
   const [form, setForm] = useState({
@@ -58,6 +61,7 @@ const AdminBlogs = () => {
         await createBlog.mutateAsync(form);
         toast.success("Blog created");
       }
+      imageUploadRef.current?.commit();
       resetForm();
     } catch (e: any) {
       toast.error(e.message || "Error saving blog");
@@ -99,7 +103,7 @@ const AdminBlogs = () => {
       <div className="space-y-5">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold">{editing ? "Edit Blog" : "New Blog"}</h2>
-          <Button variant="ghost" size="sm" onClick={resetForm}>Cancel</Button>
+          <Button variant="ghost" size="sm" onClick={async () => { await imageUploadRef.current?.discard(); resetForm(); }}>Cancel</Button>
         </div>
         <div className="grid gap-4 max-w-2xl">
           <div className="grid grid-cols-2 gap-3">
@@ -134,10 +138,13 @@ const AdminBlogs = () => {
               <Input className="h-8 mt-1 bg-muted/30" value={form.read_time} onChange={e => setForm(f => ({ ...f, read_time: e.target.value }))} />
             </div>
           </div>
-          <div>
-            <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Image URL</Label>
-            <Input className="h-8 mt-1 bg-muted/30" value={form.image_url} onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))} placeholder="https://..." />
-          </div>
+          <BlogImageUpload
+            value={form.image_url}
+            originalValue={editing?.image_url || ""}
+            onChange={(url) => setForm(f => ({ ...f, image_url: url }))}
+            ref={imageUploadRef}
+          />
+
           <div>
             <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">Short Description</Label>
             <Textarea className="mt-1 bg-muted/30 min-h-[60px]" value={form.short_description} onChange={e => setForm(f => ({ ...f, short_description: e.target.value }))} />
