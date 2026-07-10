@@ -22,7 +22,7 @@ const Login = () => {
   const [passwordError, setPasswordError] = useState("");
   const [showCheckInbox, setShowCheckInbox] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
-  const [resending, setResending] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   const validate = (mode: "login" | "signup") => {
     let ok = true;
