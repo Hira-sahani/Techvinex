@@ -26,6 +26,7 @@ const AdminBlogs = () => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<Blog | null>(null);
+  const imageUploadRef = useRef<BlogImageUploadHandle>(null);
 
   // Form state
   const [form, setForm] = useState({
