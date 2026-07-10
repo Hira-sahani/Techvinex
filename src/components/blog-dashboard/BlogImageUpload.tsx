@@ -179,6 +179,7 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
           // Server-side deletion is authoritative; the object is already gone
           // (or was rejected). Drop our session tracking so cancel-cleanup is a no-op.
           sessionPathRef.current = null;
+          statusRef.current = "failed";
           toast.error(verdict === "error" ? "Upload rejected by security scanner" : "Image blocked by security scan");
           return;
         }
@@ -187,12 +188,15 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
         onChange(data.publicUrl);
 
         if (verdict === "clean") {
+          statusRef.current = "clean";
           toast.success("Image uploaded and verified");
         } else if (scannerConfigured) {
-          // scanner_configured=true but verdict unknown — still uncertain.
-          toast.warning("Image uploaded (verdict pending)");
+          // scanner_configured=true but verdict unknown — still uncertain. Treat as unverified (block save).
+          statusRef.current = "failed";
+          toast.warning("Image uploaded but scan verdict pending — save blocked until re-upload succeeds");
         } else {
-          // Honest: scanner not configured. Do NOT claim malware protection.
+          // Scanner not configured. Allow save but mark as unverified (parent shows warning, not success gate).
+          statusRef.current = "unverified";
           toast.warning("Image uploaded — malware scanner not configured");
         }
       } catch (err: any) {
@@ -200,6 +204,7 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
           await removeObject(uploadedPath);
           sessionPathRef.current = null;
         }
+        statusRef.current = "failed";
         toast.error(err.message || "Upload failed");
       } finally {
         setUploading(false);
