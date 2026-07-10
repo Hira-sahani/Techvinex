@@ -78,6 +78,7 @@ const About = lazy(() => import("./pages/About"));
 const Notifications = lazy(() => import("./pages/Notifications"));
 const CandidateDashboard = lazy(() => import("./pages/CandidateDashboard"));
 const ResetPassword = lazy(() => import("./pages/ResetPassword"));
+const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 // AuthTest removed from production. Re-add behind import.meta.env.DEV if needed.
 const EmployerLogin = lazy(() => import("./pages/employer/EmployerLogin"));
 const EmployerDashboard = lazy(() => import("./pages/employer/EmployerDashboard"));
