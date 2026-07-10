@@ -1,5 +1,5 @@
 // Deploy touch: trigger fresh Vercel build from main (no functional change).
-import { useState, useRef, forwardRef, useImperativeHandle, useCallback } from "react";
+import { useState, useRef, forwardRef, useImperativeHandle, useCallback, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
