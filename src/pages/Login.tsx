@@ -172,7 +172,7 @@ const Login = () => {
                     value={password}
                     autoComplete={authMode === "login" ? "current-password" : "new-password"}
                     onChange={(e) => { setPassword(e.target.value); setPasswordError(""); }}
-                    placeholder={authMode === "signup" ? "At least 8 characters" : "••••••••"}
+                    placeholder="••••••••"
                     className={`h-10 text-sm pr-9 ${passwordError ? "border-destructive" : ""}`}
                   />
                   <button type="button" onClick={() => setPasswordVisible(!passwordVisible)}
