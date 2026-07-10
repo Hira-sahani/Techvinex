@@ -170,7 +170,7 @@ const Login = () => {
                   <Input
                     type={passwordVisible ? "text" : "password"}
                     value={password}
-                    autoComplete={authMode === "login" ? "current-password" : "new-password"}
+                    autoComplete="current-password"
                     onChange={(e) => { setPassword(e.target.value); setPasswordError(""); }}
                     placeholder="••••••••"
                     className={`h-10 text-sm pr-9 ${passwordError ? "border-destructive" : ""}`}
