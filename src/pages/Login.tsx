@@ -4,11 +4,10 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { InputOTP, InputOTPGroup, InputOTPSlot } from "@/components/ui/input-otp";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { signInWithGooglePopup } from "@/lib/googleOAuth";
-import { ArrowLeft, Eye, EyeOff, Mail, CheckCircle } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, CheckCircle } from "lucide-react";
 
 const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
@@ -23,22 +22,15 @@ const Login = () => {
   const [passwordError, setPasswordError] = useState("");
   const [showCheckInbox, setShowCheckInbox] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
-  const [otpStep, setOtpStep] = useState(false);
-  const [otpCode, setOtpCode] = useState("");
-  const [otpError, setOtpError] = useState("");
-  const [resending, setResending] = useState(false);
 
   const validate = (mode: "login" | "signup") => {
     let ok = true;
     if (!email) { setEmailError("Please enter your email"); ok = false; }
     else if (!isValidEmail(email)) { setEmailError("Invalid email address"); ok = false; }
     else setEmailError("");
-    if (mode === "login") {
-      if (!password) { setPasswordError("Please enter your password"); ok = false; }
-      else setPasswordError("");
-    } else {
-      setPasswordError("");
-    }
+    if (!password) { setPasswordError("Please enter your password"); ok = false; }
+    else if (mode === "signup" && password.length < 8) { setPasswordError("Password must be at least 8 characters"); ok = false; }
+    else setPasswordError("");
     return ok;
   };
 
@@ -61,45 +53,26 @@ const Login = () => {
   const handleSignup = async () => {
     if (!validate("signup")) return;
     setLoading(true);
-    const { error } = await supabase.auth.signInWithOtp({
+    const { data, error } = await supabase.auth.signUp({
       email,
-      options: { shouldCreateUser: true },
+      password,
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
     });
     setLoading(false);
     if (error) {
-      toast.error(error.message);
+      if (/registered|exists/i.test(error.message)) toast.error("This email is already registered. Try logging in.");
+      else toast.error(error.message);
       return;
     }
-    setOtpCode("");
-    setOtpError("");
-    setOtpStep(true);
-    toast.success("We sent a 6-digit code to your email");
-  };
-
-  const handleVerifyOtp = async (code?: string) => {
-    const token = (code ?? otpCode).trim();
-    if (token.length !== 6) { setOtpError("Enter the 6-digit code"); return; }
-    setLoading(true);
-    const { error } = await supabase.auth.verifyOtp({ email, token, type: "email" });
-    setLoading(false);
-    if (error) {
-      setOtpError(error.message || "Invalid or expired code");
-      return;
+    // If email confirmation is required, session is null; show check-inbox.
+    if (!data.session) {
+      setShowCheckInbox(true);
+    } else {
+      toast.success("Account created!");
+      navigate("/");
     }
-    toast.success("Account verified! Welcome to Techvinex.");
-    navigate("/");
   };
 
-  const handleResendOtp = async () => {
-    setResending(true);
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: true },
-    });
-    setResending(false);
-    if (error) toast.error(error.message);
-    else toast.success("New code sent to your email");
-  };
 
   const handleForgotPassword = async () => {
     if (!email) { toast.error("Please enter your email first"); return; }
@@ -126,66 +99,6 @@ const Login = () => {
     }
   };
 
-  if (otpStep) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <div className="w-full max-w-sm bg-card border border-border rounded-lg p-6 flex flex-col items-center text-center">
-          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mb-3">
-            <Mail className="w-5 h-5 text-primary" />
-          </div>
-          <h1 className="text-base font-semibold mb-1">Verify your email</h1>
-          <p className="text-xs text-muted-foreground mb-5">
-            Enter the 6-digit code we sent to <span className="text-foreground font-medium">{email}</span>
-          </p>
-
-          <InputOTP
-            maxLength={6}
-            value={otpCode}
-            onChange={(v) => {
-              setOtpCode(v);
-              setOtpError("");
-              if (v.length === 6) handleVerifyOtp(v);
-            }}
-          >
-            <InputOTPGroup>
-              <InputOTPSlot index={0} />
-              <InputOTPSlot index={1} />
-              <InputOTPSlot index={2} />
-              <InputOTPSlot index={3} />
-              <InputOTPSlot index={4} />
-              <InputOTPSlot index={5} />
-            </InputOTPGroup>
-          </InputOTP>
-
-          {otpError && <p className="text-[11px] text-destructive mt-2">{otpError}</p>}
-
-          <Button
-            className="w-full h-10 text-sm mt-5"
-            disabled={loading || otpCode.length !== 6}
-            onClick={() => handleVerifyOtp()}
-          >
-            {loading ? "Verifying..." : "Verify & continue"}
-          </Button>
-
-          <div className="flex items-center gap-2 mt-3 text-[11px] text-muted-foreground">
-            <span>Didn't get it?</span>
-            <button type="button" disabled={resending} onClick={handleResendOtp}
-              className="text-primary hover:underline disabled:opacity-50">
-              {resending ? "Sending..." : "Resend code"}
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => { setOtpStep(false); setOtpCode(""); setOtpError(""); }}
-            className="mt-4 text-[11px] text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
-          >
-            <ArrowLeft size={11} /> Use a different email
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   if (resetEmailSent || showCheckInbox) {
     const isReset = resetEmailSent;
@@ -245,7 +158,7 @@ const Login = () => {
               />
             </div>
 
-            {authMode === "login" && (
+            {(authMode === "login" || authMode === "signup") && (
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-medium">Password</Label>
@@ -255,9 +168,9 @@ const Login = () => {
                   <Input
                     type={passwordVisible ? "text" : "password"}
                     value={password}
-                    autoComplete="current-password"
+                    autoComplete={authMode === "login" ? "current-password" : "new-password"}
                     onChange={(e) => { setPassword(e.target.value); setPasswordError(""); }}
-                    placeholder="••••••••"
+                    placeholder={authMode === "signup" ? "At least 8 characters" : "••••••••"}
                     className={`h-10 text-sm pr-9 ${passwordError ? "border-destructive" : ""}`}
                   />
                   <button type="button" onClick={() => setPasswordVisible(!passwordVisible)}
@@ -266,10 +179,12 @@ const Login = () => {
                     {passwordVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
-                <button type="button" onClick={handleForgotPassword}
-                  className="text-[11px] text-primary hover:underline block text-right pt-0.5">
-                  Forgot password?
-                </button>
+                {authMode === "login" && (
+                  <button type="button" onClick={handleForgotPassword}
+                    className="text-[11px] text-primary hover:underline block text-right pt-0.5">
+                    Forgot password?
+                  </button>
+                )}
               </div>
             )}
 
