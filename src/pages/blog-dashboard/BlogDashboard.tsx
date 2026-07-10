@@ -1,5 +1,5 @@
 import BrandLogo from "@/components/BrandLogo";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Search, Edit2, Trash2, Play, Pause, LogOut, Menu, X as XIcon } from "lucide-react";
 import { useBlogs, useCreateBlog, useUpdateBlog, useDeleteBlog, type Blog } from "@/hooks/useBlogs";
@@ -14,7 +14,7 @@ import { BlogDashboardSkeleton } from "@/components/skeletons/DashboardSkeletons
 import { DashboardDataBoundary } from "@/components/dashboard/DashboardDataBoundary";
 import { useQueryAsDashboardData } from "@/hooks/useQueryAsDashboardData";
 import RichTextEditor from "@/components/blog-dashboard/RichTextEditor";
-import BlogImageUpload from "@/components/blog-dashboard/BlogImageUpload";
+import BlogImageUpload, { type BlogImageUploadHandle } from "@/components/blog-dashboard/BlogImageUpload";
 
 const NAV_ITEMS = ["Atlas", "Research", "Enterprise", "Blog"];
 const BLOG_CATEGORIES = [
