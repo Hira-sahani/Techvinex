@@ -160,7 +160,7 @@ const Login = () => {
               />
             </div>
 
-            {(authMode === "login" || authMode === "signup") && (
+            {authMode === "login" && (
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
                   <Label className="text-xs font-medium">Password</Label>
