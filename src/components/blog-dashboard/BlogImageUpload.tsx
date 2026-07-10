@@ -50,6 +50,9 @@ const BlogImageUpload = forwardRef<BlogImageUploadHandle, BlogImageUploadProps>(
   ({ value, originalValue = "", onChange }, ref) => {
     const [uploading, setUploading] = useState(false);
     const [scanning, setScanning] = useState(false);
+    // Tracks the outcome of the most recent upload attempt. Parent form reads
+    // this via getStatus() to gate blog create/update.
+    const statusRef = useRef<UploadStatus>(value ? "unverified" : "idle");
     const fileRef = useRef<HTMLInputElement>(null);
     // Path of an image uploaded in THIS session that has not yet been saved.
     // Anything else (originalValue) is off-limits to auto-cleanup.
