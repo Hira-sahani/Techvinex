@@ -22,3 +22,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment files (never commit — Vercel/Lovable Cloud manage these)
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
+!.env.example
