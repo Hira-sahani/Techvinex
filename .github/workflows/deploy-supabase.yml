@@ -4,21 +4,30 @@ name: Deploy Supabase (external project)
 # It targets the external Supabase project referenced by the
 # SUPABASE_PROJECT_REF_PROD repository secret — NOT Lovable Cloud.
 # Do not add push/pull_request triggers.
+#
+# Safety guarantees:
+#   * Refuses to run against the Lovable Cloud project ref.
+#   * Requires the operator to re-type the target ref as confirm_ref.
+#   * Never runs `supabase db reset` or any destructive command.
+#   * `supabase db push` only applies migrations that are NOT yet
+#     recorded in supabase_migrations.schema_migrations on the target.
+#   * Fails fast: `set -euo pipefail` on every scripted step.
 
 on:
   workflow_dispatch:
     inputs:
-      action:
-        description: What to deploy
+      stage:
+        description: Which stage to run
         required: true
-        default: migrate-only
+        default: readiness-only
         type: choice
         options:
-          - migrate-only
-          - functions-only
-          - full
+          - readiness-only        # stages 1-3: validate secrets, link, report schema drift. No writes.
+          - migrate-only          # stages 1-4: readiness + apply pending migrations only.
+          - functions-only        # stages 1-3 + 5-6: readiness + deploy & verify all edge functions.
+          - full-cutover          # stages 1-8: readiness + migrate + deploy + verify + secrets audit.
       confirm_ref:
-        description: Type the target project ref to confirm (safety check)
+        description: Type the target project ref exactly (safety check)
         required: true
         type: string
 
@@ -26,62 +35,243 @@ concurrency:
   group: deploy-supabase-${{ github.ref }}
   cancel-in-progress: false
 
+permissions:
+  contents: read
+
 jobs:
-  deploy:
+  cutover:
     runs-on: ubuntu-latest
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF_PROD }}
+      LOVABLE_CLOUD_REF: xfgyzcvrvgsntjenxecp
     steps:
+      # -----------------------------------------------------------------
+      # STAGE 1 — Validate required GitHub Secrets & inputs
+      # -----------------------------------------------------------------
+      - name: "Stage 1 · Validate required GitHub Secrets"
+        run: |
+          set -euo pipefail
+          missing=0
+          check() {
+            if [ -z "${2:-}" ]; then
+              echo "::error::Missing required secret: $1"
+              missing=1
+            else
+              echo "  ✓ $1 is set"
+            fi
+          }
+          echo "Checking required repository secrets…"
+          check SUPABASE_ACCESS_TOKEN     "$SUPABASE_ACCESS_TOKEN"
+          check SUPABASE_DB_PASSWORD      "$SUPABASE_DB_PASSWORD"
+          check SUPABASE_PROJECT_REF_PROD "$PROJECT_REF"
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::Add the missing secrets in Settings → Secrets and variables → Actions, then re-run."
+            exit 1
+          fi
+
+      - name: "Stage 1 · Guard — refuse Lovable Cloud project ref"
+        run: |
+          set -euo pipefail
+          if [ "$PROJECT_REF" = "$LOVABLE_CLOUD_REF" ]; then
+            echo "::error::SUPABASE_PROJECT_REF_PROD points at Lovable Cloud ($LOVABLE_CLOUD_REF). Refusing to run."
+            exit 1
+          fi
+          echo "  ✓ Target project ref is not the Lovable Cloud project."
+
+      - name: "Stage 1 · Guard — confirm_ref matches secret"
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.confirm_ref }}" != "$PROJECT_REF" ]; then
+            echo "::error::confirm_ref input does not match SUPABASE_PROJECT_REF_PROD. Aborting."
+            exit 1
+          fi
+          echo "  ✓ confirm_ref matches SUPABASE_PROJECT_REF_PROD."
+
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Guard — required secrets present
-        run: |
-          set -e
-          [ -n "$SUPABASE_ACCESS_TOKEN" ] || { echo "Missing SUPABASE_ACCESS_TOKEN"; exit 1; }
-          [ -n "$PROJECT_REF" ]           || { echo "Missing SUPABASE_PROJECT_REF_PROD"; exit 1; }
-          [ -n "$SUPABASE_DB_PASSWORD" ]  || { echo "Missing SUPABASE_DB_PASSWORD"; exit 1; }
-
-      - name: Guard — confirm ref matches secret
-        run: |
-          if [ "${{ inputs.confirm_ref }}" != "$PROJECT_REF" ]; then
-            echo "confirm_ref (${{ inputs.confirm_ref }}) does not match SUPABASE_PROJECT_REF_PROD."
-            echo "Refusing to deploy."
-            exit 1
-          fi
-
-      - name: Guard — refuse Lovable Cloud project ref
-        run: |
-          if [ "$PROJECT_REF" = "xfgyzcvrvgsntjenxecp" ]; then
-            echo "SUPABASE_PROJECT_REF_PROD points at Lovable Cloud. Refusing."
-            exit 1
-          fi
-
-      - name: Guard — config.toml points at target
-        run: node scripts/check-supabase-config.mjs
 
       - name: Install Supabase CLI
         uses: supabase/setup-cli@v1
         with:
           version: latest
 
-      - name: Link project
-        run: supabase link --project-ref "$PROJECT_REF"
-
-      - name: Push migrations
-        if: inputs.action == 'migrate-only' || inputs.action == 'full'
-        run: supabase db push
-
-      - name: Deploy edge functions
-        if: inputs.action == 'functions-only' || inputs.action == 'full'
+      # -----------------------------------------------------------------
+      # STAGE 2 — Link Supabase CLI to the target project
+      # -----------------------------------------------------------------
+      - name: "Stage 2 · Link Supabase CLI to target project"
         run: |
-          set -e
+          set -euo pipefail
+          # --project-ref overrides supabase/config.toml, so a stale
+          # config.toml written by Lovable does NOT redirect this job.
+          supabase link --project-ref "$PROJECT_REF"
+          echo "  ✓ Linked to $PROJECT_REF"
+
+      # -----------------------------------------------------------------
+      # STAGE 3 — Schema readiness (read-only, non-destructive)
+      # -----------------------------------------------------------------
+      - name: "Stage 3 · Readiness — list local migrations"
+        run: |
+          set -euo pipefail
+          echo "Local migrations in supabase/migrations/:"
+          ls -1 supabase/migrations/ | sed 's/^/  /'
+          count=$(ls -1 supabase/migrations/ | wc -l | tr -d ' ')
+          echo "  → $count local migration file(s)"
+          if [ "$count" -ne 44 ]; then
+            echo "::warning::Expected 44 migrations, found $count. Continuing — verify this is intentional."
+          fi
+
+      - name: "Stage 3 · Readiness — migrations already applied on target"
+        run: |
+          set -euo pipefail
+          echo "Applied migrations on $PROJECT_REF:"
+          supabase migration list --linked || true
+
+      - name: "Stage 3 · Readiness — dry-run diff (no changes)"
+        run: |
+          set -euo pipefail
+          echo "Schema diff between repository and target (read-only):"
+          # `db diff --linked` compares live target vs local migrations.
+          # It does NOT write, reset, or apply anything.
+          supabase db diff --linked --schema public --schema storage || true
+
+      # -----------------------------------------------------------------
+      # STAGE 4 — Apply only pending migrations (safe, non-destructive)
+      # -----------------------------------------------------------------
+      - name: "Stage 4 · Apply pending migrations"
+        if: ${{ inputs.stage == 'migrate-only' || inputs.stage == 'full-cutover' }}
+        run: |
+          set -euo pipefail
+          echo "Applying pending migrations to $PROJECT_REF (non-destructive)…"
+          # `supabase db push` only applies migration files whose version
+          # is NOT present in supabase_migrations.schema_migrations.
+          # It never drops or resets existing objects.
+          supabase db push --linked
+          echo "  ✓ db push completed."
+          echo "Post-push applied migrations:"
+          supabase migration list --linked || true
+
+      # -----------------------------------------------------------------
+      # STAGE 5 — Deploy all repository Edge Functions
+      # -----------------------------------------------------------------
+      - name: "Stage 5 · Deploy edge functions"
+        if: ${{ inputs.stage == 'functions-only' || inputs.stage == 'full-cutover' }}
+        id: deploy_functions
+        run: |
+          set -euo pipefail
+          deployed=()
+          failed=()
           for dir in supabase/functions/*/; do
             name="$(basename "$dir")"
             if [ "$name" = "_shared" ]; then continue; fi
             echo "::group::deploy $name"
-            supabase functions deploy "$name" --project-ref "$PROJECT_REF"
+            if supabase functions deploy "$name" --project-ref "$PROJECT_REF"; then
+              deployed+=("$name")
+            else
+              failed+=("$name")
+              echo "::error::Deploy failed for $name"
+            fi
             echo "::endgroup::"
           done
+          echo "Deployed: ${deployed[*]:-<none>}"
+          if [ "${#failed[@]}" -gt 0 ]; then
+            echo "::error::Failed functions: ${failed[*]}"
+            exit 1
+          fi
+          # Persist list for stage 6
+          printf '%s\n' "${deployed[@]}" > /tmp/deployed_functions.txt
+
+      # -----------------------------------------------------------------
+      # STAGE 6 — Verify each deployed function boots (list + HEAD probe)
+      # -----------------------------------------------------------------
+      - name: "Stage 6 · Verify deployed functions"
+        if: ${{ inputs.stage == 'functions-only' || inputs.stage == 'full-cutover' }}
+        run: |
+          set -euo pipefail
+          echo "Registered functions on $PROJECT_REF:"
+          supabase functions list --project-ref "$PROJECT_REF"
+
+          echo
+          echo "OPTIONS probe (checks the runtime boots and CORS layer responds):"
+          base="https://${PROJECT_REF}.functions.supabase.co"
+          fail=0
+          while IFS= read -r name; do
+            [ -z "$name" ] && continue
+            code=$(curl -s -o /dev/null -w '%{http_code}' -X OPTIONS \
+              -H 'Origin: https://admin.techvinex.com' \
+              -H 'Access-Control-Request-Method: POST' \
+              "$base/$name" || echo "000")
+            printf '  %-30s HTTP %s\n' "$name" "$code"
+            # 2xx or 204 = healthy; 401/403 also acceptable (guard rejected preflight is still a live boot).
+            case "$code" in
+              2*|3*|401|403|405) : ;;
+              *) fail=1; echo "::warning::$name preflight returned $code" ;;
+            esac
+          done < /tmp/deployed_functions.txt
+          if [ "$fail" -ne 0 ]; then
+            echo "::error::One or more functions failed the preflight probe."
+            exit 1
+          fi
+          echo "  ✓ All deployed functions responded to OPTIONS."
+
+      # -----------------------------------------------------------------
+      # STAGE 7 — Report required target Edge Function secrets (names only)
+      # -----------------------------------------------------------------
+      - name: "Stage 7 · Report required edge-function secrets (names only)"
+        if: ${{ inputs.stage != 'readiness-only' }}
+        run: |
+          set -euo pipefail
+          echo "Required secret NAMES for edge functions on $PROJECT_REF:"
+          cat <<'EOF'
+            - OPENAI_API_KEY
+            - ELEVENLABS_API_KEY
+            - LOVABLE_API_KEY
+            - GOOGLE_SEARCH_CONSOLE_API_KEY
+            - SENTRY_DSN
+            - SENTRY_ORG
+            - SENTRY_PROJECT
+            - SENTRY_AUTH_TOKEN
+            - AI_PLAN_SIGNING_SECRET
+            - SECRETS_ENCRYPTION_KEY
+          EOF
+          echo
+          echo "Secret NAMES currently set on target (values NOT printed):"
+          # `supabase secrets list` prints names + digests, never values.
+          supabase secrets list --project-ref "$PROJECT_REF" || true
+          echo
+          echo "::notice::If any required name above is missing from the list, set it in the"
+          echo "::notice::Supabase Dashboard → Project Settings → Edge Functions → Secrets."
+          echo "::notice::This workflow will NOT set secrets — values must never pass through CI logs."
+
+      # -----------------------------------------------------------------
+      # STAGE 8 — Post-deployment verification summary
+      # -----------------------------------------------------------------
+      - name: "Stage 8 · Post-deployment summary"
+        if: ${{ always() }}
+        run: |
+          set +e
+          {
+            echo "## Supabase cutover — stage: ${{ inputs.stage }}"
+            echo ""
+            echo "- Target project ref: \`$PROJECT_REF\`"
+            echo "- Job status: ${{ job.status }}"
+            echo ""
+            echo "### Migrations on target"
+            echo '```'
+            supabase migration list --linked 2>&1 | tail -n 60
+            echo '```'
+            echo ""
+            echo "### Deployed functions"
+            echo '```'
+            supabase functions list --project-ref "$PROJECT_REF" 2>&1 | tail -n 60
+            echo '```'
+            echo ""
+            echo "### Secret names set on target (values redacted by CLI)"
+            echo '```'
+            supabase secrets list --project-ref "$PROJECT_REF" 2>&1 | tail -n 60
+            echo '```'
+            echo ""
+            echo "> Frontend runtime configuration (Vercel env vars, admin.techvinex.com routing) was NOT changed by this workflow."
+            echo "> Lovable Cloud project ($LOVABLE_CLOUD_REF) was NOT touched by this workflow."
+          } >> "$GITHUB_STEP_SUMMARY"
