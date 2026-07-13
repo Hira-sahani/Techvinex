@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { isAdminHost } from "@/components/HostnameRouter";
 
 const AuthRedirectHandler = () => {
   const { user, loading } = useAuth();
@@ -13,6 +14,9 @@ const AuthRedirectHandler = () => {
     // Only trigger on fresh login (user went from null to logged in)
     if (loading || !user || hasRedirected.current) return;
     if (prevUser.current === user.id) return;
+    // On the admin subdomain, the AdminLogin page handles post-login routing
+    // (into /admin/*). Skip the candidate-oriented redirect to /explore.
+    if (isAdminHost()) return;
 
     // Don't redirect if email is not confirmed yet (signup without auto-confirm)
     if (!user.email_confirmed_at) return;
