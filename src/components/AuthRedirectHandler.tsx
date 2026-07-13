@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { isAdminHost } from "@/components/HostnameRouter";
 
 const AuthRedirectHandler = () => {
   const { user, loading } = useAuth();
