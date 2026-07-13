@@ -12,6 +12,7 @@ import { AppErrorBoundary } from "@/components/AppErrorBoundary";
 import { ThemeProvider } from "next-themes";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AuthRedirectHandler from "@/components/AuthRedirectHandler";
+import HostnameRouter from "@/components/HostnameRouter";
 
 import SidebarNav from "@/components/SidebarNav";
 import BottomTabBar from "@/components/BottomTabBar";
