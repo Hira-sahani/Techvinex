@@ -164,6 +164,7 @@ const AppLayout = () => {
 
   return (
     <>
+      <HostnameRouter />
       <AuthRedirectHandler />
       <SessionExpiryBanner />
       {showTabs && <SidebarNav />}
