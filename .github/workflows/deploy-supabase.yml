@@ -125,16 +125,37 @@ jobs:
       - name: "Stage 3 · Readiness — migrations already applied on target"
         run: |
           set -euo pipefail
+          mkdir -p readiness-evidence
           echo "Applied migrations on $PROJECT_REF:"
-          supabase migration list --linked || true
+          # Capture to file AND stdout. Preserve exit code of `supabase migration list`.
+          set -o pipefail
+          supabase migration list --linked 2>&1 | tee readiness-evidence/target_migration_list.txt
 
       - name: "Stage 3 · Readiness — dry-run diff (no changes)"
         run: |
           set -euo pipefail
+          mkdir -p readiness-evidence
           echo "Schema diff between repository and target (read-only):"
           # `db diff --linked` compares live target vs local migrations.
           # It does NOT write, reset, or apply anything.
-          supabase db diff --linked --schema public --schema storage || true
+          # Capture full raw SQL to file while still surfacing it in the log.
+          # `set -o pipefail` ensures a `db diff` failure fails the step
+          # (preserving the original exit-code behavior of the command).
+          set -o pipefail
+          supabase db diff --linked --schema public --schema storage \
+            2>&1 | tee readiness-evidence/target_schema_diff.sql
+
+      - name: "Stage 3 · Readiness — upload evidence artifact"
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-readiness-evidence
+          path: |
+            readiness-evidence/target_schema_diff.sql
+            readiness-evidence/target_migration_list.txt
+          if-no-files-found: warn
+          retention-days: 14
+
 
       # -----------------------------------------------------------------
       # STAGE 4 — Apply only pending migrations (safe, non-destructive)
