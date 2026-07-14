@@ -148,17 +148,19 @@ jobs:
           fi
 
           # Parse the Remote column ONLY. `supabase migration list` prints a
-          # pipe-delimited table: `Local | Remote | Time (UTC)`. Extract the
-          # 2nd field, strip whitespace, drop the header/separator rows.
+          # pipe-delimited table: `Local | Remote | Time (UTC)`. The Remote
+          # column may contain backticks, spaces, and ANSI color escape codes.
+          # We strip those, then accept exactly 14-digit migration versions.
           # We do NOT grep the whole file — we look at the Remote column only.
-          REMOTE_VERSIONS=$(awk -F'|' '
+          REMOTE_VERSIONS=$(sed 's/\x1B\[[0-9;]*[a-zA-Z]//g' "$LIST_FILE" | awk -F'|' '
             NR == 1 { next }                       # header row
             /^[[:space:]]*-+[[:space:]]*\|/ { next } # separator row
             NF >= 2 {
-              gsub(/[[:space:]]/, "", $2)
-              if ($2 ~ /^[0-9]{14}$/) print $2
+              remote = $2
+              gsub(/[\x60[:space:]]/, "", remote)  # remove backticks and whitespace
+              if (remote ~ /^[0-9]{14}$/) print remote
             }
-          ' "$LIST_FILE" | sort -u)
+          ' | sort -u)
 
           echo "Parsed Remote column versions:"
           echo "$REMOTE_VERSIONS" | sed 's/^/  /'
