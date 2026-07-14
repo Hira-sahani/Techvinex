@@ -117,28 +117,99 @@ jobs:
         run: |
           set -euo pipefail
           echo "Repairing schema_migrations bookkeeping on $PROJECT_REF (metadata-only, no SQL executed)…"
-          supabase migration repair --status reverted --version 20260710195548 --linked
-          supabase migration repair --status applied  --version 20260710195546 --linked
-          supabase migration repair --status reverted --version 20260710195611 --linked
-          supabase migration repair --status applied  --version 20260710195606 --linked
-          echo "  ✓ Migration history repair completed."
+          # Positional VERSION argument — the previous `--version` flag was silently
+          # ignored by the current CLI, so the repair never actually ran against
+          # the target and the remote column kept the old versions.
+          supabase migration repair 20260710195548 --status reverted --linked
+          supabase migration repair 20260710195546 --status applied  --linked
+          supabase migration repair 20260710195611 --status reverted --linked
+          supabase migration repair 20260710195606 --status applied  --linked
+          echo "  ✓ Migration history repair commands completed."
 
       - name: "Stage 2R · Capture post-repair migration list"
         if: ${{ inputs.stage == 'repair-history' }}
         run: |
           set -euo pipefail
           mkdir -p repair-evidence
-          echo "Post-repair applied migrations on $PROJECT_REF:"
-          set -o pipefail
+          echo "Post-repair migration list on $PROJECT_REF:"
           supabase migration list --linked 2>&1 | tee repair-evidence/post_repair_migration_list.txt
 
-      - name: "Stage 2R · Upload repair evidence artifact"
+      - name: "Stage 2R · Verify Remote column reflects repair"
         if: ${{ inputs.stage == 'repair-history' }}
+        run: |
+          set -euo pipefail
+          mkdir -p repair-evidence
+          LIST_FILE=repair-evidence/post_repair_migration_list.txt
+          VERIFY_FILE=repair-evidence/post_repair_verification.txt
+
+          if [ ! -s "$LIST_FILE" ]; then
+            echo "::error::Post-repair migration list file is missing or empty."
+            exit 1
+          fi
+
+          # Parse the Remote column ONLY. `supabase migration list` prints a
+          # pipe-delimited table: `Local | Remote | Time (UTC)`. Extract the
+          # 2nd field, strip whitespace, drop the header/separator rows.
+          # We do NOT grep the whole file — we look at the Remote column only.
+          REMOTE_VERSIONS=$(awk -F'|' '
+            NR == 1 { next }                       # header row
+            /^[[:space:]]*-+[[:space:]]*\|/ { next } # separator row
+            NF >= 2 {
+              gsub(/[[:space:]]/, "", $2)
+              if ($2 ~ /^[0-9]{14}$/) print $2
+            }
+          ' "$LIST_FILE" | sort -u)
+
+          echo "Parsed Remote column versions:"
+          echo "$REMOTE_VERSIONS" | sed 's/^/  /'
+
+          {
+            echo "Parsed Remote column versions:"
+            echo "$REMOTE_VERSIONS" | sed 's/^/  /'
+          } > "$VERIFY_FILE"
+
+          must_have=(20260710195546 20260710195606)
+          must_not_have=(20260710195548 20260710195611)
+          fail=0
+
+          for v in "${must_have[@]}"; do
+            if echo "$REMOTE_VERSIONS" | grep -qx "$v"; then
+              echo "  ✓ Remote contains $v"
+              echo "PASS: Remote contains $v" >> "$VERIFY_FILE"
+            else
+              echo "::error::Remote column is missing required version $v"
+              echo "FAIL: Remote missing $v" >> "$VERIFY_FILE"
+              fail=1
+            fi
+          done
+
+          for v in "${must_not_have[@]}"; do
+            if echo "$REMOTE_VERSIONS" | grep -qx "$v"; then
+              echo "::error::Remote column still contains forbidden version $v"
+              echo "FAIL: Remote still contains $v" >> "$VERIFY_FILE"
+              fail=1
+            else
+              echo "  ✓ Remote does not contain $v"
+              echo "PASS: Remote does not contain $v" >> "$VERIFY_FILE"
+            fi
+          done
+
+          if [ "$fail" -ne 0 ]; then
+            echo "RESULT: FAIL" >> "$VERIFY_FILE"
+            echo "::error::Migration history repair did not take effect on target."
+            exit 1
+          fi
+          echo "RESULT: PASS" >> "$VERIFY_FILE"
+          echo "  ✓ Remote column verification passed."
+
+      - name: "Stage 2R · Upload repair evidence artifact"
+        if: ${{ always() && inputs.stage == 'repair-history' }}
         uses: actions/upload-artifact@v4
         with:
           name: migration-repair-evidence
           path: |
             repair-evidence/post_repair_migration_list.txt
+            repair-evidence/post_repair_verification.txt
           if-no-files-found: warn
           retention-days: 14
 
