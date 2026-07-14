@@ -110,6 +110,39 @@ jobs:
           echo "  ✓ Linked to $PROJECT_REF"
 
       # -----------------------------------------------------------------
+      # STAGE 2R — Repair migration history (metadata-only)
+      # -----------------------------------------------------------------
+      - name: "Stage 2R · Repair migration history"
+        if: ${{ inputs.stage == 'repair-history' }}
+        run: |
+          set -euo pipefail
+          echo "Repairing schema_migrations bookkeeping on $PROJECT_REF (metadata-only, no SQL executed)…"
+          supabase migration repair --status reverted --version 20260710195548 --linked
+          supabase migration repair --status applied  --version 20260710195546 --linked
+          supabase migration repair --status reverted --version 20260710195611 --linked
+          supabase migration repair --status applied  --version 20260710195606 --linked
+          echo "  ✓ Migration history repair completed."
+
+      - name: "Stage 2R · Capture post-repair migration list"
+        if: ${{ inputs.stage == 'repair-history' }}
+        run: |
+          set -euo pipefail
+          mkdir -p repair-evidence
+          echo "Post-repair applied migrations on $PROJECT_REF:"
+          set -o pipefail
+          supabase migration list --linked 2>&1 | tee repair-evidence/post_repair_migration_list.txt
+
+      - name: "Stage 2R · Upload repair evidence artifact"
+        if: ${{ inputs.stage == 'repair-history' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-repair-evidence
+          path: |
+            repair-evidence/post_repair_migration_list.txt
+          if-no-files-found: warn
+          retention-days: 14
+
+      # -----------------------------------------------------------------
       # STAGE 3 — Schema readiness (read-only, non-destructive)
       # -----------------------------------------------------------------
       - name: "Stage 3 · Readiness — list local migrations"
