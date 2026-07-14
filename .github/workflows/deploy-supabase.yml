@@ -24,6 +24,7 @@ on:
         options:
           - readiness-only        # stages 1-3: validate secrets, link, report schema drift. No writes.
           - repair-history        # stages 1-2R: validate secrets, link, repair schema_migrations bookkeeping only (no SQL).
+          - verify-only           # stages 1-2 + 2V: strict READ-ONLY post-deployment verification. No writes.
           - migrate-only          # stages 1-4: readiness + apply pending migrations only.
           - functions-only        # stages 1-3 + 5-6: readiness + deploy & verify all edge functions.
           - full-cutover          # stages 1-8: readiness + migrate + deploy + verify + secrets audit.
@@ -108,6 +109,317 @@ jobs:
           # config.toml written by Lovable does NOT redirect this job.
           supabase link --project-ref "$PROJECT_REF"
           echo "  ✓ Linked to $PROJECT_REF"
+
+      # -----------------------------------------------------------------
+      # STAGE 2V — verify-only: strict READ-ONLY post-deployment verification
+      #   * Compares local vs remote migration versions (sets must match).
+      #   * Compares local supabase/functions/* vs deployed edge functions.
+      #   * Runs safe HTTP smoke tests on public/read-only endpoints only.
+      #   * Runs `supabase db diff` for schema drift review (does NOT apply).
+      #   * Never writes: no db push, no migration repair, no function deploy,
+      #     no secret changes, no destructive HTTP calls.
+      # -----------------------------------------------------------------
+      - name: "Stage 2V · Prepare verification evidence dir"
+        if: ${{ inputs.stage == 'verify-only' }}
+        run: |
+          set -euo pipefail
+          mkdir -p verification-evidence
+          : > verification-evidence/migration_verification.txt
+          : > verification-evidence/function_verification.txt
+          : > verification-evidence/smoke_test_results.txt
+          : > verification-evidence/schema_diff.sql
+          : > verification-evidence/final_verification_summary.txt
+
+      - name: "Stage 2V · Migration set verification (read-only)"
+        if: ${{ inputs.stage == 'verify-only' }}
+        id: verify_migrations
+        run: |
+          set -euo pipefail
+          OUT=verification-evidence/migration_verification.txt
+          RAW=verification-evidence/migration_list_raw.txt
+
+          # Capture the migration list. Preserve exit code of the CLI itself.
+          set -o pipefail
+          if ! supabase migration list --linked 2>&1 | tee "$RAW"; then
+            echo "FAIL: supabase migration list --linked errored" | tee -a "$OUT"
+            echo "migrations_result=FAIL" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          # Parse Local (col 1) and Remote (col 2). Strip ANSI, backticks, whitespace.
+          # Accept only 14-digit versions.
+          LOCAL_VERSIONS=$(sed 's/\x1B\[[0-9;]*[a-zA-Z]//g' "$RAW" | awk -F'|' '
+            NR == 1 { next }
+            /^[[:space:]]*-+[[:space:]]*\|/ { next }
+            NF >= 1 {
+              v = $1
+              gsub(/[\x60[:space:]]/, "", v)
+              if (v ~ /^[0-9]{14}$/) print v
+            }
+          ' | sort -u)
+
+          REMOTE_VERSIONS=$(sed 's/\x1B\[[0-9;]*[a-zA-Z]//g' "$RAW" | awk -F'|' '
+            NR == 1 { next }
+            /^[[:space:]]*-+[[:space:]]*\|/ { next }
+            NF >= 2 {
+              v = $2
+              gsub(/[\x60[:space:]]/, "", v)
+              if (v ~ /^[0-9]{14}$/) print v
+            }
+          ' | sort -u)
+
+          {
+            echo "Local versions:"
+            echo "$LOCAL_VERSIONS" | sed 's/^/  /'
+            echo "Remote versions:"
+            echo "$REMOTE_VERSIONS" | sed 's/^/  /'
+          } >> "$OUT"
+
+          MISSING_REMOTE=$(comm -23 <(printf '%s\n' "$LOCAL_VERSIONS") <(printf '%s\n' "$REMOTE_VERSIONS") || true)
+          MISSING_LOCAL=$(comm -13  <(printf '%s\n' "$LOCAL_VERSIONS") <(printf '%s\n' "$REMOTE_VERSIONS") || true)
+
+          fail=0
+          if [ -n "$MISSING_REMOTE" ]; then
+            echo "FAIL: versions missing on remote:" | tee -a "$OUT"
+            echo "$MISSING_REMOTE" | sed 's/^/  /' | tee -a "$OUT"
+            fail=1
+          fi
+          if [ -n "$MISSING_LOCAL" ]; then
+            echo "FAIL: versions missing locally:" | tee -a "$OUT"
+            echo "$MISSING_LOCAL" | sed 's/^/  /' | tee -a "$OUT"
+            fail=1
+          fi
+
+          if [ "$fail" -eq 0 ]; then
+            echo "PASS: Local and Remote migration sets match." | tee -a "$OUT"
+            echo "migrations_result=PASS" >> "$GITHUB_OUTPUT"
+          else
+            echo "RESULT: FAIL" | tee -a "$OUT"
+            echo "migrations_result=FAIL" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+      - name: "Stage 2V · Edge Function deployment verification (read-only)"
+        if: ${{ inputs.stage == 'verify-only' }}
+        id: verify_functions
+        run: |
+          set -euo pipefail
+          OUT=verification-evidence/function_verification.txt
+          RAW=verification-evidence/function_list_raw.txt
+
+          # Expected: local supabase/functions/* excluding names starting with underscore.
+          EXPECTED=$(find supabase/functions -mindepth 1 -maxdepth 1 -type d \
+                       -not -name '_*' -printf '%f\n' | sort -u)
+
+          set -o pipefail
+          if ! supabase functions list --project-ref "$PROJECT_REF" 2>&1 | tee "$RAW" >/dev/null; then
+            echo "FAIL: supabase functions list errored" | tee -a "$OUT"
+            echo "functions_result=FAIL" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          # Parse function NAME column. Strip ANSI, backticks, whitespace.
+          # `supabase functions list` prints a pipe-delimited table; NAME is typically column 2 (ID | NAME | ...),
+          # but layouts vary — accept any pipe-delimited cell that looks like a slug and is not "NAME"/"ID".
+          DEPLOYED=$(sed 's/\x1B\[[0-9;]*[a-zA-Z]//g' "$RAW" | awk -F'|' '
+            /^[[:space:]]*-+[[:space:]]*\|/ { next }
+            {
+              for (i = 1; i <= NF; i++) {
+                v = $i
+                gsub(/[\x60[:space:]]/, "", v)
+                if (v ~ /^[a-z][a-z0-9-]{1,}$/ && v != "name" && v != "id" && v != "slug" && v != "verify_jwt" && v != "true" && v != "false" && v != "status" && v != "active") {
+                  print v
+                }
+              }
+            }
+          ' | sort -u)
+
+          # Intersect DEPLOYED with EXPECTED ∪ (anything that looks like a real function name).
+          # We use EXPECTED as ground truth for the "missing" check; DEPLOYED set is compared for extras.
+          MISSING=$(comm -23 <(printf '%s\n' "$EXPECTED") <(printf '%s\n' "$DEPLOYED") || true)
+          EXTRA=$(comm -13  <(printf '%s\n' "$EXPECTED") <(printf '%s\n' "$DEPLOYED") || true)
+
+          {
+            echo "Expected (local) functions:"
+            echo "$EXPECTED" | sed 's/^/  /'
+            echo "Deployed (remote) functions (parsed):"
+            echo "$DEPLOYED" | sed 's/^/  /'
+          } >> "$OUT"
+
+          fail=0
+          if [ -n "$MISSING" ]; then
+            echo "FAIL: expected functions missing on remote:" | tee -a "$OUT"
+            echo "$MISSING" | sed 's/^/  /' | tee -a "$OUT"
+            fail=1
+          fi
+          if [ -n "$EXTRA" ]; then
+            echo "WARNING: extra remote functions not present locally (NOT deleted):" | tee -a "$OUT"
+            echo "$EXTRA" | sed 's/^/  /' | tee -a "$OUT"
+          fi
+
+          if [ "$fail" -eq 0 ]; then
+            echo "PASS: All expected functions are deployed." | tee -a "$OUT"
+            echo "functions_result=PASS" >> "$GITHUB_OUTPUT"
+          else
+            echo "RESULT: FAIL" | tee -a "$OUT"
+            echo "functions_result=FAIL" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+      - name: "Stage 2V · Safe HTTP smoke tests (read-only endpoints only)"
+        if: ${{ inputs.stage == 'verify-only' }}
+        id: smoke_tests
+        run: |
+          set -euo pipefail
+          OUT=verification-evidence/smoke_test_results.txt
+          BASE="https://${PROJECT_REF}.functions.supabase.co"
+
+          # Curated allow-list of endpoints that are safe to call (GET only, no writes,
+          # no AI jobs, no email, no payments, no uploads, no admin, no unknown bodies).
+          # Anything else in supabase/functions/ is verified as DEPLOYED-only and SKIPPED.
+          SAFE_GET=(
+            "public-sitemap"
+            "public-sentry-config"
+            "public-explore-jobs"
+          )
+
+          # Endpoints that must NEVER be invoked by verify-only. Presence is checked only.
+          SKIP_REASON_admin_cleanup="admin action"
+          SKIP_REASON_admin_explore_job_notes="admin action"
+          SKIP_REASON_admin_mark_scan_reviewed="admin action / DB write"
+          SKIP_REASON_admin_secrets="admin action / secret access"
+          SKIP_REASON_admin_view_payout="admin action"
+          SKIP_REASON_ai_approval_decide="AI job / DB write"
+          SKIP_REASON_ai_interview="AI job / paid API"
+          SKIP_REASON_ai_job_worker="AI job / DB write"
+          SKIP_REASON_ai_safe_action="AI job / DB write"
+          SKIP_REASON_benchmark_task_secret="auth required / secret access"
+          SKIP_REASON_csp_report="write-only report ingestion"
+          SKIP_REASON_elevenlabs_tts="paid external API"
+          SKIP_REASON_enqueue_ai_job="AI job / DB write"
+          SKIP_REASON_get_ai_job_status="auth required / unknown body"
+          SKIP_REASON_openai_benchmark="paid external API / AI job"
+          SKIP_REASON_scan_upload="file upload / DB write"
+          SKIP_REASON_verify_admin="auth required"
+          SKIP_REASON_verify_password="auth required / credential handling"
+          SKIP_REASON_webhook_receiver="webhook ingest / DB write"
+
+          fail=0
+          # Iterate deployed-local intersection so we only smoke local-known functions.
+          EXPECTED=$(find supabase/functions -mindepth 1 -maxdepth 1 -type d \
+                       -not -name '_*' -printf '%f\n' | sort -u)
+
+          echo "Smoke test base: $BASE" >> "$OUT"
+
+          for fn in $EXPECTED; do
+            safe=0
+            for s in "${SAFE_GET[@]}"; do
+              if [ "$fn" = "$s" ]; then safe=1; break; fi
+            done
+
+            if [ "$safe" -eq 1 ]; then
+              # HEAD/GET without Authorization. Never print JWTs/keys/headers/bodies.
+              code=$(curl -sS -o /tmp/smoke_body.$$ -w '%{http_code}' \
+                        -H 'Accept: */*' \
+                        --max-time 15 \
+                        "$BASE/$fn" || echo "000")
+              ct=$(file --mime-type -b /tmp/smoke_body.$$ 2>/dev/null || echo "unknown")
+              rm -f /tmp/smoke_body.$$
+              printf '  %-30s CALLED  HTTP %s  (%s)\n' "$fn" "$code" "$ct" | tee -a "$OUT"
+              case "$code" in
+                2*|3*|401|403|404|405) : ;;
+                5*|000)
+                  echo "    FAIL: unexpected response for $fn" | tee -a "$OUT"
+                  fail=1
+                  ;;
+              esac
+            else
+              # Not in allow-list → SKIPPED with reason. Deployment existence was already verified in Stage 2V functions check.
+              key="SKIP_REASON_$(echo "$fn" | tr '-' '_')"
+              reason="${!key:-not in read-only allow-list}"
+              printf '  %-30s SKIPPED  reason: %s\n' "$fn" "$reason" | tee -a "$OUT"
+            fi
+          done
+
+          if [ "$fail" -eq 0 ]; then
+            echo "PASS: Safe smoke tests completed without unexpected 5xx." | tee -a "$OUT"
+            echo "smoke_result=PASS" >> "$GITHUB_OUTPUT"
+          else
+            echo "RESULT: FAIL" | tee -a "$OUT"
+            echo "smoke_result=FAIL" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+      - name: "Stage 2V · Schema drift check (read-only, non-destructive)"
+        if: ${{ inputs.stage == 'verify-only' }}
+        id: schema_diff
+        run: |
+          set -euo pipefail
+          OUT=verification-evidence/schema_diff.sql
+          set -o pipefail
+          if ! supabase db diff --linked --schema public --schema storage 2>&1 | tee "$OUT"; then
+            echo "-- COMMAND_FAILED" >> "$OUT"
+            echo "diff_result=COMMAND_FAILED" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+
+          # Non-empty diff = review required; empty diff = clean.
+          if grep -qE '[^[:space:]]' "$OUT"; then
+            echo "diff_result=REVIEW_REQUIRED" >> "$GITHUB_OUTPUT"
+          else
+            echo "diff_result=EMPTY" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: "Stage 2V · Final verification summary"
+        if: ${{ always() && inputs.stage == 'verify-only' }}
+        run: |
+          set -euo pipefail
+          SUMMARY=verification-evidence/final_verification_summary.txt
+          MIG='${{ steps.verify_migrations.outputs.migrations_result }}'
+          FUN='${{ steps.verify_functions.outputs.functions_result }}'
+          SMK='${{ steps.smoke_tests.outputs.smoke_result }}'
+          DIF='${{ steps.schema_diff.outputs.diff_result }}'
+
+          # Steps that never ran (earlier failure) surface as empty → mark FAIL.
+          MIG="${MIG:-FAIL}"
+          FUN="${FUN:-FAIL}"
+          SMK="${SMK:-FAIL}"
+          DIF="${DIF:-COMMAND_FAILED}"
+
+          overall="PASS"
+          if [ "$MIG" != "PASS" ] || [ "$FUN" != "PASS" ] || [ "$SMK" != "PASS" ] || [ "$DIF" = "COMMAND_FAILED" ]; then
+            overall="FAIL"
+          elif [ "$DIF" = "REVIEW_REQUIRED" ]; then
+            overall="REVIEW_REQUIRED"
+          fi
+
+          {
+            echo "MIGRATIONS: $MIG"
+            echo "FUNCTION_DEPLOYMENT: $FUN"
+            echo "SMOKE_TESTS: $SMK"
+            echo "SCHEMA_DIFF: $DIF"
+            echo "OVERALL_RESULT: $overall"
+          } | tee "$SUMMARY"
+
+          # verify-only exits non-zero on real failure; REVIEW_REQUIRED is a success
+          # exit with the summary clearly flagging manual review.
+          if [ "$overall" = "FAIL" ]; then
+            exit 1
+          fi
+
+      - name: "Stage 2V · Upload verification evidence artifact"
+        if: ${{ always() && inputs.stage == 'verify-only' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: supabase-post-deployment-verification
+          path: |
+            verification-evidence/migration_verification.txt
+            verification-evidence/function_verification.txt
+            verification-evidence/smoke_test_results.txt
+            verification-evidence/schema_diff.sql
+            verification-evidence/final_verification_summary.txt
+          if-no-files-found: warn
+          retention-days: 14
 
       # -----------------------------------------------------------------
       # STAGE 2R — Repair migration history (metadata-only)
@@ -347,7 +659,7 @@ jobs:
       # STAGE 7 — Report required target Edge Function secrets (names only)
       # -----------------------------------------------------------------
       - name: "Stage 7 · Report required edge-function secrets (names only)"
-        if: ${{ inputs.stage != 'readiness-only' }}
+        if: ${{ inputs.stage != 'readiness-only' && inputs.stage != 'verify-only' && inputs.stage != 'repair-history' }}
         run: |
           set -euo pipefail
           echo "Required secret NAMES for edge functions on $PROJECT_REF:"
