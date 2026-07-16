@@ -26,9 +26,17 @@ const resolveRedirectTo = (): string => {
 
 export const signInWithGooglePopup = async (
   extraParams?: Record<string, string>,
+  nextPath?: string,
 ): Promise<OAuthResult> => {
   try {
-    const redirectTo = resolveRedirectTo();
+    const base = resolveRedirectTo();
+    // If a `next` (same-origin relative path) is provided (OAuth consent flow),
+    // send Google back to /auth/callback?next=... so the app finishes the
+    // consent redirect after the session lands. Otherwise return to the app
+    // root as before.
+    const redirectTo = nextPath && nextPath.startsWith("/") && !nextPath.startsWith("//")
+      ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`
+      : base;
     logAuthDiag("info", "google-oauth", "Starting Supabase Google OAuth", {
       origin: window.location.origin,
       redirectTo,
@@ -41,6 +49,7 @@ export const signInWithGooglePopup = async (
         queryParams: extraParams,
       },
     });
+
 
     if (error) {
       logAuthDiag("error", "google-oauth", error.message);

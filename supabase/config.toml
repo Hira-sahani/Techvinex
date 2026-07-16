@@ -1,6 +1,10 @@
 project_id = "xfgyzcvrvgsntjenxecp"
 
+[functions.mcp]
+verify_jwt = false
+
 [functions.public-explore-jobs]
+
 verify_jwt = false
 
 [functions.ai-job-worker]
