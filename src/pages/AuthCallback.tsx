@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -11,7 +12,11 @@ import { toast } from "sonner";
  */
 const AuthCallback = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const rawNext = searchParams.get("next");
+  const nextPath = rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : null;
   const [message, setMessage] = useState("Confirming your email…");
+
 
   useEffect(() => {
     let cancelled = false;
@@ -49,11 +54,19 @@ const AuthCallback = () => {
 
     const route = async (user: { id: string; created_at?: string }) => {
       if (cancelled) return;
+      if (nextPath) {
+        // OAuth consent flow — return the user to the consent URL that
+        // triggered sign-in. Use a hard redirect so the consent page picks up
+        // the fresh session synchronously.
+        window.location.href = nextPath;
+        return;
+      }
       const createdAt = user.created_at ? new Date(user.created_at).getTime() : 0;
       const isNewUser = Date.now() - createdAt < 5 * 60 * 1000; // within 5 min of creation
       toast.success("Email confirmed. Welcome to Techvinex!");
       navigate(isNewUser ? "/onboarding" : "/explore", { replace: true });
     };
+
 
     void finish();
     return () => { cancelled = true; };
