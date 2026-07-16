@@ -127,7 +127,8 @@ const Login = () => {
   const handleGoogle = async () => {
     setLoading(true);
     try {
-      const result = await signInWithGooglePopup({ prompt: "select_account" });
+      const result = await signInWithGooglePopup({ prompt: "select_account" }, nextPath ?? undefined);
+
       if (result.error) {
         toast.error("Google sign-in failed: " + (result.error.message || String(result.error)));
       }
