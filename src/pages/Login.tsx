@@ -1,6 +1,6 @@
 import BrandLogo from "@/components/BrandLogo";
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,8 +11,18 @@ import { ArrowLeft, Eye, EyeOff, CheckCircle } from "lucide-react";
 
 const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
+// Only allow same-origin relative paths (e.g. "/.lovable/oauth/consent?...").
+const sanitizeNext = (raw: string | null): string | null => {
+  if (!raw) return null;
+  if (!raw.startsWith("/") || raw.startsWith("//")) return null;
+  return raw;
+};
+
 const Login = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const nextPath = sanitizeNext(searchParams.get("next"));
+
   const [authMode, setAuthMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -50,8 +60,31 @@ const Login = () => {
       return;
     }
     toast.success("Logged in successfully!");
-    navigate("/");
+    if (nextPath) {
+      window.location.href = nextPath;
+    } else {
+      navigate("/");
+    }
   };
+
+  // If a session appears (e.g. Google popup / redirect completed) and we have
+  // a `next` (OAuth consent flow), send the user straight there.
+  useEffect(() => {
+    if (!nextPath) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!cancelled && data.session) window.location.href = nextPath;
+    })();
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      if (session && nextPath) window.location.href = nextPath;
+    });
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
+  }, [nextPath]);
+
 
   const handleSignup = async () => {
     if (!validate("signup")) return;
@@ -59,13 +92,17 @@ const Login = () => {
     // Passwordless signup via email confirmation link.
     // The Magic Link email template in Supabase must use {{ .ConfirmationURL }}
     // (not {{ .Token }}) so users receive a clickable link rather than a code.
+    const emailRedirect = nextPath
+      ? `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}`
+      : `${window.location.origin}/auth/callback`;
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
         shouldCreateUser: true,
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: emailRedirect,
       },
     });
+
     setLoading(false);
     if (error) {
       if (/registered|exists/i.test(error.message)) toast.error("This email is already registered. Try logging in.");
