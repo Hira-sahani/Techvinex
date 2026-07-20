@@ -544,6 +544,7 @@ jobs:
           fi
 
       - name: "Stage 3 · Readiness — migrations already applied on target"
+        if: ${{ inputs.stage != 'mcp-only' && inputs.stage != 'repair-history' && inputs.stage != 'verify-only' }}
         run: |
           set -euo pipefail
           mkdir -p readiness-evidence
