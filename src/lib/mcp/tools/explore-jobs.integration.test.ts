@@ -3,19 +3,23 @@ import type { ToolHandlerResult } from "@lovable.dev/mcp-js";
 import listExploreJobsTool from "./list-explore-jobs";
 import searchExploreJobsTool from "./search-explore-jobs";
 
-// Mock the Supabase client so every tool sees an empty explore_jobs result set.
-const mockChain = {
-  from: vi.fn(() => mockChain),
-  select: vi.fn().mockReturnThis(),
-  eq: vi.fn().mockReturnThis(),
-  or: vi.fn().mockReturnThis(),
-  ilike: vi.fn().mockReturnThis(),
-  contains: vi.fn().mockReturnThis(),
-  order: vi.fn().mockReturnThis(),
-  limit: vi.fn().mockReturnThis(),
-  range: vi.fn().mockReturnThis(),
-  maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-};
+const { mockChain } = vi.hoisted(() => {
+  const self: Record<string, unknown> = {};
+  const chain = {
+    from: vi.fn(() => chain),
+    select: vi.fn().mockReturnThis(),
+    eq: vi.fn().mockReturnThis(),
+    or: vi.fn().mockReturnThis(),
+    ilike: vi.fn().mockReturnThis(),
+    contains: vi.fn().mockReturnThis(),
+    order: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockReturnThis(),
+    range: vi.fn().mockReturnThis(),
+    maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+  };
+  Object.assign(self, chain);
+  return { mockChain: self as typeof chain };
+});
 
 vi.mock("@supabase/supabase-js", () => ({
   createClient: vi.fn(() => ({
