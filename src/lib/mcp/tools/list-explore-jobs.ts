@@ -31,8 +31,19 @@ export default defineTool({
     const { data, error } = await query;
     if (error) return errorResult(`Query failed (code=${error.code ?? "?"}): ${error.message}`);
     return {
-      content: [{ type: "text", text: JSON.stringify(data ?? []) }],
-      structuredContent: { jobs: data ?? [] },
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(data ?? []),
+        },
+      ],
+      structuredContent: {
+        jobs: data ?? [],
+        message:
+          (data ?? []).length === 0
+            ? "No jobs are currently available for this role. Please check back later or try another search."
+            : undefined,
+      },
     };
   },
 });

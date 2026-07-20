@@ -187,8 +187,16 @@ var list_explore_jobs_default = defineTool3({
     const { data, error } = await query;
     if (error) return errorResult(`Query failed (code=${error.code ?? "?"}): ${error.message}`);
     return {
-      content: [{ type: "text", text: JSON.stringify(data ?? []) }],
-      structuredContent: { jobs: data ?? [] }
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(data ?? [])
+        }
+      ],
+      structuredContent: {
+        jobs: data ?? [],
+        message: (data ?? []).length === 0 ? "No jobs are currently available for this role. Please check back later or try another search." : void 0
+      }
     };
   }
 });
@@ -269,8 +277,18 @@ var search_explore_jobs_default = defineTool5({
     const { data, error } = await q;
     if (error) return errorResult(`Query failed (code=${error.code ?? "?"}): ${error.message}`);
     return {
-      content: [{ type: "text", text: JSON.stringify(data ?? []) }],
-      structuredContent: { jobs: data ?? [], offset: off, limit: lim }
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(data ?? [])
+        }
+      ],
+      structuredContent: {
+        jobs: data ?? [],
+        offset: off,
+        limit: lim,
+        message: (data ?? []).length === 0 ? "No jobs are currently available for this role. Please check back later or try another search." : void 0
+      }
     };
   }
 });
