@@ -771,13 +771,49 @@ jobs:
           echo "  First 5 rewritten imports:"
           grep -nE 'https://esm\.sh/' "$FILE" | head -5 | sed 's/^/    /'
 
+      - name: "Stage M · Pre-deploy target identity evidence"
+        if: ${{ inputs.stage == 'mcp-only' }}
+        run: |
+          set -euo pipefail
+          echo "=== TARGET IDENTITY (pre-deploy) ==="
+          echo "PROJECT_REF env                  : $PROJECT_REF"
+          echo "confirm_ref input                : ${{ inputs.confirm_ref }}"
+          echo "Expected target ref              : yparkrguxoektihjpynr"
+          echo "Deploy target URL (functions/v1) : https://${PROJECT_REF}.supabase.co/functions/v1/mcp"
+          echo "Expected OAuth issuer            : https://${PROJECT_REF}.supabase.co/auth/v1"
+          echo
+          echo "=== Supabase CLI link status ==="
+          # `supabase projects list` shows a LINKED marker next to the currently linked project.
+          supabase projects list || true
+          echo
+          echo "=== Generated function issuer line (from bundled source) ==="
+          grep -nE 'projectRef|supabase\.co/auth/v1' supabase/functions/mcp/index.ts | head -10 || true
+          echo
+          echo "=== Generated function content hash (pre-deploy) ==="
+          sha256sum supabase/functions/mcp/index.ts
+          wc -c supabase/functions/mcp/index.ts
+
       - name: "Stage M · Deploy ONLY the mcp function"
         if: ${{ inputs.stage == 'mcp-only' }}
         run: |
           set -euo pipefail
-          echo "Deploying ONLY 'mcp' to $PROJECT_REF (no other functions touched)…"
+          echo "Deploying ONLY 'mcp' to project ref: $PROJECT_REF"
+          echo "  (deploy URL derived by CLI: https://${PROJECT_REF}.supabase.co/functions/v1/mcp)"
           supabase functions deploy mcp --project-ref "$PROJECT_REF"
-          echo "  ✓ mcp deployed."
+          echo "  ✓ mcp deploy command completed for $PROJECT_REF."
+
+      - name: "Stage M · Post-deploy: list functions on target project"
+        if: ${{ inputs.stage == 'mcp-only' }}
+        run: |
+          set -euo pipefail
+          echo "=== supabase functions list --project-ref $PROJECT_REF ==="
+          supabase functions list --project-ref "$PROJECT_REF" | tee /tmp/fnlist.txt
+          echo
+          echo "=== mcp row(s) only ==="
+          grep -iE '(^|\|)\s*mcp\s*(\||$)' /tmp/fnlist.txt || echo "::error::No 'mcp' row found in functions list for $PROJECT_REF"
+          echo
+          echo "=== Local source hash of what was just deployed ==="
+          sha256sum supabase/functions/mcp/index.ts
 
       - name: "Stage M · Verify deployed MCP endpoint advertises target issuer"
         if: ${{ inputs.stage == 'mcp-only' }}
@@ -786,13 +822,32 @@ jobs:
           BASE="https://${PROJECT_REF}.supabase.co/functions/v1/mcp"
           EXPECTED_ISSUER="https://${PROJECT_REF}.supabase.co/auth/v1"
 
+          echo "=== VERIFICATION TARGET (must equal deploy target) ==="
+          echo "  PROJECT_REF          : $PROJECT_REF"
+          echo "  Verification BASE URL: $BASE"
+          echo "  Expected issuer      : $EXPECTED_ISSUER"
+          if [ "$PROJECT_REF" != "yparkrguxoektihjpynr" ]; then
+            echo "::error::PROJECT_REF ($PROJECT_REF) is NOT the expected target yparkrguxoektihjpynr."
+            exit 1
+          fi
+
+          echo
+          echo "=== DNS resolution for ${PROJECT_REF}.supabase.co ==="
+          getent hosts "${PROJECT_REF}.supabase.co" || true
+
+          echo
           echo "Probing $BASE (expect 401 with WWW-Authenticate)…"
-          headers=$(curl -sS -D - -o /dev/null -X POST \
+          headers=$(curl -sS -D - -o /tmp/mcp_body.$$ -X POST \
             -H 'Content-Type: application/json' \
             -H 'Accept: application/json, text/event-stream' \
             --data '{"jsonrpc":"2.0","id":1,"method":"initialize"}' \
             --max-time 15 "$BASE" || true)
+          echo "--- response headers ---"
           echo "$headers" | tr -d '\r' | sed 's/^/  /'
+          echo "--- response body (first 40 lines) ---"
+          head -40 /tmp/mcp_body.$$ 2>/dev/null | sed 's/^/  /' || true
+          rm -f /tmp/mcp_body.$$
+
           if ! echo "$headers" | grep -qi '^HTTP/.* 401'; then
             echo "::error::Expected HTTP 401 challenge from $BASE."
             exit 1
@@ -815,7 +870,8 @@ jobs:
             echo "::error::Protected-resource metadata still references the Lovable Cloud project ref."
             exit 1
           fi
-          echo "  ✓ MCP endpoint reports issuer $EXPECTED_ISSUER."
+          echo "  ✓ MCP endpoint on $PROJECT_REF reports issuer $EXPECTED_ISSUER."
+
 
       # -----------------------------------------------------------------
       # STAGE 7 — Report required target Edge Function secrets (names only)
