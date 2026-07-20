@@ -689,6 +689,22 @@ jobs:
           # error. Use `bun install --frozen-lockfile` to match CI.
           bun install --frozen-lockfile
 
+      - name: "Stage M · Pin target env for Vite build"
+        if: ${{ inputs.stage == 'mcp-only' }}
+        run: |
+          set -euo pipefail
+          # The committed .env file still points at the Lovable Cloud project.
+          # Vite's env-file precedence (production mode) is:
+          #   .env.production.local > .env.production > .env.local > .env
+          # Without this override, the mcpPlugin would inline the old ref
+          # from the tracked .env file, ignoring the shell env vars below.
+          cat > .env.production.local <<EOF
+          VITE_SUPABASE_PROJECT_ID=${{ secrets.SUPABASE_PROJECT_REF_PROD }}
+          VITE_SUPABASE_URL=https://${{ secrets.SUPABASE_PROJECT_REF_PROD }}.supabase.co
+          VITE_SUPABASE_PUBLISHABLE_KEY=ci-placeholder-not-used-at-runtime
+          EOF
+          echo "  .env.production.local written for target build."
+
       - name: "Stage M · Rebuild MCP function with target project ref"
         if: ${{ inputs.stage == 'mcp-only' }}
         env:
