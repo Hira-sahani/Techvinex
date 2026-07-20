@@ -202,8 +202,8 @@ function walk(dir) {
 const files = walk(fnDir);
 let totalHits = 0;
 for (const f of files) {
-  const moduleUrl = localToUrl.get(f) || ("file://" + f);
-  totalHits += rewriteFile(f, moduleUrl);
+  const urls = localToUrls.get(f) || new Set(["file://" + f]);
+  totalHits += rewriteFile(f, urls);
 }
 console.error(`[vendor] rewrote ${totalHits} URL occurrences across ${files.length} files`);
 
