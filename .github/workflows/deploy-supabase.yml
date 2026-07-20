@@ -737,24 +737,39 @@ jobs:
           # source is ~6KB but the resolved bundle for @lovable.dev/mcp-js +
           # @supabase/supabase-js + zod exceeds Supabase's ~10MB upload cap,
           # returning 413 Request Entity Too Large.
-          # Fix: rewrite `npm:PKG@VER[/path]` -> `https://esm.sh/PKG@VER[/path]`.
-          # Deno resolves esm.sh URLs at runtime, so the uploaded eszip only
-          # contains the tiny handler source. No functional change: identical
-          # packages, identical versions, identical OAuth issuer.
+          # Fix: rewrite every `npm:PKG@VER[/subpath]` string literal to
+          # `https://esm.sh/PKG@VER[/subpath]`. Deno resolves esm.sh URLs at
+          # runtime, so the uploaded eszip only contains the tiny handler source.
+          # No functional change: identical packages, identical versions,
+          # identical OAuth issuer.
+          #
+          # A Node rewriter (not sed) is used so we safely handle EVERY form:
+          #   * bare static imports:   import x from "npm:pkg@1.0.0";
+          #   * aliased imports:       import { a as b } from "npm:pkg@1";
+          #   * multiline imports:     import {\n a,\n} from "npm:pkg@1";
+          #   * side-effect imports:   import "npm:pkg@1";
+          #   * dynamic imports:       await import("npm:pkg@1")
+          #   * subpath imports:       "npm:@scope/pkg@1/sub/path"
+          #   * repeated identical imports across the file
+          # The rewrite operates on STRING LITERALS ("npm:..." / 'npm:...'),
+          # which every import form ultimately uses, so it is grammar-agnostic
+          # and robust to whitespace / line breaks in the import statement.
           BEFORE=$(wc -c < "$FILE")
-          # Strip leading ^ / ~ / >= from semver ranges so esm.sh gets a clean version.
-          # Handles: npm:@scope/name@ver, npm:@scope/name@ver/subpath, npm:name@ver
-          sed -i -E 's#"npm:(@?[^"@]+)@\^?~?>=?([^"/]+)(/[^"]+)?"#"https://esm.sh/\1@\2\3"#g' "$FILE"
+          node scripts/rewrite-npm-to-esm.mjs "$FILE"
           AFTER=$(wc -c < "$FILE")
-          echo "  Rewrote npm: -> https://esm.sh/ ($BEFORE -> $AFTER bytes)"
+          echo "  File size: $BEFORE -> $AFTER bytes"
           echo "  Remaining npm: specifiers (must be zero):"
-          grep -n 'from "npm:' "$FILE" || echo "  (none)"
-          if grep -q 'from "npm:' "$FILE"; then
+          # Look for ANY residual `npm:` string literal (single- or double-quoted).
+          # Covers dynamic imports and side-effect imports that a `from "npm:`
+          # grep would miss.
+          if grep -nE $'["\x27]npm:' "$FILE"; then
             echo "::error::Some npm: specifiers were not rewritten. Deploy would 413."
             exit 1
+          else
+            echo "  (none)"
           fi
           echo "  First 5 rewritten imports:"
-          grep -n 'from "https://esm.sh/' "$FILE" | head -5 | sed 's/^/    /'
+          grep -nE 'https://esm\.sh/' "$FILE" | head -5 | sed 's/^/    /'
 
       - name: "Stage M · Deploy ONLY the mcp function"
         if: ${{ inputs.stage == 'mcp-only' }}
