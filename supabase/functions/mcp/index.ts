@@ -83,15 +83,8 @@ var get_my_profile_default = defineTool({
 });
 
 // src/lib/mcp/tools/list-my-notifications.ts
-import { createClient as createClient2 } from "npm:@supabase/supabase-js@^2.100.1";
 import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.22.2";
 import { z } from "npm:zod@^4.4.3";
-function supabaseForUser2(ctx) {
-  return createClient2(process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, {
-    global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
-    auth: { persistSession: false, autoRefreshToken: false }
-  });
-}
 var list_my_notifications_default = defineTool2({
   name: "list_my_notifications",
   title: "List my notifications",
@@ -101,11 +94,15 @@ var list_my_notifications_default = defineTool2({
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ limit }, ctx) => {
-    if (!ctx.isAuthenticated()) {
-      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
+    if (!ctx.isAuthenticated()) return notAuthenticated();
+    let client;
+    try {
+      client = supabaseForUser(ctx);
+    } catch (e) {
+      return errorResult(`Supabase client init failed: ${e.message}`);
     }
-    const { data, error } = await supabaseForUser2(ctx).from("notifications").select("id, title, body, action_url, read_at, created_at").eq("user_id", ctx.getUserId()).order("created_at", { ascending: false }).limit(limit ?? 10);
-    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
+    const { data, error } = await client.from("notifications").select("id, title, body, action_url, read_at, created_at").eq("user_id", ctx.getUserId()).order("created_at", { ascending: false }).limit(limit ?? 10);
+    if (error) return errorResult(`Query failed (code=${error.code ?? "?"}): ${error.message}`);
     return {
       content: [{ type: "text", text: JSON.stringify(data ?? []) }],
       structuredContent: { notifications: data ?? [] }
@@ -114,15 +111,8 @@ var list_my_notifications_default = defineTool2({
 });
 
 // src/lib/mcp/tools/list-explore-jobs.ts
-import { createClient as createClient3 } from "npm:@supabase/supabase-js@^2.100.1";
 import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@0.22.2";
 import { z as z2 } from "npm:zod@^4.4.3";
-function supabaseForUser3(ctx) {
-  return createClient3(process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, {
-    global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
-    auth: { persistSession: false, autoRefreshToken: false }
-  });
-}
 var list_explore_jobs_default = defineTool3({
   name: "list_explore_jobs",
   title: "List explore jobs",
@@ -133,13 +123,17 @@ var list_explore_jobs_default = defineTool3({
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ limit, search }, ctx) => {
-    if (!ctx.isAuthenticated()) {
-      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
+    if (!ctx.isAuthenticated()) return notAuthenticated();
+    let client;
+    try {
+      client = supabaseForUser(ctx);
+    } catch (e) {
+      return errorResult(`Supabase client init failed: ${e.message}`);
     }
-    let query = supabaseForUser3(ctx).from("explore_jobs").select("id, title, slug, location, salary, category, created_at").order("created_at", { ascending: false }).limit(limit ?? 20);
+    let query = client.from("explore_jobs").select("id, title, slug, location, salary, category, created_at").order("created_at", { ascending: false }).limit(limit ?? 20);
     if (search) query = query.ilike("title", `%${search}%`);
     const { data, error } = await query;
-    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
+    if (error) return errorResult(`Query failed (code=${error.code ?? "?"}): ${error.message}`);
     return {
       content: [{ type: "text", text: JSON.stringify(data ?? []) }],
       structuredContent: { jobs: data ?? [] }

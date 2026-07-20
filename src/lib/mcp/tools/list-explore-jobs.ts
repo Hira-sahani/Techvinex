@@ -1,13 +1,7 @@
-import { createClient } from "@supabase/supabase-js";
-import { defineTool, type ToolContext } from "@lovable.dev/mcp-js";
+import { defineTool } from "@lovable.dev/mcp-js";
 import { z } from "zod";
+import { errorResult, notAuthenticated, supabaseForUser } from "./_shared";
 
-function supabaseForUser(ctx: ToolContext) {
-  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_PUBLISHABLE_KEY!, {
-    global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-}
 
 export default defineTool({
   name: "list_explore_jobs",
@@ -19,17 +13,18 @@ export default defineTool({
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ limit, search }, ctx) => {
-    if (!ctx.isAuthenticated()) {
-      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
-    }
-    let query = supabaseForUser(ctx)
+    if (!ctx.isAuthenticated()) return notAuthenticated();
+    let client;
+    try { client = supabaseForUser(ctx); }
+    catch (e) { return errorResult(`Supabase client init failed: ${(e as Error).message}`); }
+    let query = client
       .from("explore_jobs")
       .select("id, title, slug, location, salary, category, created_at")
       .order("created_at", { ascending: false })
       .limit(limit ?? 20);
     if (search) query = query.ilike("title", `%${search}%`);
     const { data, error } = await query;
-    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
+    if (error) return errorResult(`Query failed (code=${error.code ?? "?"}): ${error.message}`);
     return {
       content: [{ type: "text", text: JSON.stringify(data ?? []) }],
       structuredContent: { jobs: data ?? [] },
