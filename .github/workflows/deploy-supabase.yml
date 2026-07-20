@@ -752,8 +752,11 @@ jobs:
         run: |
           set -euo pipefail
           SRC=supabase/functions/mcp/index.ts
-          TMP=/tmp/mcp-entry.mjs
-          OUT=/tmp/mcp-bundle.mjs
+          # Entry MUST live inside the repo so esbuild can resolve bare
+          # specifiers against ./node_modules (esbuild walks up from the
+          # entry file, not from CWD). Placing it in /tmp breaks resolution.
+          TMP=supabase/functions/mcp/_bundle-entry.mjs
+          OUT=supabase/functions/mcp/_bundle-out.mjs
           echo "=== Pre-bundle size ==="
           wc -c "$SRC"
           # Strip `npm:pkg@ver` → `pkg` so esbuild resolves via node_modules.
@@ -769,6 +772,7 @@ jobs:
             --external:node:* \
             --legal-comments=none \
             --outfile="$OUT"
+
           # Preserve the AUTO-GENERATED banner so the plugin still recognises
           # ownership on the next `vite build`.
           {
