@@ -173,11 +173,14 @@ function rewriteFile(filePath, moduleUrl) {
   return hits;
 }
 
-// 4. Walk every file in fnDir and rewrite. For vendored files we know their
-// module URL (reverse of urlToLocal); local files use the file:// URL that
-// deno info reported.
-const localToUrl = new Map();
-for (const [url, localPath] of urlToLocal) localToUrl.set(localPath, url);
+// 4. Walk every file in fnDir and rewrite. A vendored file may correspond to
+// several module URLs (original + redirect aliases), so we keep a MULTI-valued
+// reverse map and union all their dependency lists at rewrite time.
+const localToUrls = new Map(); // local path → Set<moduleUrl>
+for (const [url, localPath] of urlToLocal) {
+  if (!localToUrls.has(localPath)) localToUrls.set(localPath, new Set());
+  localToUrls.get(localPath).add(url);
+}
 
 function walk(dir) {
   const out = [];
