@@ -663,7 +663,7 @@ jobs:
       # STAGE 7 — Report required target Edge Function secrets (names only)
       # -----------------------------------------------------------------
       - name: "Stage 7 · Report required edge-function secrets (names only)"
-        if: ${{ inputs.stage != 'readiness-only' && inputs.stage != 'verify-only' && inputs.stage != 'repair-history' }}
+        if: ${{ inputs.stage != 'readiness-only' && inputs.stage != 'verify-only' && inputs.stage != 'repair-history' && inputs.stage != 'mcp-only' }}
         run: |
           set -euo pipefail
           echo "Required secret NAMES for edge functions on $PROJECT_REF:"
