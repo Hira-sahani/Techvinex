@@ -19,7 +19,7 @@
       {
         "name": "get_my_profile",
         "title": "Get my profile",
-        "description": "Return the signed-in Techvinex user's profile row.",
+        "description": "Return the signed-in Techvinex user's profile row. Every field is optional; missing fields are returned as null.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
