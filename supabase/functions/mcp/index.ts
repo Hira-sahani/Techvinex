@@ -478,13 +478,372 @@ var get_blog_default = defineTool13({
   }
 });
 
+// src/lib/mcp/tools/apply-to-role.ts
+import { defineTool as defineTool14 } from "npm:@lovable.dev/mcp-js@0.22.2";
+import { z as z13 } from "npm:zod@^4.4.3";
+var apply_to_role_default = defineTool14({
+  name: "apply_to_role",
+  title: "Apply to role",
+  description: "Submit the signed-in user's application to a Techvinex explore job. Irreversible: pass `confirm: true` to actually submit. Idempotent \u2014 re-submitting returns the existing application row instead of creating a duplicate (enforced by a unique constraint on job_id + user_id).",
+  inputSchema: {
+    job_id: z13.string().uuid().describe("UUID of the explore job to apply to."),
+    confirm: z13.boolean().optional().describe("Must be `true` to actually submit. If omitted or false, returns a dry-run preview."),
+    cover_letter: z13.string().trim().max(1e4).optional().describe("Optional cover letter text stored with the application (if provided).")
+  },
+  annotations: {
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: true,
+    openWorldHint: false
+  },
+  handler: async ({ job_id, confirm, cover_letter }, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthenticated();
+    const rl = await rateLimit(ctx, "apply_to_role", { limit: 20, windowMs: 6e4 });
+    if (rl) return rl;
+    const supabase = supabaseForUser(ctx);
+    const userId = ctx.getUserId();
+    const { data: job, error: jobErr } = await supabase.from("explore_jobs").select("id, title, company_name, location, status, visibility, allow_direct_apply, application_limit, applications_count, expiry_date").eq("id", job_id).maybeSingle();
+    if (jobErr) return errorResult(`Job lookup failed: ${jobErr.message}`);
+    if (!job) return errorResult(`No published job found for id=${job_id}.`);
+    if (job.status !== "published" || job.visibility !== "public") {
+      return errorResult(`Job ${job_id} is not open for applications (status=${job.status}, visibility=${job.visibility}).`);
+    }
+    if (job.allow_direct_apply === false) {
+      return errorResult(`Job ${job_id} does not accept direct applications through Techvinex.`);
+    }
+    if (job.expiry_date && new Date(job.expiry_date) < /* @__PURE__ */ new Date()) {
+      return errorResult(`Job ${job_id} has expired.`);
+    }
+    const { data: existing, error: existErr } = await supabase.from("job_applications").select("id, status, created_at").eq("user_id", userId).eq("job_id", job_id).maybeSingle();
+    if (existErr) return errorResult(`Duplicate check failed: ${existErr.message}`);
+    if (existing) {
+      return {
+        content: [{
+          type: "text",
+          text: `Already applied to "${job.title}" on ${existing.created_at} (status=${existing.status}). No new application created.`
+        }],
+        structuredContent: {
+          already_applied: true,
+          application: existing,
+          job: { id: job.id, title: job.title }
+        }
+      };
+    }
+    if (!confirm) {
+      return {
+        content: [{
+          type: "text",
+          text: `DRY RUN \u2014 no application submitted. To submit, call apply_to_role again with confirm: true.
+Job: ${job.title} @ ${job.company_name ?? "(hidden)"} (${job.location ?? "Remote"})`
+        }],
+        structuredContent: {
+          dry_run: true,
+          would_submit: { user_id: userId, job_id, cover_letter: cover_letter ?? null },
+          job: { id: job.id, title: job.title, company_name: job.company_name, location: job.location }
+        }
+      };
+    }
+    const { data: inserted, error: insErr } = await supabase.from("job_applications").insert({ user_id: userId, job_id, status: "applied" }).select("id, status, created_at").maybeSingle();
+    if (insErr) {
+      if (insErr.code === "23505") {
+        const { data: race } = await supabase.from("job_applications").select("id, status, created_at").eq("user_id", userId).eq("job_id", job_id).maybeSingle();
+        return {
+          content: [{ type: "text", text: `Already applied (race resolved).` }],
+          structuredContent: { already_applied: true, application: race }
+        };
+      }
+      return errorResult(`Insert failed (code=${insErr.code ?? "?"}): ${insErr.message}`);
+    }
+    return {
+      content: [{
+        type: "text",
+        text: `Application submitted to "${job.title}". Application id: ${inserted?.id}.`
+      }],
+      structuredContent: {
+        submitted: true,
+        application: inserted,
+        job: { id: job.id, title: job.title },
+        cover_letter_captured: !!cover_letter
+      }
+    };
+  }
+});
+
+// src/lib/mcp/tools/list-my-interviews.ts
+import { defineTool as defineTool15 } from "npm:@lovable.dev/mcp-js@0.22.2";
+import { z as z14 } from "npm:zod@^4.4.3";
+var list_my_interviews_default = defineTool15({
+  name: "list_my_interviews",
+  title: "List my interviews",
+  description: "List interviews visible to the signed-in user under RLS. Employers see interviews they own on employer_interviews; candidates see rows where they are the candidate (if any policy allows). Newest first.",
+  inputSchema: {
+    status: z14.string().trim().min(1).max(40).optional().describe("Filter by interview status (e.g. 'scheduled', 'completed')."),
+    limit: z14.number().int().min(1).max(100).optional().describe("Max rows. Defaults to 50.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ status, limit }, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthenticated();
+    const supabase = supabaseForUser(ctx);
+    let q = supabase.from("employer_interviews").select(
+      "id, candidate_id, job_id, employer_id, candidate_name, job_title, scheduled_date, scheduled_time, status, feedback, created_at"
+    ).order("scheduled_date", { ascending: false, nullsFirst: false }).limit(limit ?? 50);
+    if (status) q = q.eq("status", status);
+    const { data, error } = await q;
+    if (error) return errorResult(`Query failed (code=${error.code ?? "?"}): ${error.message}`);
+    return {
+      content: [{ type: "text", text: JSON.stringify(data ?? []) }],
+      structuredContent: { interviews: data ?? [], count: data?.length ?? 0 }
+    };
+  }
+});
+
+// src/lib/mcp/tools/schedule-interview.ts
+import { defineTool as defineTool16 } from "npm:@lovable.dev/mcp-js@0.22.2";
+import { z as z15 } from "npm:zod@^4.4.3";
+var schedule_interview_default = defineTool16({
+  name: "schedule_interview",
+  title: "Schedule interview",
+  description: "Schedule an interview as the signed-in employer. Requires `confirm: true` to actually create the row. RLS ensures only employers can insert interviews they own.",
+  inputSchema: {
+    candidate_id: z15.string().uuid().optional().describe("Candidate user UUID (optional)."),
+    candidate_name: z15.string().trim().min(1).max(200).optional().describe("Candidate display name."),
+    job_id: z15.string().uuid().optional().describe("Explore job UUID (optional)."),
+    job_title: z15.string().trim().min(1).max(200).optional().describe("Job title snapshot."),
+    scheduled_date: z15.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("Interview date in YYYY-MM-DD format."),
+    scheduled_time: z15.string().trim().min(1).max(40).optional().describe("Interview time (free text, e.g. '10:30 AM IST')."),
+    confirm: z15.boolean().optional().describe("Must be `true` to actually create the interview. Otherwise returns a dry-run preview.")
+  },
+  annotations: {
+    readOnlyHint: false,
+    destructiveHint: false,
+    idempotentHint: false,
+    openWorldHint: false
+  },
+  handler: async (input, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthenticated();
+    const rl = await rateLimit(ctx, "schedule_interview", { limit: 30, windowMs: 6e4 });
+    if (rl) return rl;
+    if (!input.candidate_id && !input.candidate_name) {
+      return errorResult("Provide at least one of candidate_id or candidate_name.");
+    }
+    const when = /* @__PURE__ */ new Date(`${input.scheduled_date}T00:00:00Z`);
+    if (Number.isNaN(when.getTime())) return errorResult("scheduled_date is not a valid date.");
+    const supabase = supabaseForUser(ctx);
+    const employerId = ctx.getUserId();
+    const row = {
+      employer_id: employerId,
+      candidate_id: input.candidate_id ?? null,
+      candidate_name: input.candidate_name ?? null,
+      job_id: input.job_id ?? null,
+      job_title: input.job_title ?? null,
+      scheduled_date: input.scheduled_date,
+      scheduled_time: input.scheduled_time ?? null,
+      status: "scheduled"
+    };
+    if (!input.confirm) {
+      return {
+        content: [{
+          type: "text",
+          text: `DRY RUN \u2014 no interview created. Call schedule_interview again with confirm: true to schedule.`
+        }],
+        structuredContent: { dry_run: true, would_insert: row }
+      };
+    }
+    const { data, error } = await supabase.from("employer_interviews").insert(row).select("id, employer_id, candidate_id, candidate_name, job_id, job_title, scheduled_date, scheduled_time, status, created_at").maybeSingle();
+    if (error) return errorResult(`Insert failed (code=${error.code ?? "?"}): ${error.message}`);
+    return {
+      content: [{
+        type: "text",
+        text: `Interview scheduled for ${input.candidate_name ?? input.candidate_id} on ${input.scheduled_date}${input.scheduled_time ? ` at ${input.scheduled_time}` : ""}. id=${data?.id}`
+      }],
+      structuredContent: { scheduled: true, interview: data }
+    };
+  }
+});
+
+// src/lib/mcp/tools/generate-cover-letter.ts
+import { defineTool as defineTool17 } from "npm:@lovable.dev/mcp-js@0.22.2";
+import { z as z16 } from "npm:zod@^4.4.3";
+
+// src/lib/mcp/tools/_ai.ts
+var GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+var DEFAULT_MODEL = "google/gemini-2.5-flash";
+async function chatComplete(messages, opts = {}) {
+  const key = process.env.LOVABLE_API_KEY;
+  if (!key) throw new Error("LOVABLE_API_KEY not configured on the MCP function");
+  const model = opts.model ?? DEFAULT_MODEL;
+  const res = await fetch(GATEWAY_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Lovable-API-Key": key
+    },
+    body: JSON.stringify({
+      model,
+      messages,
+      temperature: opts.temperature ?? 0.4
+    })
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    if (res.status === 429) throw new Error(`AI rate limit (429): ${body.slice(0, 200)}`);
+    if (res.status === 402) throw new Error(`AI credits exhausted (402): ${body.slice(0, 200)}`);
+    throw new Error(`AI gateway ${res.status}: ${body.slice(0, 300)}`);
+  }
+  const json = await res.json();
+  const text = json.choices?.[0]?.message?.content ?? "";
+  return { text, model, usage: json.usage };
+}
+
+// src/lib/mcp/tools/generate-cover-letter.ts
+var generate_cover_letter_default = defineTool17({
+  name: "generate_cover_letter",
+  title: "Generate cover letter",
+  description: "Generate a tailored cover letter for the signed-in user for a specific Techvinex job. Uses the user's profile for context. Read-only \u2014 returns text, does not submit anything.",
+  inputSchema: {
+    job_id: z16.string().uuid().describe("Explore job UUID to tailor the letter to."),
+    tone: z16.enum(["professional", "friendly", "enthusiastic", "concise"]).optional().describe("Desired tone. Defaults to 'professional'."),
+    extra_context: z16.string().trim().max(2e3).optional().describe("Extra context to include (achievements, motivations, etc.).")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: false, openWorldHint: true },
+  handler: async ({ job_id, tone, extra_context }, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthenticated();
+    const rl = await rateLimit(ctx, "generate_cover_letter", { limit: 10, windowMs: 6e4 });
+    if (rl) return rl;
+    const supabase = supabaseForUser(ctx);
+    const [{ data: job, error: jobErr }, { data: profile, error: profErr }] = await Promise.all([
+      supabase.from("explore_jobs").select("id, title, company_name, location, short_description, description, skills, experience").eq("id", job_id).maybeSingle(),
+      supabase.from("profiles").select("full_name, headline, bio, location, linkedin, portfolio, github").eq("user_id", ctx.getUserId()).maybeSingle()
+    ]);
+    if (jobErr) return errorResult(`Job lookup failed: ${jobErr.message}`);
+    if (!job) return errorResult(`No job found for id=${job_id}.`);
+    if (profErr) return errorResult(`Profile lookup failed: ${profErr.message}`);
+    const system = "You write concise, tailored cover letters for job applications. Use only facts from the provided profile \u2014 do not invent employers, degrees, or metrics. Return only the cover letter body, no salutation/signature placeholders like [Your Name].";
+    const user = [
+      `TONE: ${tone ?? "professional"}`,
+      `JOB TITLE: ${job.title}`,
+      job.company_name ? `COMPANY: ${job.company_name}` : "",
+      job.location ? `LOCATION: ${job.location}` : "",
+      `JOB DESCRIPTION:
+${job.short_description ?? ""}
+${(job.description ?? "").slice(0, 2e3)}`,
+      Array.isArray(job.skills) && job.skills.length ? `REQUIRED SKILLS: ${job.skills.join(", ")}` : "",
+      "",
+      "APPLICANT PROFILE:",
+      profile?.full_name ? `Name: ${profile.full_name}` : "",
+      profile?.headline ? `Headline: ${profile.headline}` : "",
+      profile?.location ? `Location: ${profile.location}` : "",
+      profile?.bio ? `Bio: ${profile.bio}` : "",
+      profile?.linkedin ? `LinkedIn: ${profile.linkedin}` : "",
+      profile?.portfolio ? `Portfolio: ${profile.portfolio}` : "",
+      profile?.github ? `GitHub: ${profile.github}` : "",
+      extra_context ? `
+EXTRA CONTEXT:
+${extra_context}` : "",
+      "",
+      "Write a 3\u20134 paragraph cover letter, ~250 words."
+    ].filter(Boolean).join("\n");
+    try {
+      const { text, model } = await chatComplete(
+        [
+          { role: "system", content: system },
+          { role: "user", content: user }
+        ],
+        { temperature: 0.5 }
+      );
+      return {
+        content: [{ type: "text", text }],
+        structuredContent: {
+          cover_letter: text,
+          model,
+          job: { id: job.id, title: job.title, company_name: job.company_name }
+        }
+      };
+    } catch (e) {
+      return errorResult(e.message);
+    }
+  }
+});
+
+// src/lib/mcp/tools/optimize-resume.ts
+import { defineTool as defineTool18 } from "npm:@lovable.dev/mcp-js@0.22.2";
+import { z as z17 } from "npm:zod@^4.4.3";
+var optimize_resume_default = defineTool18({
+  name: "optimize_resume",
+  title: "Optimize resume",
+  description: "Suggest ATS-friendly improvements to a resume, optionally tailored to a specific Techvinex job. Read-only \u2014 returns suggestions, does not update the user's stored resume.",
+  inputSchema: {
+    resume_text: z17.string().trim().min(50).max(2e4).describe("Raw resume text to review."),
+    job_id: z17.string().uuid().optional().describe("Optional Techvinex job to tailor recommendations to."),
+    focus: z17.enum(["keywords", "impact_metrics", "clarity", "ats_formatting", "all"]).optional().describe("Optimization focus. Defaults to 'all'.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: false, openWorldHint: true },
+  handler: async ({ resume_text, job_id, focus }, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthenticated();
+    const rl = await rateLimit(ctx, "optimize_resume", { limit: 10, windowMs: 6e4 });
+    if (rl) return rl;
+    let jobContext = "";
+    let jobMeta = null;
+    if (job_id) {
+      const supabase = supabaseForUser(ctx);
+      const { data: job, error } = await supabase.from("explore_jobs").select("id, title, company_name, short_description, description, skills").eq("id", job_id).maybeSingle();
+      if (error) return errorResult(`Job lookup failed: ${error.message}`);
+      if (!job) return errorResult(`No job found for id=${job_id}.`);
+      jobMeta = { id: job.id, title: job.title, company_name: job.company_name };
+      jobContext = [
+        `TARGET JOB: ${job.title}${job.company_name ? " @ " + job.company_name : ""}`,
+        job.short_description ? `Summary: ${job.short_description}` : "",
+        Array.isArray(job.skills) && job.skills.length ? `Skills: ${job.skills.join(", ")}` : "",
+        (job.description ?? "").slice(0, 1500)
+      ].filter(Boolean).join("\n");
+    }
+    const system = "You are a resume coach for engineering and product hiring. Return concrete, non-generic suggestions. Be honest about weaknesses. Do not invent experience the resume doesn't show.";
+    const user = [
+      `FOCUS: ${focus ?? "all"}`,
+      jobContext,
+      "",
+      "RESUME:",
+      resume_text,
+      "",
+      "Respond as strict JSON with keys: summary (string), strengths (string[]), improvements (string[]), missing_keywords (string[]), ats_issues (string[]), rewritten_bullets ({original,rewritten}[])."
+    ].filter(Boolean).join("\n");
+    try {
+      const { text, model } = await chatComplete(
+        [
+          { role: "system", content: system },
+          { role: "user", content: user }
+        ],
+        { temperature: 0.3 }
+      );
+      let parsed = null;
+      try {
+        const jsonMatch = text.match(/\{[\s\S]*\}$/m) ?? text.match(/\{[\s\S]*\}/);
+        parsed = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
+      } catch {
+        parsed = null;
+      }
+      return {
+        content: [{ type: "text", text }],
+        structuredContent: {
+          suggestions: parsed,
+          raw: parsed ? void 0 : text,
+          model,
+          job: jobMeta
+        }
+      };
+    } catch (e) {
+      return errorResult(e.message);
+    }
+  }
+});
+
 // src/lib/mcp/index.ts
 var projectRef = "xfgyzcvrvgsntjenxecp";
 var mcp_default = defineMcp({
   name: "techvinex-mcp",
   title: "Techvinex",
-  version: "0.2.0",
-  instructions: "Techvinex tools. Every tool runs as the signed-in Techvinex user under RLS. Profile: `get_my_profile`, `update_my_profile`. Jobs: `list_explore_jobs`, `search_explore_jobs`, `get_explore_job`. Applications: `list_my_applications` (read-only in Sprint 1 \u2014 submitting new applications is not exposed yet). Bookmarks: `list_my_bookmarks`, `bookmark_role`, `unbookmark_role`. Notifications: `list_my_notifications`, `mark_notification_read`. Blog: `list_blogs`, `get_blog`.",
+  version: "0.3.0",
+  instructions: "Techvinex tools. Every tool runs as the signed-in Techvinex user under RLS. Profile: `get_my_profile`, `update_my_profile`. Jobs: `list_explore_jobs`, `search_explore_jobs`, `get_explore_job`. Applications: `list_my_applications`, `apply_to_role` (requires `confirm: true`, idempotent). Interviews: `list_my_interviews`, `schedule_interview` (employers only, requires `confirm: true`). Bookmarks: `list_my_bookmarks`, `bookmark_role`, `unbookmark_role`. Notifications: `list_my_notifications`, `mark_notification_read`. Blog: `list_blogs`, `get_blog`. AI assistants: `generate_cover_letter`, `optimize_resume` (read-only, do not submit).",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
@@ -496,13 +855,18 @@ var mcp_default = defineMcp({
     search_explore_jobs_default,
     get_explore_job_default,
     list_my_applications_default,
+    apply_to_role_default,
     list_my_bookmarks_default,
     bookmark_role_default,
     unbookmark_role_default,
     list_my_notifications_default,
     mark_notification_read_default,
     list_blogs_default,
-    get_blog_default
+    get_blog_default,
+    list_my_interviews_default,
+    schedule_interview_default,
+    generate_cover_letter_default,
+    optimize_resume_default
   ]
 });
 
