@@ -12,7 +12,7 @@
   "mcp": {
     "server": {
       "name": "techvinex-mcp",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "title": "Techvinex"
     },
     "tools": [
@@ -33,11 +33,12 @@
         "outputSchema": null
       },
       {
-        "name": "list_my_notifications",
-        "title": "List my notifications",
-        "description": "List the signed-in user's most recent Techvinex notifications, newest first.",
+        "name": "update_my_profile",
+        "title": "Update my profile",
+        "description": "Update whitelisted fields on the signed-in Techvinex user's profile (name, contact, links, location). Sensitive fields cannot be changed here.",
         "annotations": {
-          "readOnlyHint": true,
+          "readOnlyHint": false,
+          "destructiveHint": false,
           "idempotentHint": true,
           "openWorldHint": false
         },
@@ -45,13 +46,73 @@
           "$schema": "http://json-schema.org/draft-07/schema#",
           "type": "object",
           "properties": {
-            "limit": {
-              "description": "Max notifications to return. Defaults to 10.",
-              "type": "integer",
-              "minimum": 1,
-              "maximum": 50
+            "patch": {
+              "type": "object",
+              "properties": {
+                "full_name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 120
+                },
+                "phone": {
+                  "type": "string",
+                  "minLength": 3,
+                  "maxLength": 32
+                },
+                "linkedin": {
+                  "type": "string",
+                  "maxLength": 300,
+                  "format": "uri"
+                },
+                "portfolio": {
+                  "type": "string",
+                  "maxLength": 300,
+                  "format": "uri"
+                },
+                "github": {
+                  "type": "string",
+                  "maxLength": 300,
+                  "format": "uri"
+                },
+                "leetcode": {
+                  "type": "string",
+                  "maxLength": 300,
+                  "format": "uri"
+                },
+                "codechef": {
+                  "type": "string",
+                  "maxLength": 300,
+                  "format": "uri"
+                },
+                "codeforces": {
+                  "type": "string",
+                  "maxLength": 300,
+                  "format": "uri"
+                },
+                "country": {
+                  "type": "string",
+                  "maxLength": 80
+                },
+                "state": {
+                  "type": "string",
+                  "maxLength": 80
+                },
+                "city": {
+                  "type": "string",
+                  "maxLength": 80
+                },
+                "postal_code": {
+                  "type": "string",
+                  "maxLength": 20
+                }
+              },
+              "additionalProperties": false,
+              "description": "Object with the profile fields to update. Only include fields you want to change."
             }
-          }
+          },
+          "required": [
+            "patch"
+          ]
         },
         "outputSchema": null
       },
@@ -79,6 +140,325 @@
               "type": "string",
               "minLength": 1,
               "maxLength": 120
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "search_explore_jobs",
+        "title": "Search explore jobs",
+        "description": "Search published Techvinex explore jobs by keyword, location, category, job type, or skills. Returns the newest matches first.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "query": {
+              "description": "Case-insensitive substring matched against title and short description.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            "location": {
+              "description": "Case-insensitive substring matched against the job location.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "category": {
+              "description": "Exact category match (e.g. 'engineering').",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            },
+            "job_type": {
+              "description": "Exact job type (e.g. 'full-time', 'contract').",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "skills": {
+              "description": "Skills the job must include (AND semantics).",
+              "maxItems": 10,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 40
+              }
+            },
+            "limit": {
+              "description": "Max jobs to return. Defaults to 20.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            },
+            "offset": {
+              "description": "Pagination offset. Defaults to 0.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_explore_job",
+        "title": "Get explore job",
+        "description": "Fetch a single Techvinex explore job by id or slug (public listing fields only).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "id": {
+              "description": "Job UUID.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "slug": {
+              "description": "Job slug.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_my_applications",
+        "title": "List my applications",
+        "description": "List the signed-in user's job applications, newest first.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "status": {
+              "description": "Filter by application status (e.g. 'submitted', 'reviewed').",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "limit": {
+              "description": "Max rows. Defaults to 50.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_my_bookmarks",
+        "title": "List my bookmarks",
+        "description": "List the signed-in user's bookmarked jobs, newest first.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "limit": {
+              "description": "Max rows. Defaults to 50.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "bookmark_role",
+        "title": "Bookmark role",
+        "description": "Bookmark an explore job for the signed-in user. Idempotent — re-bookmarking is a no-op.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "job_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "UUID of the explore job to bookmark."
+            }
+          },
+          "required": [
+            "job_id"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "unbookmark_role",
+        "title": "Unbookmark role",
+        "description": "Remove a bookmark on an explore job for the signed-in user.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "job_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "UUID of the explore job to unbookmark."
+            }
+          },
+          "required": [
+            "job_id"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_my_notifications",
+        "title": "List my notifications",
+        "description": "List the signed-in user's most recent Techvinex notifications, newest first.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "limit": {
+              "description": "Max notifications to return. Defaults to 10.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "mark_notification_read",
+        "title": "Mark notification read",
+        "description": "Mark one notification, or all notifications, as read for the signed-in user.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "notification_id": {
+              "description": "Notification UUID. Omit together with `all: true` to mark all as read.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "all": {
+              "description": "If true, marks every unread notification for the user as read.",
+              "type": "boolean"
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_blogs",
+        "title": "List blogs",
+        "description": "List published Techvinex blog posts, newest first.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "category": {
+              "description": "Filter by blog category.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 60
+            },
+            "search": {
+              "description": "Case-insensitive substring matched against title.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            },
+            "limit": {
+              "description": "Max rows. Defaults to 20.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            },
+            "offset": {
+              "description": "Pagination offset. Defaults to 0.",
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 1000
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_blog",
+        "title": "Get blog",
+        "description": "Fetch a single published Techvinex blog post by id or slug (full content).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "id": {
+              "description": "Blog UUID.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "slug": {
+              "description": "Blog slug.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
             }
           }
         },
