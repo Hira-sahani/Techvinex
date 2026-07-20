@@ -36,6 +36,15 @@ function makeCtx(authenticated = true) {
   };
 }
 
+Deno.test("debug chain", async () => {
+  const { supabaseForUser } = await import("./_shared");
+  const client = supabaseForUser(makeCtx() as unknown as Parameters<typeof supabaseForUser>[0]);
+  const chain = client.from("explore_jobs");
+  console.log("chain keys:", Object.keys(chain));
+  console.log("chain.or:", typeof chain.or);
+  console.log("chain.ilike:", typeof chain.ilike);
+});
+
 function textContent(result: ToolHandlerResult) {
   const block = result.content?.[0];
   return block && "text" in block ? (block as { text: string }).text : undefined;
