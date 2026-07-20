@@ -1,5 +1,5 @@
 -- P0 Security Fixes (additive, idempotent)
--- Project ref: xfgyzcvrvgsntjenxecp
+-- Project ref: yparkrguxoektihjpynr
 
 -- =========================================================
 -- A. Restrict has_role() EXECUTE to authenticated + service_role

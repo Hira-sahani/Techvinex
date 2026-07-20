@@ -1,12 +1,11 @@
 name: Deploy Supabase (external project)
 
 # Manual-only. This workflow NEVER auto-runs.
-# It targets the external Supabase project referenced by the
-# SUPABASE_PROJECT_REF_PROD repository secret — NOT Lovable Cloud.
+# It targets the production Supabase project referenced by the
+# SUPABASE_PROJECT_REF_PROD repository secret.
 # Do not add push/pull_request triggers.
 #
 # Safety guarantees:
-#   * Refuses to run against the Lovable Cloud project ref.
 #   * Requires the operator to re-type the target ref as confirm_ref.
 #   * Never runs `supabase db reset` or any destructive command.
 #   * `supabase db push` only applies migrations that are NOT yet
@@ -48,7 +47,6 @@ jobs:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
       PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF_PROD }}
-      LOVABLE_CLOUD_REF: xfgyzcvrvgsntjenxecp
     steps:
       # -----------------------------------------------------------------
       # STAGE 1 — Validate required GitHub Secrets & inputs
@@ -74,14 +72,6 @@ jobs:
             exit 1
           fi
 
-      - name: "Stage 1 · Guard — refuse Lovable Cloud project ref"
-        run: |
-          set -euo pipefail
-          if [ "$PROJECT_REF" = "$LOVABLE_CLOUD_REF" ]; then
-            echo "::error::SUPABASE_PROJECT_REF_PROD points at Lovable Cloud ($LOVABLE_CLOUD_REF). Refusing to run."
-            exit 1
-          fi
-          echo "  ✓ Target project ref is not the Lovable Cloud project."
 
       - name: "Stage 1 · Guard — confirm_ref matches secret"
         run: |
@@ -693,11 +683,11 @@ jobs:
         if: ${{ inputs.stage == 'mcp-only' }}
         run: |
           set -euo pipefail
-          # The committed .env file still points at the Lovable Cloud project.
+          # The committed .env file may not match the deploy target ref.
           # Vite's env-file precedence (production mode) is:
           #   .env.production.local > .env.production > .env.local > .env
-          # Without this override, the mcpPlugin would inline the old ref
-          # from the tracked .env file, ignoring the shell env vars below.
+          # This override guarantees the mcpPlugin inlines the target ref
+          # regardless of what .env currently contains.
           cat > .env.production.local <<EOF
           VITE_SUPABASE_PROJECT_ID=${{ secrets.SUPABASE_PROJECT_REF_PROD }}
           VITE_SUPABASE_URL=https://${{ secrets.SUPABASE_PROJECT_REF_PROD }}.supabase.co
@@ -737,8 +727,9 @@ jobs:
             sed -n '1,30p' "$FILE"
             exit 1
           fi
-          if grep -q '"xfgyzcvrvgsntjenxecp"' "$FILE"; then
-            echo "::error::Regenerated MCP function still contains the Lovable Cloud project ref."
+          # Guard against any stale non-target ref leaking through.
+          if grep -qE '"[a-z0-9]{20}"' "$FILE" && ! grep -q "\"$PROJECT_REF\"" "$FILE"; then
+            echo "::error::Regenerated MCP function embeds a project ref other than $PROJECT_REF."
             exit 1
           fi
           echo "  ✓ Function embeds issuer for $PROJECT_REF."
@@ -959,10 +950,6 @@ jobs:
             echo "::error::Protected-resource metadata does not advertise expected issuer $EXPECTED_ISSUER."
             exit 1
           fi
-          if echo "$body" | grep -q 'xfgyzcvrvgsntjenxecp'; then
-            echo "::error::Protected-resource metadata still references the Lovable Cloud project ref."
-            exit 1
-          fi
           echo "  ✓ MCP endpoint on $PROJECT_REF reports issuer $EXPECTED_ISSUER."
 
 
@@ -1024,5 +1011,4 @@ jobs:
             echo '```'
             echo ""
             echo "> Frontend runtime configuration (Vercel env vars, admin.techvinex.com routing) was NOT changed by this workflow."
-            echo "> Lovable Cloud project ($LOVABLE_CLOUD_REF) was NOT touched by this workflow."
           } >> "$GITHUB_STEP_SUMMARY"

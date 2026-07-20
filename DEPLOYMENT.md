@@ -24,9 +24,9 @@ Set for **Production + Preview + Development**:
 
 | Name | Value | Notes |
 |---|---|---|
-| `VITE_SUPABASE_URL` | `https://xfgyzcvrvgsntjenxecp.supabase.co` | publishable |
+| `VITE_SUPABASE_URL` | `https://yparkrguxoektihjpynr.supabase.co` | publishable |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | (from `.env`) | publishable anon key, safe in client |
-| `VITE_SUPABASE_PROJECT_ID` | `xfgyzcvrvgsntjenxecp` | publishable |
+| `VITE_SUPABASE_PROJECT_ID` | `yparkrguxoektihjpynr` | publishable |
 | `VITE_SITE_URL` | your custom domain | for SEO / OG tags |
 
 **Never** put `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `LOVABLE_API_KEY`,
@@ -41,11 +41,10 @@ In the Supabase Dashboard:
   - `https://<your-project>.vercel.app`
   - `https://*.vercel.app/**` (for preview deploys)
 - **Authentication → Providers → Google** — confirm Client ID + Secret are
-  saved here directly (not only configured via the Lovable Cloud UI). This is
-  the critical step that keeps Google sign-in working without Lovable.
+  saved in the Supabase Dashboard for this project.
 - In **Google Cloud Console → Credentials → OAuth client → Authorized redirect URIs**,
   ensure this is listed:
-  `https://xfgyzcvrvgsntjenxecp.supabase.co/auth/v1/callback`
+  `https://yparkrguxoektihjpynr.supabase.co/auth/v1/callback`
 
 ---
 
@@ -95,7 +94,7 @@ GitHub is the backup. Optional: mirror to GitLab/Bitbucket via a GitHub Action.
 - **Automatic:** Supabase Dashboard → Database → Backups (daily on paid plans).
 - **Manual / scripted:**
   ```bash
-  export SUPABASE_DB_URL="postgres://postgres:PASSWORD@db.xfgyzcvrvgsntjenxecp.supabase.co:5432/postgres"
+  export SUPABASE_DB_URL="postgres://postgres:PASSWORD@db.yparkrguxoektihjpynr.supabase.co:5432/postgres"
   ./scripts/backup-db.sh ./backups
   ```
   Run on a cron / GitHub Actions schedule. Restore with `psql "$SUPABASE_DB_URL" < file.sql`.
@@ -106,7 +105,7 @@ Use the Supabase CLI: `supabase storage download blog-images ./backups/blog-imag
 ### Edge functions
 Already in `supabase/functions/` — backed up with the code. Manual deploy:
 ```bash
-supabase functions deploy <name> --project-ref xfgyzcvrvgsntjenxecp
+supabase functions deploy <name> --project-ref yparkrguxoektihjpynr
 ```
 
 ### Secrets

@@ -14,7 +14,7 @@ import { resolve, dirname } from "node:path";
 
 const OUT = resolve("public/sitemap.xml");
 const EDGE_URL =
-  "https://xfgyzcvrvgsntjenxecp.supabase.co/functions/v1/public-sitemap";
+  "https://yparkrguxoektihjpynr.supabase.co/functions/v1/public-sitemap";
 const BASE = "https://www.techvinex.com";
 
 const STATIC_FALLBACK = `<?xml version="1.0" encoding="UTF-8"?>
