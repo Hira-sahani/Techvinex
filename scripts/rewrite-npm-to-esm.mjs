@@ -66,25 +66,43 @@ function splitNameAndSubpath(body) {
   };
 }
 
+// Pin zod to v3. `@lovable.dev/mcp-js` and its embedded
+// `@modelcontextprotocol/sdk` are built against zod v3 (they call
+// `z.custom(...)`, which zod v4 restructured out of the top-level API).
+// Our tools declare `zod@^4.4.3` in package.json, so without
+// normalization esm.sh serves a v4 copy and the SDK bundle crashes at
+// import time with "c.custom is not a function". The subset of the zod
+// API our tools use — `.number().int().min().max().optional().describe()`
+// and `.string().trim().min().max().optional().describe()` — is
+// identical in v3, so pinning is safe.
+const ZOD_PIN = "3.23.8";
+
 let count = 0;
 const out = src.replace(LITERAL, (_match, quote, body) => {
   const { nameAndVersion, subpath } = splitNameAndSubpath(body);
   // Strip semver operators immediately after the `@` version separator.
-  const cleaned = nameAndVersion.replace(/@(?:\^|~|>=|<=|>|<|=)+/, "@");
+  let cleaned = nameAndVersion.replace(/@(?:\^|~|>=|<=|>|<|=)+/, "@");
+
+  // Force every zod import (ours and any transitive) to the pinned v3.
+  if (/^zod(?:@|$)/.test(cleaned)) {
+    cleaned = `zod@${ZOD_PIN}`;
+  }
+
   count++;
   // `target=denonext` → Deno-optimized build with node:* polyfills.
-  // Without it, `@supabase/supabase-js` → node:stream crashes the worker at
-  // startup with WORKER_ERROR before the auth middleware runs.
+  // Without it, `@supabase/supabase-js` → node:stream crashes the worker
+  // with WORKER_ERROR at startup before the auth middleware runs.
   //
-  // For @lovable.dev/mcp-js also add `bundle-deps`: it transitively imports
-  // @modelcontextprotocol/sdk, which calls `z.custom(...)` at module top
-  // level. Without bundle-deps, esm.sh resolves zod for the SDK to a copy
-  // different from the one used by mcp-js itself, and the minified SDK
-  // crashes with "t.custom is not a function" before auth runs. bundle-deps
-  // inlines mcp-js's entire graph (MCP SDK + its zod) into a single
-  // self-consistent module so all internal imports agree.
-  const isMcpJs = /^@lovable\.dev\/mcp-js(?:@|$)/.test(cleaned);
-  const params = isMcpJs ? "target=denonext&bundle-deps" : "target=denonext";
+  // For packages that transitively depend on zod (mcp-js and the MCP
+  // SDK), pass `deps=zod@<pin>` so esm.sh resolves their internal zod
+  // to the same v3 copy our tools use. Otherwise mcp-js's bundled SDK
+  // loads a mismatched zod and crashes with "c.custom is not a function".
+  const needsZodPin =
+    /^@lovable\.dev\/mcp-js(?:@|$)/.test(cleaned) ||
+    /^@modelcontextprotocol\/sdk(?:@|$)/.test(cleaned);
+  const params = needsZodPin
+    ? `target=denonext&deps=zod@${ZOD_PIN}`
+    : "target=denonext";
   const sep = subpath.includes("?") ? "&" : "?";
   return `${quote}https://esm.sh/${cleaned}${subpath}${sep}${params}${quote}`;
 });
