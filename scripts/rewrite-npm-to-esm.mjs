@@ -66,16 +66,19 @@ function splitNameAndSubpath(body) {
   };
 }
 
-// Pin zod to v3. `@lovable.dev/mcp-js` and its embedded
-// `@modelcontextprotocol/sdk` are built against zod v3 (they call
-// `z.custom(...)`, which zod v4 restructured out of the top-level API).
-// Our tools declare `zod@^4.4.3` in package.json, so without
-// normalization esm.sh serves a v4 copy and the SDK bundle crashes at
-// import time with "c.custom is not a function". The subset of the zod
-// API our tools use — `.number().int().min().max().optional().describe()`
-// and `.string().trim().min().max().optional().describe()` — is
-// identical in v3, so pinning is safe.
-const ZOD_PIN = "3.23.8";
+// Pin zod to a v4 release. `@lovable.dev/mcp-js@0.22.2` bundles
+// `@modelcontextprotocol/sdk@1.28.0`, which declares
+// `"zod": "^3.25 || ^4.0"` and — when built for esm.sh — imports from
+// the v4-only subpaths `zod/v3`, `zod/v4`, `zod/v4-mini`. Pinning to a
+// zod v3 release (e.g. 3.23.8) makes esm.sh emit stubs that reference
+// those subpaths against a version that does not publish them, and
+// Deno's module graph fails with "Module not found: .../v3.mjs".
+// Our tool files also declare `zod@^4.4.3`, so keeping the SDK and our
+// tools on the same v4 line ensures both sides share one ZodType
+// identity and mcp-js recognises our schemas without falling through
+// to `z.custom(...)` (the source of the earlier "c.custom is not a
+// function" crash).
+const ZOD_PIN = "4.4.3";
 
 let count = 0;
 const out = src.replace(LITERAL, (_match, quote, body) => {
@@ -93,15 +96,28 @@ const out = src.replace(LITERAL, (_match, quote, body) => {
   // Without it, `@supabase/supabase-js` → node:stream crashes the worker
   // with WORKER_ERROR at startup before the auth middleware runs.
   //
-  // For packages that transitively depend on zod (mcp-js and the MCP
-  // SDK), pass `deps=zod@<pin>` so esm.sh resolves their internal zod
-  // to the same v3 copy our tools use. Otherwise mcp-js's bundled SDK
-  // loads a mismatched zod and crashes with "c.custom is not a function".
-  const needsZodPin =
+  // For `@lovable.dev/mcp-js` and its embedded `@modelcontextprotocol/sdk`
+  // we additionally use `bundle-deps`:
+  //   1. Without bundling, esm.sh splits mcp-js into many internal chunk
+  //      files (`.../es2022/cors-*.mjs` etc.) — Deno's module graph
+  //      builder fails intermittently with "Module not found" on those
+  //      chunk URLs during `supabase functions deploy`.
+  //   2. `bundle-deps` returns ONE self-contained ES module with every
+  //      dependency inlined at the requested versions — no chunk graph,
+  //      no missing sub-paths.
+  //   3. Combined with `deps=zod@<pin>`, esm.sh bundles the pinned zod v3
+  //      copy into the module, so `z.custom(...)` resolves. Without the
+  //      pin, mcp-js pulls a mismatched zod and crashes with
+  //      "c.custom is not a function".
+  //
+  // The bundled artifact is served over HTTP at runtime, so it does NOT
+  // count against the Supabase Edge Function upload size cap (only the
+  // one-line import URL is in our bundle).
+  const needsBundle =
     /^@lovable\.dev\/mcp-js(?:@|$)/.test(cleaned) ||
     /^@modelcontextprotocol\/sdk(?:@|$)/.test(cleaned);
-  const params = needsZodPin
-    ? `target=denonext&deps=zod@${ZOD_PIN}`
+  const params = needsBundle
+    ? `target=denonext&bundle-deps&deps=zod@${ZOD_PIN}`
     : "target=denonext";
   const sep = subpath.includes("?") ? "&" : "?";
   return `${quote}https://esm.sh/${cleaned}${subpath}${sep}${params}${quote}`;
