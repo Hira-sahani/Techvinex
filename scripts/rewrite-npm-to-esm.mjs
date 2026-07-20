@@ -25,6 +25,7 @@
  * are no `npm:` specifiers — the workflow performs its own residual check.
  */
 import { readFileSync, writeFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 
 const file = process.argv[2];
 if (!file) {
@@ -33,6 +34,7 @@ if (!file) {
 }
 
 const src = readFileSync(file, "utf8");
+const dir = dirname(file);
 
 // Match a `"npm:..."` or `'npm:...'` string literal. Body cannot contain the
 // matching quote or a newline — string literals in JS/TS module specifiers
