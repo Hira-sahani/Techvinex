@@ -12,6 +12,11 @@ import unbookmarkRoleTool from "./tools/unbookmark-role";
 import markNotificationReadTool from "./tools/mark-notification-read";
 import listBlogsTool from "./tools/list-blogs";
 import getBlogTool from "./tools/get-blog";
+import applyToRoleTool from "./tools/apply-to-role";
+import listMyInterviewsTool from "./tools/list-my-interviews";
+import scheduleInterviewTool from "./tools/schedule-interview";
+import generateCoverLetterTool from "./tools/generate-cover-letter";
+import optimizeResumeTool from "./tools/optimize-resume";
 
 // Build the OAuth issuer from the project ref (inlined at build time by Vite).
 // Must be the direct supabase.co host, never the .lovable.cloud proxy.
@@ -20,15 +25,17 @@ const projectRef = import.meta.env.VITE_SUPABASE_PROJECT_ID ?? "project-ref-unse
 export default defineMcp({
   name: "techvinex-mcp",
   title: "Techvinex",
-  version: "0.2.0",
+  version: "0.3.0",
   instructions:
     "Techvinex tools. Every tool runs as the signed-in Techvinex user under RLS. " +
     "Profile: `get_my_profile`, `update_my_profile`. " +
     "Jobs: `list_explore_jobs`, `search_explore_jobs`, `get_explore_job`. " +
-    "Applications: `list_my_applications` (read-only in Sprint 1 — submitting new applications is not exposed yet). " +
+    "Applications: `list_my_applications`, `apply_to_role` (requires `confirm: true`, idempotent). " +
+    "Interviews: `list_my_interviews`, `schedule_interview` (employers only, requires `confirm: true`). " +
     "Bookmarks: `list_my_bookmarks`, `bookmark_role`, `unbookmark_role`. " +
     "Notifications: `list_my_notifications`, `mark_notification_read`. " +
-    "Blog: `list_blogs`, `get_blog`.",
+    "Blog: `list_blogs`, `get_blog`. " +
+    "AI assistants: `generate_cover_letter`, `optimize_resume` (read-only, do not submit).",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated",
@@ -40,6 +47,7 @@ export default defineMcp({
     searchExploreJobsTool,
     getExploreJobTool,
     listMyApplicationsTool,
+    applyToRoleTool,
     listMyBookmarksTool,
     bookmarkRoleTool,
     unbookmarkRoleTool,
@@ -47,5 +55,9 @@ export default defineMcp({
     markNotificationReadTool,
     listBlogsTool,
     getBlogTool,
+    listMyInterviewsTool,
+    scheduleInterviewTool,
+    generateCoverLetterTool,
+    optimizeResumeTool,
   ],
 });

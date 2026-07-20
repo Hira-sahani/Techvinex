@@ -12,7 +12,7 @@
   "mcp": {
     "server": {
       "name": "techvinex-mcp",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "title": "Techvinex"
     },
     "tools": [
@@ -267,6 +267,42 @@
         "outputSchema": null
       },
       {
+        "name": "apply_to_role",
+        "title": "Apply to role",
+        "description": "Submit the signed-in user's application to a Techvinex explore job. Irreversible: pass `confirm: true` to actually submit. Idempotent — re-submitting returns the existing application row instead of creating a duplicate (enforced by a unique constraint on job_id + user_id).",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "job_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "UUID of the explore job to apply to."
+            },
+            "confirm": {
+              "description": "Must be `true` to actually submit. If omitted or false, returns a dry-run preview.",
+              "type": "boolean"
+            },
+            "cover_letter": {
+              "description": "Optional cover letter text stored with the application (if provided).",
+              "type": "string",
+              "maxLength": 10000
+            }
+          },
+          "required": [
+            "job_id"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
         "name": "list_my_bookmarks",
         "title": "List my bookmarks",
         "description": "List the signed-in user's bookmarked jobs, newest first.",
@@ -461,6 +497,179 @@
               "maxLength": 200
             }
           }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_my_interviews",
+        "title": "List my interviews",
+        "description": "List interviews visible to the signed-in user under RLS. Employers see interviews they own on employer_interviews; candidates see rows where they are the candidate (if any policy allows). Newest first.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "status": {
+              "description": "Filter by interview status (e.g. 'scheduled', 'completed').",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "limit": {
+              "description": "Max rows. Defaults to 50.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "schedule_interview",
+        "title": "Schedule interview",
+        "description": "Schedule an interview as the signed-in employer. Requires `confirm: true` to actually create the row. RLS ensures only employers can insert interviews they own.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "candidate_id": {
+              "description": "Candidate user UUID (optional).",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "candidate_name": {
+              "description": "Candidate display name.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "job_id": {
+              "description": "Explore job UUID (optional).",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "job_title": {
+              "description": "Job title snapshot.",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "scheduled_date": {
+              "type": "string",
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "description": "Interview date in YYYY-MM-DD format."
+            },
+            "scheduled_time": {
+              "description": "Interview time (free text, e.g. '10:30 AM IST').",
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 40
+            },
+            "confirm": {
+              "description": "Must be `true` to actually create the interview. Otherwise returns a dry-run preview.",
+              "type": "boolean"
+            }
+          },
+          "required": [
+            "scheduled_date"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "generate_cover_letter",
+        "title": "Generate cover letter",
+        "description": "Generate a tailored cover letter for the signed-in user for a specific Techvinex job. Uses the user's profile for context. Read-only — returns text, does not submit anything.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": false,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "job_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "Explore job UUID to tailor the letter to."
+            },
+            "tone": {
+              "description": "Desired tone. Defaults to 'professional'.",
+              "type": "string",
+              "enum": [
+                "professional",
+                "friendly",
+                "enthusiastic",
+                "concise"
+              ]
+            },
+            "extra_context": {
+              "description": "Extra context to include (achievements, motivations, etc.).",
+              "type": "string",
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "job_id"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "optimize_resume",
+        "title": "Optimize resume",
+        "description": "Suggest ATS-friendly improvements to a resume, optionally tailored to a specific Techvinex job. Read-only — returns suggestions, does not update the user's stored resume.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": false,
+          "openWorldHint": true
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "resume_text": {
+              "type": "string",
+              "minLength": 50,
+              "maxLength": 20000,
+              "description": "Raw resume text to review."
+            },
+            "job_id": {
+              "description": "Optional Techvinex job to tailor recommendations to.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "focus": {
+              "description": "Optimization focus. Defaults to 'all'.",
+              "type": "string",
+              "enum": [
+                "keywords",
+                "impact_metrics",
+                "clarity",
+                "ats_formatting",
+                "all"
+              ]
+            }
+          },
+          "required": [
+            "resume_text"
+          ]
         },
         "outputSchema": null
       }
