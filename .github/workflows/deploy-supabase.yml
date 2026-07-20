@@ -780,9 +780,13 @@ jobs:
             echo "// Bundled to a single file by esbuild in CI (see deploy-supabase.yml Stage M) to fit the Supabase Edge Function upload limit."
             cat "$OUT"
           } > "$SRC"
+          # Clean up the intermediate entry/output so only the bundled
+          # index.ts remains in supabase/functions/mcp/ for deploy.
+          rm -f "$TMP" "$OUT"
           echo "=== Post-bundle size (deploy payload) ==="
           wc -c "$SRC"
           echo "  ✓ MCP function bundled to a single file with no npm graph."
+
 
 
 
