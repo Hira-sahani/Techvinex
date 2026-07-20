@@ -4,21 +4,28 @@ import listExploreJobsTool from "./list-explore-jobs";
 import searchExploreJobsTool from "./search-explore-jobs";
 
 const { mockChain } = vi.hoisted(() => {
-  const self: Record<string, unknown> = {};
-  const chain = {
-    from: vi.fn(() => chain),
-    select: vi.fn().mockReturnThis(),
-    eq: vi.fn().mockReturnThis(),
-    or: vi.fn().mockReturnThis(),
-    ilike: vi.fn().mockReturnThis(),
-    contains: vi.fn().mockReturnThis(),
-    order: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockResolvedValue({ data: [], error: null }),
-    range: vi.fn().mockResolvedValue({ data: [], error: null }),
-    maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+  let nextResult: { data: unknown; error: null } = { data: [], error: null };
+  const self: Record<string, unknown> = {
+    setResult: (r: unknown) => {
+      nextResult = { data: r, error: null };
+    },
   };
-  Object.assign(self, chain);
-  return { mockChain: self as typeof chain };
+  const chain = new Proxy(
+    {},
+    {
+      get(_target, prop) {
+        if (prop === "then") {
+          return (onResolved: (v: unknown) => unknown, onRejected: (e: unknown) => unknown) =>
+            Promise.resolve(nextResult).then(onResolved, onRejected);
+        }
+        if (prop === "setResult") {
+          return self.setResult;
+        }
+        return () => chain;
+      },
+    },
+  );
+  return { mockChain: chain as typeof chain & { setResult: (r: unknown) => void } };
 });
 
 vi.mock("@supabase/supabase-js", () => ({
@@ -43,7 +50,7 @@ function textContent(result: ToolHandlerResult) {
 
 describe("list_explore_jobs empty result", () => {
   it("returns success with empty jobs array and a helpful message", async () => {
-    mockChain.limit.mockResolvedValueOnce({ data: [], error: null });
+    mockChain.setResult([]);
 
     const result = await listExploreJobsTool.handler(
       { search: "nonexistent-role" } as unknown as Parameters<typeof listExploreJobsTool.handler>[0],
@@ -60,7 +67,7 @@ describe("list_explore_jobs empty result", () => {
 
   it("does not include the no-match message when jobs are found", async () => {
     const jobs = [{ id: "job-1", title: "Found Role" }];
-    mockChain.limit.mockResolvedValueOnce({ data: jobs, error: null });
+    mockChain.setResult(jobs);
 
     const result = await listExploreJobsTool.handler(
       { search: "found" } as unknown as Parameters<typeof listExploreJobsTool.handler>[0],
@@ -74,7 +81,7 @@ describe("list_explore_jobs empty result", () => {
 
 describe("search_explore_jobs empty result", () => {
   it("returns success with empty jobs array and a helpful message for 'react remote'", async () => {
-    mockChain.range.mockResolvedValueOnce({ data: [], error: null });
+    mockChain.setResult([]);
 
     const result = await searchExploreJobsTool.handler(
       { query: "react", location: "remote" } as unknown as Parameters<typeof searchExploreJobsTool.handler>[0],
@@ -93,7 +100,7 @@ describe("search_explore_jobs empty result", () => {
 
   it("does not include the no-match message when jobs are found", async () => {
     const jobs = [{ id: "job-2", title: "Remote React Engineer" }];
-    mockChain.range.mockResolvedValueOnce({ data: jobs, error: null });
+    mockChain.setResult(jobs);
 
     const result = await searchExploreJobsTool.handler(
       { query: "react" } as unknown as Parameters<typeof searchExploreJobsTool.handler>[0],
