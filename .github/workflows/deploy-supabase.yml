@@ -674,11 +674,20 @@ jobs:
         with:
           node-version: "20"
 
-      - name: "Stage M · Install npm deps (for Vite plugin)"
+      - name: "Stage M · Setup Bun for MCP rebuild"
+        if: ${{ inputs.stage == 'mcp-only' }}
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: "Stage M · Install deps (for Vite plugin)"
         if: ${{ inputs.stage == 'mcp-only' }}
         run: |
           set -euo pipefail
-          npm ci --no-audit --no-fund
+          # The repo uses Bun as its package manager (bun.lockb); there is no
+          # committed package-lock.json, so `npm ci` fails with an out-of-sync
+          # error. Use `bun install --frozen-lockfile` to match CI.
+          bun install --frozen-lockfile
 
       - name: "Stage M · Rebuild MCP function with target project ref"
         if: ${{ inputs.stage == 'mcp-only' }}
@@ -694,7 +703,8 @@ jobs:
           # The mcpPlugin() in vite.config.ts regenerates
           # supabase/functions/mcp/index.ts on every build with the current
           # env inlined. Frontend `dist/` output is discarded.
-          npm run build
+          bun run build
+
 
       - name: "Stage M · Verify generated function embeds target issuer"
         if: ${{ inputs.stage == 'mcp-only' }}
