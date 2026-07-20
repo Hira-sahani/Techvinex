@@ -72,14 +72,21 @@ const out = src.replace(LITERAL, (_match, quote, body) => {
   // Strip semver operators immediately after the `@` version separator.
   const cleaned = nameAndVersion.replace(/@(?:\^|~|>=|<=|>|<|=)+/, "@");
   count++;
-  // Append `?target=denonext` so esm.sh serves Deno-optimized builds with
-  // proper node:* polyfills. Without this, packages that import node builtins
-  // (e.g. `@supabase/supabase-js` → node:stream) crash the edge worker at
-  // startup with WORKER_ERROR before auth middleware runs.
-  // Preserve any existing subpath but insert the query before it if the
-  // subpath already contains a `?` (unlikely for npm specifiers).
+  // `target=denonext` → Deno-optimized build with node:* polyfills.
+  // Without it, `@supabase/supabase-js` → node:stream crashes the worker at
+  // startup with WORKER_ERROR before the auth middleware runs.
+  //
+  // For @lovable.dev/mcp-js also add `bundle-deps`: it transitively imports
+  // @modelcontextprotocol/sdk, which calls `z.custom(...)` at module top
+  // level. Without bundle-deps, esm.sh resolves zod for the SDK to a copy
+  // different from the one used by mcp-js itself, and the minified SDK
+  // crashes with "t.custom is not a function" before auth runs. bundle-deps
+  // inlines mcp-js's entire graph (MCP SDK + its zod) into a single
+  // self-consistent module so all internal imports agree.
+  const isMcpJs = /^@lovable\.dev\/mcp-js(?:@|$)/.test(cleaned);
+  const params = isMcpJs ? "target=denonext&bundle-deps" : "target=denonext";
   const sep = subpath.includes("?") ? "&" : "?";
-  return `${quote}https://esm.sh/${cleaned}${subpath}${sep}target=denonext${quote}`;
+  return `${quote}https://esm.sh/${cleaned}${subpath}${sep}${params}${quote}`;
 });
 
 writeFileSync(file, out);
