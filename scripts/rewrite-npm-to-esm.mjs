@@ -66,16 +66,19 @@ function splitNameAndSubpath(body) {
   };
 }
 
-// Pin zod to v3. `@lovable.dev/mcp-js` and its embedded
-// `@modelcontextprotocol/sdk` are built against zod v3 (they call
-// `z.custom(...)`, which zod v4 restructured out of the top-level API).
-// Our tools declare `zod@^4.4.3` in package.json, so without
-// normalization esm.sh serves a v4 copy and the SDK bundle crashes at
-// import time with "c.custom is not a function". The subset of the zod
-// API our tools use — `.number().int().min().max().optional().describe()`
-// and `.string().trim().min().max().optional().describe()` — is
-// identical in v3, so pinning is safe.
-const ZOD_PIN = "3.23.8";
+// Pin zod to a v4 release. `@lovable.dev/mcp-js@0.22.2` bundles
+// `@modelcontextprotocol/sdk@1.28.0`, which declares
+// `"zod": "^3.25 || ^4.0"` and — when built for esm.sh — imports from
+// the v4-only subpaths `zod/v3`, `zod/v4`, `zod/v4-mini`. Pinning to a
+// zod v3 release (e.g. 3.23.8) makes esm.sh emit stubs that reference
+// those subpaths against a version that does not publish them, and
+// Deno's module graph fails with "Module not found: .../v3.mjs".
+// Our tool files also declare `zod@^4.4.3`, so keeping the SDK and our
+// tools on the same v4 line ensures both sides share one ZodType
+// identity and mcp-js recognises our schemas without falling through
+// to `z.custom(...)` (the source of the earlier "c.custom is not a
+// function" crash).
+const ZOD_PIN = "4.4.3";
 
 let count = 0;
 const out = src.replace(LITERAL, (_match, quote, body) => {
