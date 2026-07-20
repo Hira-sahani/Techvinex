@@ -855,6 +855,55 @@ jobs:
           fi
           echo "  OK — function boots and returns 401 + Bearer challenge with --no-remote."
 
+      - name: "Stage M · Inject defensive cold-start wrapper"
+        if: ${{ inputs.stage == 'mcp-only' }}
+        run: |
+          set -euo pipefail
+          # Why: Supabase edge-runtime reports cold-start crashes as opaque
+          # HTTP 500 sb-error-code=WORKER_ERROR with no body. To capture the
+          # actual stack trace we wrap the final Deno.serve line with:
+          #   * global error + unhandledrejection listeners (log then no-op)
+          #   * try/catch around createSupabaseHandler construction
+          #   * try/catch around each request dispatch
+          #   * a fallback handler that returns the error as JSON
+          # so a cold-start failure surfaces as a readable JSON body AND a
+          # log line, instead of WORKER_ERROR.
+          FILE=supabase/functions/mcp/index.ts
+          node --input-type=module -e '
+            import { readFileSync, writeFileSync } from "node:fs";
+            const p = process.argv[1];
+            let s = readFileSync(p, "utf8");
+            const marker = "Deno.serve(createSupabaseHandler(";
+            const idx = s.indexOf(marker);
+            if (idx < 0) { console.error("marker not found"); process.exit(1); }
+            const head = s.slice(0, idx);
+            const wrapper = `
+try { addEventListener("error", (e) => { try { console.error("[mcp:error]", (e && e.error && e.error.stack) || (e && e.message) || String(e)); } catch (_) {} }); } catch (_) {}
+try { addEventListener("unhandledrejection", (e) => { try { console.error("[mcp:unhandledrejection]", (e && e.reason && e.reason.stack) || String(e && e.reason)); if (e && e.preventDefault) e.preventDefault(); } catch (_) {} }); } catch (_) {}
+console.log("[mcp] cold-start: modules loaded, constructing handler");
+let __mcp_handler;
+try {
+  __mcp_handler = createSupabaseHandler(mcp_default, { functionName: "mcp" });
+  console.log("[mcp] cold-start: handler ready");
+} catch (e) {
+  console.error("[mcp] cold-start FAILED in createSupabaseHandler:", (e && e.stack) || String(e));
+  const msg = String((e && e.message) || e);
+  __mcp_handler = () => new Response(JSON.stringify({ error: "mcp_cold_start_failed", message: msg }), { status: 500, headers: { "content-type": "application/json" } });
+}
+Deno.serve((req) => {
+  try { return __mcp_handler(req); } catch (e) {
+    console.error("[mcp] request handler threw:", (e && e.stack) || String(e));
+    return new Response(JSON.stringify({ error: "mcp_handler_threw", message: String((e && e.message) || e) }), { status: 500, headers: { "content-type": "application/json" } });
+  }
+});
+`;
+            writeFileSync(p, head + wrapper);
+            console.error("[wrap] injected defensive cold-start wrapper");
+          ' "$FILE"
+          echo "  ✓ defensive wrapper injected"
+          tail -30 "$FILE"
+
+
       - name: "Stage M · Pre-deploy target identity evidence"
         if: ${{ inputs.stage == 'mcp-only' }}
         run: |
