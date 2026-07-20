@@ -98,18 +98,353 @@ var list_explore_jobs_default = defineTool3({
   }
 });
 
+// src/lib/mcp/tools/update-my-profile.ts
+import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@0.22.2";
+import { z as z3 } from "npm:zod@^4.4.3";
+
+// src/lib/mcp/tools/_shared.ts
+import { createClient as createClient4 } from "npm:@supabase/supabase-js@^2.100.1";
+function supabaseForUser4(ctx) {
+  return createClient4(process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, {
+    global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+}
+function notAuthenticated() {
+  return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
+}
+function errorResult(message) {
+  return { content: [{ type: "text", text: message }], isError: true };
+}
+async function rateLimit(ctx, tool, { limit, windowMs }) {
+  const supabase = supabaseForUser4(ctx);
+  const key = `mcp:${tool}:${ctx.getUserId()}`;
+  const { data, error } = await supabase.rpc("rate_limit_hit", {
+    _key: key,
+    _window_ms: windowMs
+  });
+  if (error) return null;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (row && typeof row.current_count === "number" && row.current_count > limit) {
+    return errorResult(
+      `Rate limit exceeded for ${tool}. Try again in ${Math.ceil((row.reset_ms ?? 0) / 1e3)}s.`
+    );
+  }
+  return null;
+}
+
+// src/lib/mcp/tools/update-my-profile.ts
+var UpdatableProfile = z3.object({
+  full_name: z3.string().trim().min(1).max(120).optional(),
+  phone: z3.string().trim().min(3).max(32).optional(),
+  linkedin: z3.string().trim().url().max(300).optional(),
+  portfolio: z3.string().trim().url().max(300).optional(),
+  github: z3.string().trim().url().max(300).optional(),
+  leetcode: z3.string().trim().url().max(300).optional(),
+  codechef: z3.string().trim().url().max(300).optional(),
+  codeforces: z3.string().trim().url().max(300).optional(),
+  country: z3.string().trim().max(80).optional(),
+  state: z3.string().trim().max(80).optional(),
+  city: z3.string().trim().max(80).optional(),
+  postal_code: z3.string().trim().max(20).optional()
+}).strict();
+var update_my_profile_default = defineTool4({
+  name: "update_my_profile",
+  title: "Update my profile",
+  description: "Update whitelisted fields on the signed-in Techvinex user's profile (name, contact, links, location). Sensitive fields cannot be changed here.",
+  inputSchema: {
+    patch: UpdatableProfile.describe("Object with the profile fields to update. Only include fields you want to change.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ patch }, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthenticated();
+    const keys = Object.keys(patch ?? {});
+    if (keys.length === 0) return errorResult("Provide at least one field in `patch`.");
+    const rl = await rateLimit(ctx, "update_my_profile", { limit: 20, windowMs: 6e4 });
+    if (rl) return rl;
+    const { data, error } = await supabaseForUser4(ctx).from("profiles").update(patch).eq("user_id", ctx.getUserId()).select().maybeSingle();
+    if (error) return errorResult(error.message);
+    return {
+      content: [{ type: "text", text: JSON.stringify(data ?? null) }],
+      structuredContent: { profile: data ?? null, updated_fields: keys }
+    };
+  }
+});
+
+// src/lib/mcp/tools/search-explore-jobs.ts
+import { defineTool as defineTool5 } from "npm:@lovable.dev/mcp-js@0.22.2";
+import { z as z4 } from "npm:zod@^4.4.3";
+var search_explore_jobs_default = defineTool5({
+  name: "search_explore_jobs",
+  title: "Search explore jobs",
+  description: "Search published Techvinex explore jobs by keyword, location, category, job type, or skills. Returns the newest matches first.",
+  inputSchema: {
+    query: z4.string().trim().min(1).max(120).optional().describe("Case-insensitive substring matched against title and short description."),
+    location: z4.string().trim().min(1).max(80).optional().describe("Case-insensitive substring matched against the job location."),
+    category: z4.string().trim().min(1).max(80).optional().describe("Exact category match (e.g. 'engineering')."),
+    job_type: z4.string().trim().min(1).max(40).optional().describe("Exact job type (e.g. 'full-time', 'contract')."),
+    skills: z4.array(z4.string().trim().min(1).max(40)).max(10).optional().describe("Skills the job must include (AND semantics)."),
+    limit: z4.number().int().min(1).max(50).optional().describe("Max jobs to return. Defaults to 20."),
+    offset: z4.number().int().min(0).max(1e3).optional().describe("Pagination offset. Defaults to 0.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ query, location, category, job_type, skills, limit, offset }, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthenticated();
+    const lim = limit ?? 20;
+    const off = offset ?? 0;
+    let q = supabaseForUser4(ctx).from("explore_jobs").select("id, title, slug, short_description, location, budget, job_type, category, skills, tags, company_name, show_company, created_at").order("created_at", { ascending: false }).range(off, off + lim - 1);
+    if (query) q = q.or(`title.ilike.%${query}%,short_description.ilike.%${query}%`);
+    if (location) q = q.ilike("location", `%${location}%`);
+    if (category) q = q.eq("category", category);
+    if (job_type) q = q.eq("job_type", job_type);
+    if (skills && skills.length) q = q.contains("skills", skills);
+    const { data, error } = await q;
+    if (error) return errorResult(error.message);
+    return {
+      content: [{ type: "text", text: JSON.stringify(data ?? []) }],
+      structuredContent: { jobs: data ?? [], offset: off, limit: lim }
+    };
+  }
+});
+
+// src/lib/mcp/tools/get-explore-job.ts
+import { defineTool as defineTool6 } from "npm:@lovable.dev/mcp-js@0.22.2";
+import { z as z5 } from "npm:zod@^4.4.3";
+var get_explore_job_default = defineTool6({
+  name: "get_explore_job",
+  title: "Get explore job",
+  description: "Fetch a single Techvinex explore job by id or slug (public listing fields only).",
+  inputSchema: {
+    id: z5.string().uuid().optional().describe("Job UUID."),
+    slug: z5.string().trim().min(1).max(200).optional().describe("Job slug.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ id, slug }, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthenticated();
+    if (!id && !slug) return errorResult("Provide either `id` or `slug`.");
+    let q = supabaseForUser4(ctx).from("explore_jobs").select(
+      "id, title, slug, short_description, description, skills, experience, budget, job_type, location, company_name, show_company, show_salary, tags, urgency, featured, status, meta_title, meta_description, allow_direct_apply, expiry_date, views_count, applications_count, created_at"
+    );
+    q = id ? q.eq("id", id) : q.eq("slug", slug);
+    const { data, error } = await q.maybeSingle();
+    if (error) return errorResult(error.message);
+    return {
+      content: [{ type: "text", text: JSON.stringify(data ?? null) }],
+      structuredContent: { job: data ?? null }
+    };
+  }
+});
+
+// src/lib/mcp/tools/list-my-applications.ts
+import { defineTool as defineTool7 } from "npm:@lovable.dev/mcp-js@0.22.2";
+import { z as z6 } from "npm:zod@^4.4.3";
+var list_my_applications_default = defineTool7({
+  name: "list_my_applications",
+  title: "List my applications",
+  description: "List the signed-in user's job applications, newest first.",
+  inputSchema: {
+    status: z6.string().trim().min(1).max(40).optional().describe("Filter by application status (e.g. 'submitted', 'reviewed')."),
+    limit: z6.number().int().min(1).max(100).optional().describe("Max rows. Defaults to 50.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ status, limit }, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthenticated();
+    const supabase = supabaseForUser4(ctx);
+    let q = supabase.from("job_applications").select("id, job_id, status, created_at, explore_jobs(id, title, slug, company_name, location)").eq("user_id", ctx.getUserId()).order("created_at", { ascending: false }).limit(limit ?? 50);
+    if (status) q = q.eq("status", status);
+    const { data, error } = await q;
+    if (error) return errorResult(error.message);
+    return {
+      content: [{ type: "text", text: JSON.stringify(data ?? []) }],
+      structuredContent: { applications: data ?? [] }
+    };
+  }
+});
+
+// src/lib/mcp/tools/list-my-bookmarks.ts
+import { defineTool as defineTool8 } from "npm:@lovable.dev/mcp-js@0.22.2";
+import { z as z7 } from "npm:zod@^4.4.3";
+var list_my_bookmarks_default = defineTool8({
+  name: "list_my_bookmarks",
+  title: "List my bookmarks",
+  description: "List the signed-in user's bookmarked jobs, newest first.",
+  inputSchema: {
+    limit: z7.number().int().min(1).max(100).optional().describe("Max rows. Defaults to 50.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ limit }, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthenticated();
+    const { data, error } = await supabaseForUser4(ctx).from("job_bookmarks").select("id, job_id, created_at, explore_jobs(id, title, slug, company_name, location, budget)").eq("user_id", ctx.getUserId()).order("created_at", { ascending: false }).limit(limit ?? 50);
+    if (error) return errorResult(error.message);
+    return {
+      content: [{ type: "text", text: JSON.stringify(data ?? []) }],
+      structuredContent: { bookmarks: data ?? [] }
+    };
+  }
+});
+
+// src/lib/mcp/tools/bookmark-role.ts
+import { defineTool as defineTool9 } from "npm:@lovable.dev/mcp-js@0.22.2";
+import { z as z8 } from "npm:zod@^4.4.3";
+var bookmark_role_default = defineTool9({
+  name: "bookmark_role",
+  title: "Bookmark role",
+  description: "Bookmark an explore job for the signed-in user. Idempotent \u2014 re-bookmarking is a no-op.",
+  inputSchema: {
+    job_id: z8.string().uuid().describe("UUID of the explore job to bookmark.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ job_id }, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthenticated();
+    const rl = await rateLimit(ctx, "bookmark_role", { limit: 60, windowMs: 6e4 });
+    if (rl) return rl;
+    const supabase = supabaseForUser4(ctx);
+    const { data, error } = await supabase.from("job_bookmarks").upsert(
+      { user_id: ctx.getUserId(), job_id },
+      { onConflict: "user_id,job_id", ignoreDuplicates: false }
+    ).select().maybeSingle();
+    if (error) return errorResult(error.message);
+    return {
+      content: [{ type: "text", text: JSON.stringify(data ?? { job_id, bookmarked: true }) }],
+      structuredContent: { bookmark: data }
+    };
+  }
+});
+
+// src/lib/mcp/tools/unbookmark-role.ts
+import { defineTool as defineTool10 } from "npm:@lovable.dev/mcp-js@0.22.2";
+import { z as z9 } from "npm:zod@^4.4.3";
+var unbookmark_role_default = defineTool10({
+  name: "unbookmark_role",
+  title: "Unbookmark role",
+  description: "Remove a bookmark on an explore job for the signed-in user.",
+  inputSchema: {
+    job_id: z9.string().uuid().describe("UUID of the explore job to unbookmark.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ job_id }, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthenticated();
+    const rl = await rateLimit(ctx, "unbookmark_role", { limit: 60, windowMs: 6e4 });
+    if (rl) return rl;
+    const { data, error } = await supabaseForUser4(ctx).from("job_bookmarks").delete().eq("user_id", ctx.getUserId()).eq("job_id", job_id).select();
+    if (error) return errorResult(error.message);
+    return {
+      content: [{ type: "text", text: JSON.stringify({ removed: data?.length ?? 0 }) }],
+      structuredContent: { removed: data?.length ?? 0, job_id }
+    };
+  }
+});
+
+// src/lib/mcp/tools/mark-notification-read.ts
+import { defineTool as defineTool11 } from "npm:@lovable.dev/mcp-js@0.22.2";
+import { z as z10 } from "npm:zod@^4.4.3";
+var mark_notification_read_default = defineTool11({
+  name: "mark_notification_read",
+  title: "Mark notification read",
+  description: "Mark one notification, or all notifications, as read for the signed-in user.",
+  inputSchema: {
+    notification_id: z10.string().uuid().optional().describe("Notification UUID. Omit together with `all: true` to mark all as read."),
+    all: z10.boolean().optional().describe("If true, marks every unread notification for the user as read.")
+  },
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: async ({ notification_id, all }, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthenticated();
+    if (!notification_id && !all) return errorResult("Provide `notification_id` or set `all: true`.");
+    const rl = await rateLimit(ctx, "mark_notification_read", { limit: 60, windowMs: 6e4 });
+    if (rl) return rl;
+    let q = supabaseForUser4(ctx).from("notifications").update({ is_read: true }).eq("user_id", ctx.getUserId());
+    q = notification_id ? q.eq("id", notification_id) : q.eq("is_read", false);
+    const { data, error } = await q.select();
+    if (error) return errorResult(error.message);
+    return {
+      content: [{ type: "text", text: JSON.stringify({ updated: data?.length ?? 0 }) }],
+      structuredContent: { updated: data?.length ?? 0 }
+    };
+  }
+});
+
+// src/lib/mcp/tools/list-blogs.ts
+import { defineTool as defineTool12 } from "npm:@lovable.dev/mcp-js@0.22.2";
+import { z as z11 } from "npm:zod@^4.4.3";
+var list_blogs_default = defineTool12({
+  name: "list_blogs",
+  title: "List blogs",
+  description: "List published Techvinex blog posts, newest first.",
+  inputSchema: {
+    category: z11.string().trim().min(1).max(60).optional().describe("Filter by blog category."),
+    search: z11.string().trim().min(1).max(120).optional().describe("Case-insensitive substring matched against title."),
+    limit: z11.number().int().min(1).max(50).optional().describe("Max rows. Defaults to 20."),
+    offset: z11.number().int().min(0).max(1e3).optional().describe("Pagination offset. Defaults to 0.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ category, search, limit, offset }, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthenticated();
+    const lim = limit ?? 20;
+    const off = offset ?? 0;
+    let q = supabaseForUser4(ctx).from("blogs").select("id, title, slug, short_description, image_url, category, author, read_time, status, created_at").eq("status", "published").order("created_at", { ascending: false }).range(off, off + lim - 1);
+    if (category) q = q.eq("category", category);
+    if (search) q = q.ilike("title", `%${search}%`);
+    const { data, error } = await q;
+    if (error) return errorResult(error.message);
+    return {
+      content: [{ type: "text", text: JSON.stringify(data ?? []) }],
+      structuredContent: { blogs: data ?? [], limit: lim, offset: off }
+    };
+  }
+});
+
+// src/lib/mcp/tools/get-blog.ts
+import { defineTool as defineTool13 } from "npm:@lovable.dev/mcp-js@0.22.2";
+import { z as z12 } from "npm:zod@^4.4.3";
+var get_blog_default = defineTool13({
+  name: "get_blog",
+  title: "Get blog",
+  description: "Fetch a single published Techvinex blog post by id or slug (full content).",
+  inputSchema: {
+    id: z12.string().uuid().optional().describe("Blog UUID."),
+    slug: z12.string().trim().min(1).max(200).optional().describe("Blog slug.")
+  },
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async ({ id, slug }, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthenticated();
+    if (!id && !slug) return errorResult("Provide either `id` or `slug`.");
+    let q = supabaseForUser4(ctx).from("blogs").select("id, title, slug, short_description, content, image_url, category, author, read_time, status, created_at, updated_at").eq("status", "published");
+    q = id ? q.eq("id", id) : q.eq("slug", slug);
+    const { data, error } = await q.maybeSingle();
+    if (error) return errorResult(error.message);
+    return {
+      content: [{ type: "text", text: JSON.stringify(data ?? null) }],
+      structuredContent: { blog: data ?? null }
+    };
+  }
+});
+
 // src/lib/mcp/index.ts
 var projectRef = "xfgyzcvrvgsntjenxecp";
 var mcp_default = defineMcp({
   name: "techvinex-mcp",
   title: "Techvinex",
-  version: "0.1.0",
-  instructions: "Techvinex tools. Every tool runs as the signed-in Techvinex user under RLS. Use `get_my_profile` to read the current user's profile, `list_my_notifications` to read their notifications, and `list_explore_jobs` to browse published job listings.",
+  version: "0.2.0",
+  instructions: "Techvinex tools. Every tool runs as the signed-in Techvinex user under RLS. Profile: `get_my_profile`, `update_my_profile`. Jobs: `list_explore_jobs`, `search_explore_jobs`, `get_explore_job`. Applications: `list_my_applications` (read-only in Sprint 1 \u2014 submitting new applications is not exposed yet). Bookmarks: `list_my_bookmarks`, `bookmark_role`, `unbookmark_role`. Notifications: `list_my_notifications`, `mark_notification_read`. Blog: `list_blogs`, `get_blog`.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
   }),
-  tools: [get_my_profile_default, list_my_notifications_default, list_explore_jobs_default]
+  tools: [
+    get_my_profile_default,
+    update_my_profile_default,
+    list_explore_jobs_default,
+    search_explore_jobs_default,
+    get_explore_job_default,
+    list_my_applications_default,
+    list_my_bookmarks_default,
+    bookmark_role_default,
+    unbookmark_role_default,
+    list_my_notifications_default,
+    mark_notification_read_default,
+    list_blogs_default,
+    get_blog_default
+  ]
 });
 
 // lovable-mcp-supabase-entry.ts
