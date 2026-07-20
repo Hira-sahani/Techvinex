@@ -17,6 +17,11 @@ const SRC_DIR = join(process.cwd(), "src");
 // Files explicitly allowed to set Authorization: Bearer headers.
 const ALLOW_FILES = new Set<string>([
   join("src", "lib", "apiClient.ts"),
+  // MCP server-side helper runs on Supabase Edge Runtime (Deno), not in the
+  // browser. It forwards the OAuth-verified token from ToolContext to
+  // Supabase so RLS runs as that user. apiClient is browser-only and cannot
+  // be used from Edge Functions.
+  join("src", "lib", "mcp", "tools", "_shared.ts"),
 ]);
 
 // Patterns flagged as forbidden when they appear outside ALLOW_FILES.
