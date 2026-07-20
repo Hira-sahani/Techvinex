@@ -1,12 +1,5 @@
-import { createClient } from "@supabase/supabase-js";
-import { defineTool, type ToolContext } from "@lovable.dev/mcp-js";
-
-function supabaseForUser(ctx: ToolContext) {
-  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_PUBLISHABLE_KEY!, {
-    global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-}
+import { defineTool } from "@lovable.dev/mcp-js";
+import { errorResult, notAuthenticated, supabaseForUser } from "./_shared";
 
 export default defineTool({
   name: "get_my_profile",
@@ -15,18 +8,34 @@ export default defineTool({
   inputSchema: {},
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (_input, ctx) => {
-    if (!ctx.isAuthenticated()) {
-      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
+    if (!ctx.isAuthenticated()) return notAuthenticated();
+    let client;
+    try {
+      client = supabaseForUser(ctx);
+    } catch (e) {
+      return errorResult(`Supabase client init failed: ${(e as Error).message}`);
     }
-    const { data, error } = await supabaseForUser(ctx)
+    const userId = ctx.getUserId();
+    const { data, error } = await client
       .from("profiles")
       .select("*")
-      .eq("user_id", ctx.getUserId())
+      .eq("user_id", userId)
       .maybeSingle();
-    if (error) return { content: [{ type: "text", text: error.message }], isError: true };
+    if (error) {
+      return errorResult(`Query failed (code=${error.code ?? "?"}): ${error.message}`);
+    }
+    if (!data) {
+      return {
+        content: [{
+          type: "text",
+          text: `No profile row exists for user_id=${userId}. Authentication and RLS succeeded, but the profiles table has no matching row.`,
+        }],
+        structuredContent: { profile: null, user_id: userId, reason: "no_profile_row" },
+      };
+    }
     return {
-      content: [{ type: "text", text: JSON.stringify(data ?? null) }],
-      structuredContent: { profile: data ?? null },
+      content: [{ type: "text", text: JSON.stringify(data) }],
+      structuredContent: { profile: data },
     };
   },
 });
