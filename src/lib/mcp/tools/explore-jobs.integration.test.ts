@@ -5,6 +5,7 @@ import searchExploreJobsTool from "./search-explore-jobs";
 
 // Mock the Supabase client so every tool sees an empty explore_jobs result set.
 const mockChain = {
+  from: vi.fn(() => mockChain),
   select: vi.fn().mockReturnThis(),
   eq: vi.fn().mockReturnThis(),
   or: vi.fn().mockReturnThis(),
