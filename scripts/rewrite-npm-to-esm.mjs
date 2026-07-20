@@ -72,7 +72,14 @@ const out = src.replace(LITERAL, (_match, quote, body) => {
   // Strip semver operators immediately after the `@` version separator.
   const cleaned = nameAndVersion.replace(/@(?:\^|~|>=|<=|>|<|=)+/, "@");
   count++;
-  return `${quote}https://esm.sh/${cleaned}${subpath}${quote}`;
+  // Append `?target=denonext` so esm.sh serves Deno-optimized builds with
+  // proper node:* polyfills. Without this, packages that import node builtins
+  // (e.g. `@supabase/supabase-js` → node:stream) crash the edge worker at
+  // startup with WORKER_ERROR before auth middleware runs.
+  // Preserve any existing subpath but insert the query before it if the
+  // subpath already contains a `?` (unlikely for npm specifiers).
+  const sep = subpath.includes("?") ? "&" : "?";
+  return `${quote}https://esm.sh/${cleaned}${subpath}${sep}target=denonext${quote}`;
 });
 
 writeFileSync(file, out);
