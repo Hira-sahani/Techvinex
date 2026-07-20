@@ -30,15 +30,21 @@ function makeCtx(authenticated = true) {
   };
 }
 
+function textContent(result: { content: Array<{ type: string; text?: string }> }) {
+  return result.content[0].text;
+}
+
 describe("list_explore_jobs empty result", () => {
   it("returns success with empty jobs array and a helpful message", async () => {
     mockChain.limit.mockResolvedValueOnce({ data: [], error: null });
 
-    // @ts-expect-error ToolContext is injected by the MCP runtime; we only need the subset used.
-    const result = await listExploreJobsTool.handler({ search: "nonexistent-role" }, makeCtx());
+    const result = await listExploreJobsTool.handler(
+      { search: "nonexistent-role" },
+      makeCtx() as unknown as Parameters<typeof listExploreJobsTool.handler>[1],
+    );
 
     expect(result.isError).toBeFalsy();
-    expect(result.content[0].text).toBe("[]");
+    expect(textContent(result)).toBe("[]");
     expect(result.structuredContent).toMatchObject({
       jobs: [],
       message: "No jobs are currently available for this role. Please check back later or try another search.",
@@ -49,8 +55,10 @@ describe("list_explore_jobs empty result", () => {
     const jobs = [{ id: "job-1", title: "Found Role" }];
     mockChain.limit.mockResolvedValueOnce({ data: jobs, error: null });
 
-    // @ts-expect-error see above
-    const result = await listExploreJobsTool.handler({ search: "found" }, makeCtx());
+    const result = await listExploreJobsTool.handler(
+      { search: "found" },
+      makeCtx() as unknown as Parameters<typeof listExploreJobsTool.handler>[1],
+    );
 
     expect(result.structuredContent.jobs).toEqual(jobs);
     expect(result.structuredContent.message).toBeUndefined();
@@ -61,14 +69,13 @@ describe("search_explore_jobs empty result", () => {
   it("returns success with empty jobs array and a helpful message for 'react remote'", async () => {
     mockChain.range.mockResolvedValueOnce({ data: [], error: null });
 
-    // @ts-expect-error see above
     const result = await searchExploreJobsTool.handler(
       { query: "react", location: "remote" },
-      makeCtx(),
+      makeCtx() as unknown as Parameters<typeof searchExploreJobsTool.handler>[1],
     );
 
     expect(result.isError).toBeFalsy();
-    expect(result.content[0].text).toBe("[]");
+    expect(textContent(result)).toBe("[]");
     expect(result.structuredContent).toMatchObject({
       jobs: [],
       offset: 0,
@@ -81,8 +88,10 @@ describe("search_explore_jobs empty result", () => {
     const jobs = [{ id: "job-2", title: "Remote React Engineer" }];
     mockChain.range.mockResolvedValueOnce({ data: jobs, error: null });
 
-    // @ts-expect-error see above
-    const result = await searchExploreJobsTool.handler({ query: "react" }, makeCtx());
+    const result = await searchExploreJobsTool.handler(
+      { query: "react" },
+      makeCtx() as unknown as Parameters<typeof searchExploreJobsTool.handler>[1],
+    );
 
     expect(result.structuredContent.jobs).toEqual(jobs);
     expect(result.structuredContent.message).toBeUndefined();
