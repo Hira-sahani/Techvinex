@@ -148,7 +148,7 @@
       {
         "name": "search_explore_jobs",
         "title": "Search explore jobs",
-        "description": "Search published Techvinex explore jobs by keyword, location, category, job type, or skills. Returns the newest matches first.",
+        "description": "Search published Techvinex explore jobs by keyword, location, job type, or skills. Returns the newest matches first.",
         "annotations": {
           "readOnlyHint": true,
           "idempotentHint": true,
@@ -166,12 +166,6 @@
             },
             "location": {
               "description": "Case-insensitive substring matched against the job location.",
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 80
-            },
-            "category": {
-              "description": "Exact category match (e.g. 'engineering').",
               "type": "string",
               "minLength": 1,
               "maxLength": 80

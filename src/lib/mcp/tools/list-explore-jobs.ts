@@ -19,10 +19,15 @@ export default defineTool({
     catch (e) { return errorResult(`Supabase client init failed: ${(e as Error).message}`); }
     let query = client
       .from("explore_jobs")
-      .select("id, title, slug, location, salary, category, created_at")
+      .select("id, title, slug, location, budget, job_type, created_at")
+      .eq("status", "published")
+      .eq("visibility", "public")
       .order("created_at", { ascending: false })
       .limit(limit ?? 20);
-    if (search) query = query.ilike("title", `%${search}%`);
+    if (search) {
+      const safe = search.replace(/\\/g, "\\\\").replace(/[%_]/g, (c) => `\\${c}`);
+      query = query.ilike("title", `%${safe}%`);
+    }
     const { data, error } = await query;
     if (error) return errorResult(`Query failed (code=${error.code ?? "?"}): ${error.message}`);
     return {
