@@ -554,6 +554,7 @@ jobs:
           supabase migration list --linked 2>&1 | tee readiness-evidence/target_migration_list.txt
 
       - name: "Stage 3 · Readiness — dry-run diff (no changes)"
+        if: ${{ inputs.stage != 'mcp-only' && inputs.stage != 'repair-history' && inputs.stage != 'verify-only' }}
         run: |
           set -euo pipefail
           mkdir -p readiness-evidence
