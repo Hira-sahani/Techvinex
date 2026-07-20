@@ -532,6 +532,7 @@ jobs:
       # STAGE 3 — Schema readiness (read-only, non-destructive)
       # -----------------------------------------------------------------
       - name: "Stage 3 · Readiness — list local migrations"
+        if: ${{ inputs.stage != 'mcp-only' && inputs.stage != 'repair-history' && inputs.stage != 'verify-only' }}
         run: |
           set -euo pipefail
           echo "Local migrations in supabase/migrations/:"
