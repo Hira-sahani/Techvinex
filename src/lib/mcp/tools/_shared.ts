@@ -2,7 +2,17 @@ import { createClient } from "@supabase/supabase-js";
 import type { ToolContext } from "@lovable.dev/mcp-js";
 
 export function supabaseForUser(ctx: ToolContext) {
-  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_PUBLISHABLE_KEY!, {
+  const url = process.env.SUPABASE_URL;
+  // Independent Supabase projects only inject SUPABASE_ANON_KEY; Lovable Cloud
+  // projects also inject SUPABASE_PUBLISHABLE_KEY. Prefer the publishable name
+  // when present, otherwise fall back so tools work on either runtime.
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    throw new Error(
+      `Missing Supabase env: url=${!!url} key=${!!key} (expected SUPABASE_URL + SUPABASE_PUBLISHABLE_KEY|SUPABASE_ANON_KEY)`,
+    );
+  }
+  return createClient(url, key, {
     global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
     auth: { persistSession: false, autoRefreshToken: false },
   });

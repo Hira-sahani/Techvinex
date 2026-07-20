@@ -105,7 +105,14 @@ import { z as z3 } from "npm:zod@^4.4.3";
 // src/lib/mcp/tools/_shared.ts
 import { createClient as createClient4 } from "npm:@supabase/supabase-js@^2.100.1";
 function supabaseForUser4(ctx) {
-  return createClient4(process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    throw new Error(
+      `Missing Supabase env: url=${!!url} key=${!!key} (expected SUPABASE_URL + SUPABASE_PUBLISHABLE_KEY|SUPABASE_ANON_KEY)`
+    );
+  }
+  return createClient4(url, key, {
     global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
     auth: { persistSession: false, autoRefreshToken: false }
   });
