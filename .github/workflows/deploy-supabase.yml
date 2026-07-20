@@ -799,10 +799,67 @@ jobs:
           wc -c "$SRC"
           echo "  ✓ MCP function bundled to a single file with no npm graph."
 
+      - name: "Stage M · Post-bundle verification (banner / size / specifiers / sha)"
+        if: ${{ inputs.stage == 'mcp-only' }}
+        run: |
+          set -euo pipefail
+          SRC=supabase/functions/mcp/index.ts
+          echo "=== 1. Extract GENERATED_BANNER from installed @lovable.dev/mcp-js ==="
+          # Pull the exact GENERATED_BANNER string the plugin's ownership check
+          # uses. If the plugin ever changes it, this step surfaces the drift
+          # instead of letting the next `vite build` silently refuse to write.
+          EXPECTED_BANNER=$(node -e "
+            const fs = require('fs');
+            const path = require('path');
+            const p = require.resolve('@lovable.dev/mcp-js/stacks/supabase/vite');
+            const src = fs.readFileSync(p, 'utf8');
+            const m = src.match(/GENERATED_BANNER\s*=\s*(\`[\s\S]*?\`|'[^']*'|\"[^\"]*\")/);
+            if (!m) { console.error('Could not locate GENERATED_BANNER in ' + p); process.exit(2); }
+            // eval the literal exactly as the plugin sees it
+            process.stdout.write(eval(m[1]));
+          ")
+          BANNER_LEN=$(printf '%s' "$EXPECTED_BANNER" | wc -c)
+          echo "  expected banner length: $BANNER_LEN bytes"
+          printf '%s' "$EXPECTED_BANNER" | sed 's/^/    | /'
+          echo ""
+          echo "=== 2. Byte-compare against head of $SRC ==="
+          ACTUAL_HEAD=$(head -c "$BANNER_LEN" "$SRC")
+          if [ "$ACTUAL_HEAD" != "$EXPECTED_BANNER" ]; then
+            echo "  ✗ FAIL: bundled file does not start with the exact GENERATED_BANNER."
+            echo "  --- actual head ($BANNER_LEN bytes) ---"
+            printf '%s' "$ACTUAL_HEAD" | sed 's/^/    | /'
+            echo "  --- diff ---"
+            diff <(printf '%s' "$EXPECTED_BANNER") <(printf '%s' "$ACTUAL_HEAD") || true
+            exit 1
+          fi
+          echo "  ✓ banner matches byte-for-byte."
 
+          echo "=== 3. Size must be under 2 MB ==="
+          SIZE=$(wc -c < "$SRC")
+          echo "  size: $SIZE bytes"
+          if [ "$SIZE" -ge 2097152 ]; then
+            echo "  ✗ FAIL: bundled file exceeds 2 MB limit."
+            exit 1
+          fi
+          echo "  ✓ under 2 MB."
 
+          echo "=== 4. Zero npm: specifiers ==="
+          if grep -n 'npm:' "$SRC"; then
+            echo "  ✗ FAIL: found npm: specifiers in bundled file."
+            exit 1
+          fi
+          echo "  ✓ zero npm: specifiers."
 
+          echo "=== 5. Zero https://esm.sh references ==="
+          if grep -n 'https://esm\.sh' "$SRC"; then
+            echo "  ✗ FAIL: found https://esm.sh references in bundled file."
+            exit 1
+          fi
+          echo "  ✓ zero esm.sh references."
 
+          echo "=== 6. SHA-256 of deploy artifact ==="
+          sha256sum "$SRC"
+          echo "  ✓ all post-bundle checks passed."
 
 
       - name: "Stage M · Pre-deploy target identity evidence"
