@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import type { ToolHandlerResult } from "@lovable.dev/mcp-js";
 import listExploreJobsTool from "./list-explore-jobs";
 import searchExploreJobsTool from "./search-explore-jobs";
 
@@ -30,8 +31,9 @@ function makeCtx(authenticated = true) {
   };
 }
 
-function textContent(result: { content: Array<{ type: string; text?: string }> }) {
-  return result.content[0].text;
+function textContent(result: ToolHandlerResult) {
+  const block = result.content?.[0];
+  return block && "text" in block ? (block as { text: string }).text : undefined;
 }
 
 describe("list_explore_jobs empty result", () => {
@@ -39,7 +41,7 @@ describe("list_explore_jobs empty result", () => {
     mockChain.limit.mockResolvedValueOnce({ data: [], error: null });
 
     const result = await listExploreJobsTool.handler(
-      { search: "nonexistent-role" },
+      { search: "nonexistent-role" } as unknown as Parameters<typeof listExploreJobsTool.handler>[0],
       makeCtx() as unknown as Parameters<typeof listExploreJobsTool.handler>[1],
     );
 
@@ -56,12 +58,12 @@ describe("list_explore_jobs empty result", () => {
     mockChain.limit.mockResolvedValueOnce({ data: jobs, error: null });
 
     const result = await listExploreJobsTool.handler(
-      { search: "found" },
+      { search: "found" } as unknown as Parameters<typeof listExploreJobsTool.handler>[0],
       makeCtx() as unknown as Parameters<typeof listExploreJobsTool.handler>[1],
     );
 
-    expect(result.structuredContent.jobs).toEqual(jobs);
-    expect(result.structuredContent.message).toBeUndefined();
+    expect(result.structuredContent?.jobs).toEqual(jobs);
+    expect(result.structuredContent?.message).toBeUndefined();
   });
 });
 
@@ -70,7 +72,7 @@ describe("search_explore_jobs empty result", () => {
     mockChain.range.mockResolvedValueOnce({ data: [], error: null });
 
     const result = await searchExploreJobsTool.handler(
-      { query: "react", location: "remote" },
+      { query: "react", location: "remote" } as unknown as Parameters<typeof searchExploreJobsTool.handler>[0],
       makeCtx() as unknown as Parameters<typeof searchExploreJobsTool.handler>[1],
     );
 
@@ -89,11 +91,11 @@ describe("search_explore_jobs empty result", () => {
     mockChain.range.mockResolvedValueOnce({ data: jobs, error: null });
 
     const result = await searchExploreJobsTool.handler(
-      { query: "react" },
+      { query: "react" } as unknown as Parameters<typeof searchExploreJobsTool.handler>[0],
       makeCtx() as unknown as Parameters<typeof searchExploreJobsTool.handler>[1],
     );
 
-    expect(result.structuredContent.jobs).toEqual(jobs);
-    expect(result.structuredContent.message).toBeUndefined();
+    expect(result.structuredContent?.jobs).toEqual(jobs);
+    expect(result.structuredContent?.message).toBeUndefined();
   });
 });
