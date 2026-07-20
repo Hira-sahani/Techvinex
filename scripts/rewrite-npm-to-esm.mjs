@@ -1,28 +1,36 @@
 #!/usr/bin/env node
 /**
- * Rewrite every `npm:` string literal in a file to an `https://esm.sh/` URL.
+ * Rewrite every `npm:` string literal in a file to an `https://esm.sh/` URL,
+ * and VENDOR the `@lovable.dev/mcp-js/stacks/supabase` bundle locally so we
+ * do not depend on a runtime import-map redirect for the zod v4 barrel fix.
  *
- * Used by the Stage M (`mcp-only`) GitHub Actions workflow to shrink the
- * generated Supabase Edge Function bundle before deploy (see the workflow
- * comment for the 413 Request Entity Too Large context).
+ * Background — the two crashes this file exists to prevent
+ * -----------------------------------------------------------------------------
+ * 1. `supabase functions deploy` inlines `npm:` specifiers into the uploaded
+ *    bundle. `@supabase/supabase-js` + mcp-js pushed us past the ~10 MB cap.
+ *    Rewriting to `https://esm.sh/...` keeps deps out of the upload — Deno
+ *    fetches them at runtime instead.
  *
- * The rewrite operates on the STRING LITERAL, not the surrounding syntax, so
- * it safely handles every import form emitted by any bundler:
- *   - `import x from "npm:pkg@1.0.0";`
- *   - `import { a as b } from "npm:pkg@1";`
- *   - multi-line `import { ... } from "npm:pkg@1";`
- *   - side-effect `import "npm:pkg@1";`
- *   - dynamic `await import("npm:pkg@1")`
- *   - subpath `"npm:@scope/pkg@1/sub/path"`
- *   - both `"` and `'` quoted literals
- *   - repeated identical specifiers across the file
+ * 2. `esm.sh` serves `zod@4.4.3/denonext/v4.mjs` as a barrel that ONLY exports
+ *    `{ default, z }`. The compiled `stacks/supabase.bundle.mjs` does
+ *    `import * as c from ".../v4.mjs"` and calls `c.custom(...)`, `c.string(...)`,
+ *    etc. — those symbols are missing, so the worker crashes at cold start
+ *    with `TypeError: c.custom is not a function`.
  *
- * Semver-range prefixes on the version (^ ~ >= <= > < =) are stripped so
- * esm.sh receives a clean version identifier.
+ * Previous fix (removed):
+ *   Emit a `deno.json` import map that redirects the broken v4.mjs URL to a
+ *   local shim. Works locally, but relies on Supabase Edge Runtime honouring
+ *   the sibling `deno.json` for REMOTE URL specifiers — behaviour we could
+ *   not observe from outside the host.
+ *
+ * Current fix (this file):
+ *   Vendor the `stacks/supabase` bundle at build time. Patch the broken
+ *   `.../v4.mjs` reference to `./zod-v4-shim.mjs` INSIDE the vendored bytes.
+ *   Rewrite the `npm:` import in the generated function to point at the local
+ *   file. No import map, no runtime redirect — Deno just loads a local module
+ *   that references a local shim.
  *
  * Usage: node scripts/rewrite-npm-to-esm.mjs <file>
- * Exits non-zero if the file cannot be read/written. Does NOT fail if there
- * are no `npm:` specifiers — the workflow performs its own residual check.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -36,25 +44,19 @@ if (!file) {
 const src = readFileSync(file, "utf8");
 const dir = dirname(file);
 
-// Match a `"npm:..."` or `'npm:...'` string literal. Body cannot contain the
-// matching quote or a newline — string literals in JS/TS module specifiers
-// never span lines.
+// Pin zod v4 — must match what esm.sh injects for mcp-js via `deps=zod@...`.
+const ZOD_PIN = "4.4.3";
+
+// Match "npm:..." / 'npm:...' string literals only. String literals cannot
+// span lines in JS/TS module specifiers.
 const LITERAL = /(["'])npm:([^"'\n\r]+)\1/g;
 
-/**
- * Split "@scope/name@1.2.3/sub/path" or "name@1.2.3/sub" into
- *   { nameAndVersion: "@scope/name@1.2.3", subpath: "/sub/path" }
- * so the subpath survives rewriting untouched.
- */
 function splitNameAndSubpath(body) {
   let nameEnd;
   if (body.startsWith("@")) {
-    // Scoped: skip the "@scope/" segment, then the FIRST slash after that
-    // is the subpath boundary.
     const firstSlash = body.indexOf("/");
-    if (firstSlash === -1) {
-      nameEnd = body.length;
-    } else {
+    if (firstSlash === -1) nameEnd = body.length;
+    else {
       const second = body.indexOf("/", firstSlash + 1);
       nameEnd = second === -1 ? body.length : second;
     }
@@ -62,59 +64,100 @@ function splitNameAndSubpath(body) {
     const firstSlash = body.indexOf("/");
     nameEnd = firstSlash === -1 ? body.length : firstSlash;
   }
-  return {
-    nameAndVersion: body.slice(0, nameEnd),
-    subpath: body.slice(nameEnd),
-  };
+  return { nameAndVersion: body.slice(0, nameEnd), subpath: body.slice(nameEnd) };
 }
 
-// Pin zod to a v4 release. `@lovable.dev/mcp-js@0.22.2` bundles
-// `@modelcontextprotocol/sdk@1.28.0`, which declares
-// `"zod": "^3.25 || ^4.0"` and — when built for esm.sh — imports from
-// the v4-only subpaths `zod/v3`, `zod/v4`, `zod/v4-mini`. Pinning to a
-// zod v3 release (e.g. 3.23.8) makes esm.sh emit stubs that reference
-// those subpaths against a version that does not publish them, and
-// Deno's module graph fails with "Module not found: .../v3.mjs".
-// Our tool files also declare `zod@^4.4.3`, so keeping the SDK and our
-// tools on the same v4 line ensures both sides share one ZodType
-// identity and mcp-js recognises our schemas without falling through
-// to `z.custom(...)` (the source of the earlier "c.custom is not a
-// function" crash).
-const ZOD_PIN = "4.4.3";
+async function fetchText(url) {
+  const res = await fetch(url, { redirect: "follow" });
+  if (!res.ok) throw new Error(`fetch ${url} → HTTP ${res.status}`);
+  return await res.text();
+}
 
-let count = 0;
-const out = src.replace(LITERAL, (_match, quote, body) => {
-  const { nameAndVersion, subpath } = splitNameAndSubpath(body);
-  // Strip semver operators immediately after the `@` version separator.
-  let cleaned = nameAndVersion.replace(/@(?:\^|~|>=|<=|>|<|=)+/, "@");
+/**
+ * Vendor `@lovable.dev/mcp-js@<v>/stacks/supabase`:
+ *   1. Fetch the esm.sh stub.
+ *   2. Follow its `export *` re-export to the real `stacks/supabase.bundle.mjs`.
+ *   3. Patch the four `/zod@X.Y.Z/denonext/...mjs` references in the bundle.
+ *      Only `v4.mjs` is broken (barrel missing flat exports); the others
+ *      re-export their externals correctly. We patch just v4 to keep the
+ *      change surface minimal and leave the other three fetched from esm.sh
+ *      normally — they load fine.
+ *   4. Rewrite the STUB to `export *` from the vendored bundle path.
+ *      Anyone who imports the vendored stub gets the fixed module graph.
+ */
+async function vendorStacksSupabase(nameAndVersion, targetDir) {
+  // `bundle-deps` collapses the stub to a single `stacks/supabase.bundle.mjs`
+  // re-export. Without it esm.sh emits ~10 chunk imports (`dist/cors-*.mjs`
+  // etc.) — the same chunk-graph shape that caused "Module not found" errors
+  // during earlier deploys. `deps=zod@<pin>` keeps the bundle on one zod copy.
+  const stubUrl = `https://esm.sh/${nameAndVersion}/stacks/supabase?target=denonext&bundle-deps&deps=zod@${ZOD_PIN}`;
+  const stubText = await fetchText(stubUrl);
 
-  // Force every zod import (ours and any transitive) to the pinned v3.
-  if (/^zod(?:@|$)/.test(cleaned)) {
-    cleaned = `zod@${ZOD_PIN}`;
+  // Real bundle path lives inside the stub as `export * from "/@lovable.dev/..."`.
+  const bundlePathMatch = stubText.match(/from\s*"(\/@lovable\.dev\/mcp-js@[^"]+\/stacks\/supabase\.bundle\.mjs)"/);
+  if (!bundlePathMatch) {
+    throw new Error(`Could not locate stacks/supabase.bundle.mjs path in esm.sh stub for ${nameAndVersion}`);
+  }
+  const bundleUrl = `https://esm.sh${bundlePathMatch[1]}`;
+  let bundleText = await fetchText(bundleUrl);
+
+  // Patch every zod reference in the vendored bundle. esm.sh emits them as
+  // ORIGIN-RELATIVE URLs (`"/zod@4.4.3/denonext/v4.mjs"`) that are only
+  // resolvable when the module itself is served from an https://esm.sh
+  // origin. Now that we serve the bundle from a local file:// URL, Deno
+  // resolves each `"/…"` against `file:///`, producing missing-module errors.
+  // Two distinct patches:
+  //   (a) v4.mjs → local shim, because esm.sh's v4 barrel is missing the flat
+  //       exports mcp-js's `c.custom(...)` etc. need.
+  //   (b) v3.mjs, v4-mini.mjs, zod.mjs → absolute https://esm.sh URLs. Those
+  //       three subpath modules re-export their externals correctly, so no
+  //       shim needed — just make the URL absolute.
+  const V4_URL = /(?:https:\/\/esm\.sh)?\/zod@[0-9.]+\/denonext\/v4\.mjs/g;
+  const v4Hits = (bundleText.match(V4_URL) || []).length;
+  bundleText = bundleText.replace(V4_URL, "./zod-v4-shim.mjs");
+
+  const OTHER_ZOD_URL = /(?<!https:)\/(zod@[0-9.]+\/denonext\/(?:v3|v4-mini|zod)\.mjs)/g;
+  const otherHits = (bundleText.match(OTHER_ZOD_URL) || []).length;
+  bundleText = bundleText.replace(OTHER_ZOD_URL, "https://esm.sh/$1");
+
+  if (v4Hits === 0) {
+    console.error("  ⚠ vendored stacks/supabase bundle contained no v4.mjs reference (esm.sh output changed?)");
   }
 
-  count++;
-  // `target=denonext` → Deno-optimized build with node:* polyfills.
-  // Without it, `@supabase/supabase-js` → node:stream crashes the worker
-  // with WORKER_ERROR at startup before the auth middleware runs.
-  //
-  // For `@lovable.dev/mcp-js` and its embedded `@modelcontextprotocol/sdk`
-  // we additionally use `bundle-deps`:
-  //   1. Without bundling, esm.sh splits mcp-js into many internal chunk
-  //      files (`.../es2022/cors-*.mjs` etc.) — Deno's module graph
-  //      builder fails intermittently with "Module not found" on those
-  //      chunk URLs during `supabase functions deploy`.
-  //   2. `bundle-deps` returns ONE self-contained ES module with every
-  //      dependency inlined at the requested versions — no chunk graph,
-  //      no missing sub-paths.
-  //   3. Combined with `deps=zod@<pin>`, esm.sh bundles the pinned zod v3
-  //      copy into the module, so `z.custom(...)` resolves. Without the
-  //      pin, mcp-js pulls a mismatched zod and crashes with
-  //      "c.custom is not a function".
-  //
-  // The bundled artifact is served over HTTP at runtime, so it does NOT
-  // count against the Supabase Edge Function upload size cap (only the
-  // one-line import URL is in our bundle).
+  // Guard: after both patches, no origin-relative `/zod@…` refs must remain.
+  // esm.sh always emits these as string literals — a bad ref is a quote (or
+  // whitespace) IMMEDIATELY before `/zod@`. A patched absolute ref is
+  // preceded by a domain label like `esm.sh` so it won't match.
+  const leftover = bundleText.match(/["'\s]\/zod@[0-9.]+\/[^"'\s]+/g);
+  if (leftover && leftover.length) {
+    throw new Error(
+      `Vendored bundle still contains ${leftover.length} unresolved zod ref(s): ` +
+        leftover.slice(0, 3).map((s) => s.slice(1)).join(", "),
+    );
+  }
+
+
+
+  // Write vendored bundle + a local stub that re-exports from it. Both live
+  // next to the function's index.ts so relative resolution just works.
+  const bundleLocal = "mcp-js-stacks-supabase.bundle.mjs";
+  const stubLocal = "mcp-js-stacks-supabase.mjs";
+  writeFileSync(join(targetDir, bundleLocal), bundleText);
+  writeFileSync(
+    join(targetDir, stubLocal),
+    `// AUTO-GENERATED by scripts/rewrite-npm-to-esm.mjs\n` +
+      `export * from "./${bundleLocal}";\n`,
+  );
+  console.error(`  Vendored ${bundleLocal} (${bundleText.length} bytes, patched ${v4Hits} v4.mjs ref(s))`);
+  console.error(`  Vendored ${stubLocal}`);
+  return `./${stubLocal}`;
+}
+
+function rewriteSimple(cleaned, subpath) {
+  // Non-vendored packages: point at esm.sh with the same params we've been
+  // using. `target=denonext` gets Deno-optimized node:* polyfills (needed by
+  // @supabase/supabase-js). `bundle-deps` + `deps=zod@<pin>` keep mcp-js on
+  // one shared zod instance so schema identity checks work.
   const needsBundle =
     /^@lovable\.dev\/mcp-js(?:@|$)/.test(cleaned) ||
     /^@modelcontextprotocol\/sdk(?:@|$)/.test(cleaned);
@@ -122,59 +165,60 @@ const out = src.replace(LITERAL, (_match, quote, body) => {
     ? `target=denonext&bundle-deps&deps=zod@${ZOD_PIN}`
     : "target=denonext";
   const sep = subpath.includes("?") ? "&" : "?";
-  return `${quote}https://esm.sh/${cleaned}${subpath}${sep}${params}${quote}`;
+  return `https://esm.sh/${cleaned}${subpath}${sep}${params}`;
+}
+
+async function main() {
+  // First pass: collect every unique literal and decide its replacement.
+  const literals = new Map(); // full match → replacement string
+  for (const m of src.matchAll(LITERAL)) {
+    const [full, quote, body] = m;
+    if (literals.has(full)) continue;
+
+    const { nameAndVersion, subpath } = splitNameAndSubpath(body);
+    let cleaned = nameAndVersion.replace(/@(?:\^|~|>=|<=|>|<|=)+/, "@");
+    if (/^zod(?:@|$)/.test(cleaned)) cleaned = `zod@${ZOD_PIN}`;
+
+    // The ONLY vendored specifier: the stacks/supabase subpath of mcp-js.
+    // Its bundle contains the broken `c.custom` call; everything else in the
+    // graph is safe to fetch from esm.sh at runtime.
+    if (/^@lovable\.dev\/mcp-js(@|$)/.test(cleaned) && subpath === "/stacks/supabase") {
+      const localPath = await vendorStacksSupabase(cleaned, dir);
+      literals.set(full, `${quote}${localPath}${quote}`);
+      continue;
+    }
+
+    literals.set(full, `${quote}${rewriteSimple(cleaned, subpath)}${quote}`);
+  }
+
+  let out = src;
+  let count = 0;
+  for (const [full, repl] of literals) {
+    const parts = out.split(full);
+    count += parts.length - 1;
+    out = parts.join(repl);
+  }
+
+  writeFileSync(file, out);
+  console.error(`  Rewrote ${count} npm: specifier occurrence(s) in ${file}`);
+
+  // Shim: re-export the flat zod v4 API surface that `v4.mjs` fails to
+  // expose. Both `classic/schemas.mjs` and `classic/external.mjs` are stable
+  // subpath modules (not barrels) — they work as-is.
+  writeFileSync(
+    join(dir, "zod-v4-shim.mjs"),
+    `// AUTO-GENERATED by scripts/rewrite-npm-to-esm.mjs\n` +
+      `// Full zod v4 flat namespace — replaces the broken esm.sh v4.mjs barrel.\n` +
+      `export * from "https://esm.sh/zod@${ZOD_PIN}/denonext/v4/classic/schemas.mjs";\n` +
+      `export * from "https://esm.sh/zod@${ZOD_PIN}/denonext/v4/classic/external.mjs";\n`,
+  );
+  console.error(`  Wrote zod-v4-shim.mjs`);
+  // NOTE: deno.json is intentionally NOT written. Runtime module resolution
+  // is now purely a function of the emitted `import` statements and the
+  // vendored files sitting next to them — no import-map indirection.
+}
+
+main().catch((err) => {
+  console.error(err.stack || String(err));
+  process.exit(1);
 });
-
-writeFileSync(file, out);
-console.error(`  Rewrote ${count} npm: specifier(s) in ${file}`);
-
-// -----------------------------------------------------------------------------
-// zod v4 barrel-import shim + Deno import map.
-//
-// mcp-js@0.22.2 (and 0.23/0.24) ships a bundle compiled with
-// `import * as c from "zod/v4"` and then calls `c.custom(...)`, `c.string(...)`,
-// `c.union(...)`, etc. esm.sh serves `zod@4.4.3/denonext/v4.mjs` as a barrel
-// that only re-exports `default` and `z`, so the namespace object is missing
-// every flat helper — and the worker crashes at cold start with
-// `TypeError: c.custom is not a function`.
-//
-// Fix: ship a shim that re-exports the full API surface (classic/schemas +
-// classic/external, which together cover every symbol mcp-js touches) and
-// point Deno's import map at it so the resolver rewrites the broken URL
-// before any module fetches it.
-//
-// Supabase Edge Functions auto-detect `deno.json` in the function folder.
-// The map applies to remote modules too, so it fixes the transitive
-// mcp-js -> zod v4.mjs import even though we never author it directly.
-// -----------------------------------------------------------------------------
-const shimPath = join(dir, "zod-v4-shim.mjs");
-writeFileSync(
-  shimPath,
-  `// AUTO-GENERATED by scripts/rewrite-npm-to-esm.mjs — do not edit.
-// Combined re-export of zod v4's classic schemas + external so that
-// \`import * as c from ".../v4.mjs"\` picks up every named export
-// mcp-js expects (custom, string, union, iso, ...).
-export * from "https://esm.sh/zod@4.4.3/denonext/v4/classic/schemas.mjs";
-export * from "https://esm.sh/zod@4.4.3/denonext/v4/classic/external.mjs";
-`,
-);
-
-const denoJsonPath = join(dir, "deno.json");
-writeFileSync(
-  denoJsonPath,
-  JSON.stringify(
-    {
-      // Both the absolute esm.sh URL and the origin-relative form emitted
-      // inside esm.sh's own bundles need to map to the shim.
-      imports: {
-        "https://esm.sh/zod@4.4.3/denonext/v4.mjs": "./zod-v4-shim.mjs",
-        "/zod@4.4.3/denonext/v4.mjs": "./zod-v4-shim.mjs",
-      },
-    },
-    null,
-    2,
-  ) + "\n",
-);
-console.error(`  Wrote ${shimPath}`);
-console.error(`  Wrote ${denoJsonPath}`);
-
