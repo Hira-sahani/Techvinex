@@ -13,8 +13,8 @@ const { mockChain } = vi.hoisted(() => {
     ilike: vi.fn().mockReturnThis(),
     contains: vi.fn().mockReturnThis(),
     order: vi.fn().mockReturnThis(),
-    limit: vi.fn().mockReturnThis(),
-    range: vi.fn().mockReturnThis(),
+    limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+    range: vi.fn().mockResolvedValue({ data: [], error: null }),
     maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
   };
   Object.assign(self, chain);
