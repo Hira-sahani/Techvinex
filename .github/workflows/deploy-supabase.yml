@@ -771,6 +771,83 @@ jobs:
           echo "  First 5 rewritten imports:"
           grep -nE 'https://esm\.sh/' "$FILE" | head -5 | sed 's/^/    /'
 
+      - name: "Stage M · Install Deno (for full vendor)"
+        if: ${{ inputs.stage == 'mcp-only' }}
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v2.x
+
+      - name: "Stage M · Full vendor — eliminate all runtime esm.sh fetches"
+        if: ${{ inputs.stage == 'mcp-only' }}
+        run: |
+          set -euo pipefail
+          # Why: even after the npm→esm.sh rewrite, Supabase's edge-runtime
+          # would fetch ~35 modules from esm.sh during cold start. Two residual
+          # risks with that:
+          #   (a) esm.sh availability during the cold-start window (rare 5xx / rebuilds)
+          #   (b) edge-runtime module-loader behaviour vs plain Deno on remote URLs
+          # This step walks the FULL module graph via `deno info --json`,
+          # copies every remote file into supabase/functions/mcp/vendor/, and
+          # rewrites every remote URL occurrence (index.ts + all .mjs shims +
+          # every vendored file) to a relative `./vendor/...` path. After this
+          # step, `deno info` reports 0 remote modules — the function is
+          # fully self-contained.
+          node scripts/vendor-mcp-graph.mjs supabase/functions/mcp
+          echo "  Post-vendor size:"
+          du -sh supabase/functions/mcp supabase/functions/mcp/vendor
+          echo "  Guard: no https://esm.sh|deno.land|jsr.io refs must remain."
+          if grep -rEn "https?://(esm\.sh|deno\.land|jsr\.io|unpkg\.com|cdn\.jsdelivr)" supabase/functions/mcp/ ; then
+            echo "::error::Remote CDN references remain — full vendor incomplete."
+            exit 1
+          fi
+          echo "  (none)"
+
+      - name: "Stage M · Offline cold-start smoke test (--no-remote)"
+        if: ${{ inputs.stage == 'mcp-only' }}
+        env:
+          SUPABASE_URL: "https://placeholder.supabase.co"
+          SUPABASE_PUBLISHABLE_KEY: "placeholder"
+          VITE_SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_REF_PROD }}
+        run: |
+          set -euo pipefail
+          # Boot the function with `--no-remote`, which forbids ANY network
+          # module fetch. If it starts and returns 401 + WWW-Authenticate:
+          # Bearer, the entire module graph is verified local. This is the
+          # same behaviour Supabase edge-runtime will see at cold start,
+          # minus the runtime host — proves no esm.sh dependency remains.
+          deno run --allow-all --no-remote supabase/functions/mcp/index.ts > /tmp/deno.out 2>&1 &
+          DPID=$!
+          for i in $(seq 1 40); do
+            sleep 0.25
+            if curl -sS -o /dev/null http://127.0.0.1:8000/ 2>/dev/null; then break; fi
+          done
+          set +e
+          HDRS=$(curl -sD - -o /dev/null -X POST http://127.0.0.1:8000/mcp \
+            -H 'content-type: application/json' \
+            -d '{"jsonrpc":"2.0","id":1,"method":"initialize"}')
+          RC=$?
+          kill $DPID 2>/dev/null || true
+          wait $DPID 2>/dev/null || true
+          set -e
+          echo "--- headers ---"
+          echo "$HDRS" | head -15
+          echo "--- deno stderr (tail) ---"
+          tail -20 /tmp/deno.out || true
+          if [ $RC -ne 0 ]; then
+            echo "::error::Offline boot smoke test failed (curl rc=$RC)"
+            exit 1
+          fi
+          if ! echo "$HDRS" | grep -qi '^HTTP/.* 401'; then
+            echo "::error::Expected HTTP 401 from offline cold-start; got:"
+            echo "$HDRS" | head -1
+            exit 1
+          fi
+          if ! echo "$HDRS" | grep -qi '^www-authenticate: Bearer'; then
+            echo "::error::Expected WWW-Authenticate: Bearer header from offline cold-start"
+            exit 1
+          fi
+          echo "  OK — function boots and returns 401 + Bearer challenge with --no-remote."
+
       - name: "Stage M · Pre-deploy target identity evidence"
         if: ${{ inputs.stage == 'mcp-only' }}
         run: |
