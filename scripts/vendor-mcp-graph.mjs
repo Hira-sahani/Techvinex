@@ -133,7 +133,7 @@ function escapeRe(s) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function rewriteFile(filePath, moduleUrl) {
+function rewriteFile(filePath, moduleUrls) {
   if (!existsSync(filePath)) return 0;
   const before = readFileSync(filePath, "utf8");
   let after = before;
@@ -152,26 +152,33 @@ function rewriteFile(filePath, moduleUrl) {
   }
 
   // (b) Per-file raw-specifier rewrites — the specifier strings esm.sh emits
-  // inside its own bundles (bare, origin-relative, and semver-ranged). We use
-  // the deno info dependency graph: for this module, replace each raw
+  // inside its own bundles (bare, origin-relative, and semver-ranged). Union
+  // dependencies from every module URL that maps to this local file (a file
+  // can have multiple URL aliases due to redirects). Replace each raw
   // specifier verbatim with the relative path to its resolved vendored file.
-  const deps = modDeps.get(moduleUrl) || [];
-  for (const { rawSpec, resolvedUrl } of deps) {
-    const targetAbs = urlToLocal.get(resolvedUrl);
-    if (!targetAbs) continue;
-    let rel = relative(dirname(filePath), targetAbs).replace(/\\/g, "/");
-    if (!rel.startsWith(".")) rel = "./" + rel;
-    // Match rawSpec only inside string literals (bounded by the same quote).
-    const re = new RegExp(`(["'])${escapeRe(rawSpec)}\\1`, "g");
-    after = after.replace(re, (_m, q) => {
-      hits++;
-      return q + rel + q;
-    });
+  const seen = new Set();
+  for (const moduleUrl of moduleUrls) {
+    const deps = modDeps.get(moduleUrl) || [];
+    for (const { rawSpec, resolvedUrl } of deps) {
+      const key = rawSpec + "\0" + resolvedUrl;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const targetAbs = urlToLocal.get(resolvedUrl);
+      if (!targetAbs) continue;
+      let rel = relative(dirname(filePath), targetAbs).replace(/\\/g, "/");
+      if (!rel.startsWith(".")) rel = "./" + rel;
+      const re = new RegExp(`(["'])${escapeRe(rawSpec)}\\1`, "g");
+      after = after.replace(re, (_m, q) => {
+        hits++;
+        return q + rel + q;
+      });
+    }
   }
 
   if (after !== before) writeFileSync(filePath, after);
   return hits;
 }
+
 
 // 4. Walk every file in fnDir and rewrite. A vendored file may correspond to
 // several module URLs (original + redirect aliases), so we keep a MULTI-valued
