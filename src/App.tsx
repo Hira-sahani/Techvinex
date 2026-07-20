@@ -180,6 +180,8 @@ const AppLayout = () => {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
+          {/* Alias for the OAuth authorization path configured on the Supabase auth server */}
+          <Route path="/oauth/consent" element={<OAuthConsent />} />
 
           {import.meta.env.DEV && <Route path="/auth-test" element={<div>AuthTest removed from production build.</div>} />}
           <Route path="/onboarding" element={<Onboarding />} />
