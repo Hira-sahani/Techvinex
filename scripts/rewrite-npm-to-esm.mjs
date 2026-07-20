@@ -93,15 +93,28 @@ const out = src.replace(LITERAL, (_match, quote, body) => {
   // Without it, `@supabase/supabase-js` → node:stream crashes the worker
   // with WORKER_ERROR at startup before the auth middleware runs.
   //
-  // For packages that transitively depend on zod (mcp-js and the MCP
-  // SDK), pass `deps=zod@<pin>` so esm.sh resolves their internal zod
-  // to the same v3 copy our tools use. Otherwise mcp-js's bundled SDK
-  // loads a mismatched zod and crashes with "c.custom is not a function".
-  const needsZodPin =
+  // For `@lovable.dev/mcp-js` and its embedded `@modelcontextprotocol/sdk`
+  // we additionally use `bundle-deps`:
+  //   1. Without bundling, esm.sh splits mcp-js into many internal chunk
+  //      files (`.../es2022/cors-*.mjs` etc.) — Deno's module graph
+  //      builder fails intermittently with "Module not found" on those
+  //      chunk URLs during `supabase functions deploy`.
+  //   2. `bundle-deps` returns ONE self-contained ES module with every
+  //      dependency inlined at the requested versions — no chunk graph,
+  //      no missing sub-paths.
+  //   3. Combined with `deps=zod@<pin>`, esm.sh bundles the pinned zod v3
+  //      copy into the module, so `z.custom(...)` resolves. Without the
+  //      pin, mcp-js pulls a mismatched zod and crashes with
+  //      "c.custom is not a function".
+  //
+  // The bundled artifact is served over HTTP at runtime, so it does NOT
+  // count against the Supabase Edge Function upload size cap (only the
+  // one-line import URL is in our bundle).
+  const needsBundle =
     /^@lovable\.dev\/mcp-js(?:@|$)/.test(cleaned) ||
     /^@modelcontextprotocol\/sdk(?:@|$)/.test(cleaned);
-  const params = needsZodPin
-    ? `target=denonext&deps=zod@${ZOD_PIN}`
+  const params = needsBundle
+    ? `target=denonext&bundle-deps&deps=zod@${ZOD_PIN}`
     : "target=denonext";
   const sep = subpath.includes("?") ? "&" : "?";
   return `${quote}https://esm.sh/${cleaned}${subpath}${sep}${params}${quote}`;
