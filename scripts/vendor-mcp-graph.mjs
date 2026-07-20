@@ -91,6 +91,23 @@ for (const m of remote) {
 }
 console.error(`[vendor] copied ${urlToLocal.size} files, ${bytes} bytes; skipped ${skippedTypes} .d.ts`);
 
+// 2b. Alias redirect sources to the same local file as their targets.
+// `deno info` reports `dependencies[].code.specifier` using the ORIGINAL URL
+// (e.g. `.../phoenix@^0.4.0?target=denonext`) while `modules[].specifier` uses
+// the POST-REDIRECT resolved URL (`.../phoenix@0.4.5?target=denonext`). Both
+// point at the same vendored file. Without this alias, the per-file rewrite
+// step can't find the file for the semver-range spec and leaves the raw
+// specifier string in place — causing "Module not found" at cold start.
+const redirects = graph.redirects || {};
+let aliased = 0;
+for (const [from, to] of Object.entries(redirects)) {
+  if (urlToLocal.has(to) && !urlToLocal.has(from)) {
+    urlToLocal.set(from, urlToLocal.get(to));
+    aliased++;
+  }
+}
+if (aliased) console.error(`[vendor] aliased ${aliased} redirect source URL(s) to their resolved targets`);
+
 // 3. Build a per-module dependency map: moduleUrl → [{rawSpec, resolvedUrl}].
 // This lets us translate the raw import string that actually appears inside a
 // vendored file (e.g. `"/@supabase/phoenix@^0.4.0?target=denonext"` — with a
