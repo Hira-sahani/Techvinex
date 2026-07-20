@@ -569,7 +569,7 @@ jobs:
             2>&1 | tee readiness-evidence/target_schema_diff.sql
 
       - name: "Stage 3 · Readiness — upload evidence artifact"
-        if: ${{ always() }}
+        if: ${{ always() && inputs.stage != 'mcp-only' && inputs.stage != 'repair-history' && inputs.stage != 'verify-only' }}
         uses: actions/upload-artifact@v4
         with:
           name: supabase-readiness-evidence
