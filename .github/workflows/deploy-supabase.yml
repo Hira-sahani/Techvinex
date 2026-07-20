@@ -727,6 +727,35 @@ jobs:
           fi
           echo "  ✓ Function embeds issuer for $PROJECT_REF."
 
+      - name: "Stage M · Shrink bundle — rewrite npm: specifiers to esm.sh CDN"
+        if: ${{ inputs.stage == 'mcp-only' }}
+        run: |
+          set -euo pipefail
+          FILE=supabase/functions/mcp/index.ts
+          # Why: `supabase functions deploy` uses eszip and INLINES every `npm:`
+          # specifier plus all transitive deps into the upload payload. The MCP
+          # source is ~6KB but the resolved bundle for @lovable.dev/mcp-js +
+          # @supabase/supabase-js + zod exceeds Supabase's ~10MB upload cap,
+          # returning 413 Request Entity Too Large.
+          # Fix: rewrite `npm:PKG@VER[/path]` -> `https://esm.sh/PKG@VER[/path]`.
+          # Deno resolves esm.sh URLs at runtime, so the uploaded eszip only
+          # contains the tiny handler source. No functional change: identical
+          # packages, identical versions, identical OAuth issuer.
+          BEFORE=$(wc -c < "$FILE")
+          # Strip leading ^ / ~ / >= from semver ranges so esm.sh gets a clean version.
+          # Handles: npm:@scope/name@ver, npm:@scope/name@ver/subpath, npm:name@ver
+          sed -i -E 's#"npm:(@?[^"@]+)@\^?~?>=?([^"/]+)(/[^"]+)?"#"https://esm.sh/\1@\2\3"#g' "$FILE"
+          AFTER=$(wc -c < "$FILE")
+          echo "  Rewrote npm: -> https://esm.sh/ ($BEFORE -> $AFTER bytes)"
+          echo "  Remaining npm: specifiers (must be zero):"
+          grep -n 'from "npm:' "$FILE" || echo "  (none)"
+          if grep -q 'from "npm:' "$FILE"; then
+            echo "::error::Some npm: specifiers were not rewritten. Deploy would 413."
+            exit 1
+          fi
+          echo "  First 5 rewritten imports:"
+          grep -n 'from "https://esm.sh/' "$FILE" | head -5 | sed 's/^/    /'
+
       - name: "Stage M · Deploy ONLY the mcp function"
         if: ${{ inputs.stage == 'mcp-only' }}
         run: |
