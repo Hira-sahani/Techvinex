@@ -105,8 +105,7 @@ def classify(stmt: str) -> tuple[str, str | None]:
     action ∈ {"keep", "drop", "null_created_by"}.
     Non-INSERT statements (comments, SET, blank runs) always keep.
     """
-    stripped = stmt.lstrip()
-    m = INSERT_HEAD.match(stripped)
+    m = INSERT_HEAD.search(stmt)
     if not m:
         return "keep", None
     table = m.group(1).lower()
