@@ -127,7 +127,28 @@ apply() {
   echo "== Applying $label into TARGET (${_TARGET_HOST})"
   # ON_ERROR_STOP=1 fails on real errors. Individual ON CONFLICT DO NOTHING
   # rows are not errors, so re-runs are idempotent.
-  psql -v ON_ERROR_STOP=1 --single-transaction -d "$SUPABASE_DB_URL_TARGET" -f "$file"
+  #
+  # EXCLUSION: public.audit_logs rows are stripped before apply.
+  # Rationale: audit_logs.user_id has a FK to auth.users. The source project
+  # is permanently deleted, so most historical user_ids in the snapshot do
+  # NOT exist in the TARGET's auth.users. Importing them raises:
+  #   ERROR: insert or update on table "audit_logs" violates foreign key
+  #   constraint "audit_logs_user_id_fkey"
+  # Audit logs are non-essential historical telemetry (edge-function deny
+  # traces, admin-verify pings) — losing them does not affect app behavior;
+  # new rows will be written on TARGET with valid user_ids. Filtering is
+  # done via streaming grep so the committed snapshot stays byte-identical
+  # for auditability. Only whole-line INSERTs into public.audit_logs are
+  # dropped; the "-- Data for Name: audit_logs" comment is harmless.
+  if [ "$file" = "$PUBLIC_SQL" ]; then
+    local _skipped
+    _skipped=$(grep -c '^INSERT INTO public\.audit_logs ' "$file" || true)
+    echo "  -- excluding ${_skipped} public.audit_logs row(s) (FK to auth.users; source project deleted)"
+    grep -v '^INSERT INTO public\.audit_logs ' "$file" \
+      | psql -v ON_ERROR_STOP=1 --single-transaction -d "$SUPABASE_DB_URL_TARGET" -f -
+  else
+    psql -v ON_ERROR_STOP=1 --single-transaction -d "$SUPABASE_DB_URL_TARGET" -f "$file"
+  fi
 }
 
 apply "$PUBLIC_SQL" "public.* snapshot"
