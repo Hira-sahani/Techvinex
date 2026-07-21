@@ -35,6 +35,36 @@ EXCLUDES=(
   --exclude-table=public.ai_session_memory
 )
 
+# ---- 0. Preflight: probe target for optional schemas -------------------
+# storage.objects and auth.users may be absent on a freshly-initialised
+# independent project. If they are, silently skip that portion of the
+# migration rather than failing the whole run. Storage bytes are still
+# copied by scripts/migrate-storage-bytes.mjs via the Storage API, which
+# also (re)creates buckets and object rows on the target.
+probe() {
+  # Returns "1" if the given regclass exists on TARGET, else "".
+  psql -Atqc "SELECT CASE WHEN to_regclass('$1') IS NULL THEN '' ELSE '1' END" \
+    "$SUPABASE_DB_URL_TARGET" 2>/dev/null || true
+}
+
+HAS_STORAGE_OBJECTS=$(probe 'storage.objects')
+HAS_STORAGE_BUCKETS=$(probe 'storage.buckets')
+HAS_AUTH_USERS=$(probe 'auth.users')
+
+echo "== Target preflight:"
+echo "   storage.objects present: ${HAS_STORAGE_OBJECTS:-no}"
+echo "   storage.buckets present: ${HAS_STORAGE_BUCKETS:-no}"
+echo "   auth.users     present: ${HAS_AUTH_USERS:-no}"
+
+if [ -z "${HAS_STORAGE_OBJECTS}" ] || [ -z "${HAS_STORAGE_BUCKETS}" ]; then
+  echo "   → Storage schema not fully initialised on target; SKIP_STORAGE=1 (Storage API will handle it)."
+  SKIP_STORAGE=1
+fi
+if [ -z "${HAS_AUTH_USERS}" ]; then
+  echo "   → auth.users missing on target; SKIP_AUTH=1."
+  SKIP_AUTH=1
+fi
+
 # ---- 1. public schema ---------------------------------------------------
 echo "== [1/3] Dumping public schema data from source"
 pg_dump --schema=public --data-only --no-owner --no-privileges \
