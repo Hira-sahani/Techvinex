@@ -150,7 +150,7 @@ var list_my_notifications_default = defineTool2({
     } catch (e) {
       return errorResult(`Supabase client init failed: ${e.message}`);
     }
-    const { data, error } = await client.from("notifications").select("id, title, body, action_url, read_at, created_at").eq("user_id", ctx.getUserId()).order("created_at", { ascending: false }).limit(limit ?? 10);
+    const { data, error } = await client.from("notifications").select("id, title, body, action_url, is_read, created_at").eq("user_id", ctx.getUserId()).order("created_at", { ascending: false }).limit(limit ?? 10);
     if (error) return errorResult(`Query failed (code=${error.code ?? "?"}): ${error.message}`);
     return {
       content: [{ type: "text", text: JSON.stringify(data ?? []) }],

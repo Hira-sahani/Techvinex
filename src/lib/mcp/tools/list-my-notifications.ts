@@ -18,7 +18,7 @@ export default defineTool({
     catch (e) { return errorResult(`Supabase client init failed: ${(e as Error).message}`); }
     const { data, error } = await client
       .from("notifications")
-      .select("id, title, body, action_url, read_at, created_at")
+      .select("id, title, body, action_url, is_read, created_at")
       .eq("user_id", ctx.getUserId())
       .order("created_at", { ascending: false })
       .limit(limit ?? 10);
