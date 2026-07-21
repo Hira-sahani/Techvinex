@@ -634,11 +634,12 @@ jobs:
         if: ${{ inputs.stage == 'data-import' }}
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22'
 
-      - name: "Stage D · Install @supabase/supabase-js for byte copy"
+      - name: "Stage D · Install @supabase/supabase-js + ws for byte copy"
         if: ${{ inputs.stage == 'data-import' }}
-        run: npm i --no-save @supabase/supabase-js@2
+        run: npm i --no-save @supabase/supabase-js@2 ws@8
+
 
       # Order matters: copy storage BYTES first. The Node script uses the
       # Storage API (service_role) and will create any missing buckets on the
