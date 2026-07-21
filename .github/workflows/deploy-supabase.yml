@@ -640,14 +640,12 @@ jobs:
         if: ${{ inputs.stage == 'data-import' }}
         run: npm i --no-save @supabase/supabase-js@2
 
-      - name: "Stage D · Copy public + auth + storage metadata (pg_dump | psql)"
-        if: ${{ inputs.stage == 'data-import' }}
-        env:
-          SUPABASE_DB_URL_SOURCE: ${{ secrets.SUPABASE_DB_URL_SOURCE }}
-          SUPABASE_DB_URL_TARGET: ${{ secrets.SUPABASE_DB_URL_TARGET }}
-        run: bash scripts/migrate-data.sh
-
-      - name: "Stage D · Copy storage bytes (bucket contents)"
+      # Order matters: copy storage BYTES first. The Node script uses the
+      # Storage API (service_role) and will create any missing buckets on the
+      # target, which initialises storage.buckets/storage.objects rows before
+      # the SQL migration runs. If Storage on the target is still not usable,
+      # migrate-data.sh preflight will auto-skip storage restore.
+      - name: "Stage D · Copy storage bytes (bucket contents, initialises Storage on target)"
         if: ${{ inputs.stage == 'data-import' }}
         env:
           SUPABASE_URL_SOURCE: ${{ secrets.SUPABASE_URL_SOURCE }}
@@ -655,6 +653,13 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY_SOURCE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_SOURCE }}
           SUPABASE_SERVICE_ROLE_KEY_TARGET: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_TARGET }}
         run: node scripts/migrate-storage-bytes.mjs
+
+      - name: "Stage D · Copy public + auth + storage metadata (pg_dump | psql, storage-aware)"
+        if: ${{ inputs.stage == 'data-import' }}
+        env:
+          SUPABASE_DB_URL_SOURCE: ${{ secrets.SUPABASE_DB_URL_SOURCE }}
+          SUPABASE_DB_URL_TARGET: ${{ secrets.SUPABASE_DB_URL_TARGET }}
+        run: bash scripts/migrate-data.sh
 
       - name: "Stage D · Post-migration proof (4 published explore_jobs)"
         if: ${{ inputs.stage == 'data-import' }}
