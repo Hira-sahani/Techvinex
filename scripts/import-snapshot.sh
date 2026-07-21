@@ -164,22 +164,20 @@ apply() {
   # Filtering is streaming so the committed snapshot stays byte-identical.
   # ============================================================
   if [ "$file" = "$PUBLIC_SQL" ]; then
-    local _excluded_tables='audit_logs|profiles|user_roles|benchmark_results|storage_scan_results'
-    local _t _n
-    for _t in audit_logs profiles user_roles benchmark_results storage_scan_results; do
-      _n=$(grep -c "^INSERT INTO public\.${_t} " "$file" || true)
-      echo "  -- excluding ${_n} public.${_t} row(s) (FK to auth.users; source project deleted)"
-    done
-    echo "  -- nulling created_by on public.benchmark_tasks / public.explore_jobs (FK to auth.users)"
-
-    # 1) Drop whole INSERT lines for excluded tables.
-    # 2) Force created_by → NULL for the two kept business tables. The
-    #    snapshot INSERT lines for benchmark_tasks/explore_jobs end with:
-    #       ..., '<uuid>|NULL', '<created_at>', '<updated_at>') ON CONFLICT
-    #    The 3rd-to-last comma-separated field is created_by. Rewriting
-    #    only that position avoids touching UUIDs inside JSON/text bodies.
-    grep -Ev "^INSERT INTO public\.(${_excluded_tables}) " "$file" \
-      | sed -E "s/, '[0-9a-f-]{36}', ('2026-[0-9.:+ -]+', '2026-[0-9.:+ -]+'\) ON CONFLICT)/, NULL, \1/g" \
+    # The exclusion / created_by-nulling policy is enforced by a Python
+    # helper that parses SQL at the STATEMENT level. A line-based grep is
+    # unsafe here because pg_dump INSERTs contain string literals with
+    # embedded newlines — stripping just the leading line would leave
+    # orphan continuation text that psql interprets as top-level tokens
+    # (e.g. "### **Executive Summary**" → "backslash commands are
+    # restricted"). See scripts/filter-snapshot.py for the full policy.
+    local _py
+    _py="$(command -v python3 || command -v python)"
+    if [ -z "$_py" ]; then
+      echo "::error::python3 required for scripts/filter-snapshot.py"
+      exit 1
+    fi
+    "$_py" "$ROOT/scripts/filter-snapshot.py" < "$file" \
       | psql -v ON_ERROR_STOP=1 --single-transaction -d "$SUPABASE_DB_URL_TARGET" -f -
   else
     psql -v ON_ERROR_STOP=1 --single-transaction -d "$SUPABASE_DB_URL_TARGET" -f "$file"
