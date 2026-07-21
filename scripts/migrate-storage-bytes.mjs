@@ -13,6 +13,20 @@
 
 import { createClient } from "@supabase/supabase-js";
 
+// Node 20 has no global WebSocket. @supabase/supabase-js pulls in @supabase/realtime-js
+// on client construction, which throws on Node <21 without a WebSocket polyfill.
+// We don't use realtime here, but we still need a valid constructor to avoid the crash.
+// Polyfill from `ws` when the global is missing (Node 20). No-op on Node 22+.
+if (typeof globalThis.WebSocket === "undefined") {
+  try {
+    const { WebSocket } = await import("ws");
+    globalThis.WebSocket = WebSocket;
+    console.log("Polyfilled global WebSocket from 'ws' (Node <21 compatibility).");
+  } catch (e) {
+    console.warn("No global WebSocket and 'ws' not installed; realtime disabled only.");
+  }
+}
+
 const need = (k) => {
   const v = process.env[k];
   if (!v) { console.error(`Missing env: ${k}`); process.exit(1); }
