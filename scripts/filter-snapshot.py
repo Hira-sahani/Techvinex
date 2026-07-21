@@ -47,13 +47,8 @@ EXCLUDED_TABLES = {
 # where <created_by> is either NULL or a single-quoted UUID literal.
 NULL_CREATED_BY_TABLES = {"benchmark_tasks", "explore_jobs"}
 
-INSERT_HEAD = re.compile(r"^INSERT\s+INTO\s+public\.([a-z_]+)\s", re.IGNORECASE)
-# Match: ", 'uuid', 'timestamptz', 'timestamptz') ON CONFLICT"
-# Rewrite the uuid to NULL. The two trailing timestamptz literals + closing
-# paren + ON CONFLICT anchor keeps us from touching UUIDs embedded in JSON.
-NULL_CREATED_BY_RE = re.compile(
-    r", '[0-9a-f-]{36}', "
-    r"('20\d{2}-[0-9.:+ -]+', '20\d{2}-[0-9.:+ -]+'\) ON CONFLICT)"
+INSERT_HEAD = re.compile(
+    r"(?m)^INSERT\s+INTO\s+public\.([a-z_]+)\s", re.IGNORECASE
 )
 
 
