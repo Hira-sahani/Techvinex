@@ -45,14 +45,63 @@ case "$SUPABASE_DB_URL_TARGET" in
     exit 1
     ;;
 esac
-# Masked confirmation (host only, no creds).
+# Masked confirmation (host + port only, no creds).
 _TARGET_HOST="$(printf '%s' "$SUPABASE_DB_URL_TARGET" \
   | sed -E 's#^[a-z]+://[^@]*@([^:/?]+).*#\1#')"
-echo "  ✓ SUPABASE_DB_URL_TARGET points to host: ${_TARGET_HOST}"
+_TARGET_PORT="$(printf '%s' "$SUPABASE_DB_URL_TARGET" \
+  | sed -nE 's#^[a-z]+://[^@]*@[^:/?]+:([0-9]+).*#\1#p')"
+: "${_TARGET_PORT:=5432}"
+echo "  ✓ SUPABASE_DB_URL_TARGET host: ${_TARGET_HOST}:${_TARGET_PORT}"
+
+# ---- IPv4 reachability preflight ----------------------------------------
+# GitHub-hosted runners are IPv4-only. The Supabase *direct* database
+# endpoint (db.<ref>.supabase.co) publishes ONLY an AAAA (IPv6) record, so
+# psql from Actions fails with:
+#     connection to server at "db.<ref>.supabase.co" ... Network is unreachable
+# The fix is to use the Supabase *Session Pooler* host, which has A (IPv4)
+# records and accepts the same password. Detect the direct host early and
+# print the exact swap instructions instead of a cryptic psql error.
+case "$_TARGET_HOST" in
+  db.*.supabase.co)
+    _REF="$(printf '%s' "$_TARGET_HOST" | sed -E 's#^db\.([^.]+)\.supabase\.co$#\1#')"
+    echo "::error::Direct database host detected: ${_TARGET_HOST}"
+    echo "         GitHub Actions runners are IPv4-only, and db.*.supabase.co"
+    echo "         resolves ONLY to IPv6 (AAAA). That is why psql reports:"
+    echo "           'Network is unreachable'"
+    echo
+    echo "         FIX: switch SUPABASE_DB_URL_TARGET to the Session Pooler URI."
+    echo "         Format (port 5432, IPv4-reachable, same DB password):"
+    echo "           postgresql://postgres.${_REF}:<DB_PASSWORD>@aws-0-<REGION>.pooler.supabase.com:5432/postgres"
+    echo
+    echo "         Find <REGION> in the target project's Connect dialog"
+    echo "         (Session pooler tab). Update the GitHub secret and re-run."
+    exit 1
+    ;;
+esac
+
+# Generic IPv4 reachability check (works for pooler + any custom host).
+if command -v getent >/dev/null 2>&1; then
+  if ! getent ahostsv4 "$_TARGET_HOST" >/dev/null 2>&1; then
+    echo "::error::No IPv4 (A) record for ${_TARGET_HOST}."
+    echo "         GitHub Actions runners cannot reach IPv6-only hosts."
+    echo "         Use a host that publishes A records (e.g. Supabase Session Pooler)."
+    exit 1
+  fi
+fi
+if command -v nc >/dev/null 2>&1; then
+  if ! nc -4 -z -w 5 "$_TARGET_HOST" "$_TARGET_PORT" >/dev/null 2>&1; then
+    echo "::warning::TCP preflight to ${_TARGET_HOST}:${_TARGET_PORT} over IPv4 failed."
+    echo "           psql will still attempt the connection; if it fails with"
+    echo "           'Network is unreachable', switch to the Session Pooler URI."
+  else
+    echo "  ✓ IPv4 TCP reachable: ${_TARGET_HOST}:${_TARGET_PORT}"
+  fi
+fi
 
 if [ -n "${SUPABASE_DB_URL_SOURCE:-}${SUPABASE_URL_SOURCE:-}${SUPABASE_SERVICE_ROLE_KEY_SOURCE:-}" ]; then
   echo "::warning::A *_SOURCE env var is set but will be ignored — the source project is deleted."
 fi
+
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SNAP_DIR="$ROOT/supabase/data-migration"
