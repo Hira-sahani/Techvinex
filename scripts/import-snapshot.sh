@@ -98,7 +98,7 @@ fi
 
 echo
 echo "== TARGET row counts (public.*)"
-psql -At "$SUPABASE_DB_URL_TARGET" -c "
+psql -At -d "$SUPABASE_DB_URL_TARGET" -c "
   SELECT table_name || E'\t' || (xpath('/row/c/text()', xml_count))[1]::text
   FROM (
     SELECT table_name,
@@ -109,5 +109,5 @@ psql -At "$SUPABASE_DB_URL_TARGET" -c "
 
 echo
 echo "== Published explore_jobs on TARGET"
-psql "$SUPABASE_DB_URL_TARGET" -c \
+psql -d "$SUPABASE_DB_URL_TARGET" -c \
   "SELECT id, title, status, visibility FROM public.explore_jobs WHERE status='published' ORDER BY created_at;"
