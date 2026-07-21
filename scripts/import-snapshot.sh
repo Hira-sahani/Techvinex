@@ -128,23 +128,58 @@ apply() {
   # ON_ERROR_STOP=1 fails on real errors. Individual ON CONFLICT DO NOTHING
   # rows are not errors, so re-runs are idempotent.
   #
-  # EXCLUSION: public.audit_logs rows are stripped before apply.
-  # Rationale: audit_logs.user_id has a FK to auth.users. The source project
-  # is permanently deleted, so most historical user_ids in the snapshot do
-  # NOT exist in the TARGET's auth.users. Importing them raises:
-  #   ERROR: insert or update on table "audit_logs" violates foreign key
-  #   constraint "audit_logs_user_id_fkey"
-  # Audit logs are non-essential historical telemetry (edge-function deny
-  # traces, admin-verify pings) — losing them does not affect app behavior;
-  # new rows will be written on TARGET with valid user_ids. Filtering is
-  # done via streaming grep so the committed snapshot stays byte-identical
-  # for auditability. Only whole-line INSERTs into public.audit_logs are
-  # dropped; the "-- Data for Name: audit_logs" comment is harmless.
+  # ============================================================
+  # AUTH.USERS FK EXCLUSION POLICY
+  # ============================================================
+  # The source project is permanently deleted, so its auth.users rows
+  # cannot be restored on the TARGET. Every public.* table with a FK to
+  # auth.users therefore fails on any row whose referenced UUID isn't
+  # already in the TARGET's auth.users.
+  #
+  # Full set of public.* tables in this snapshot with FK to auth.users
+  # (verified via pg_constraint against the live schema):
+  #   audit_logs.user_id, profiles.user_id, user_roles.user_id,
+  #   benchmark_results.user_id, benchmark_tasks.created_by,
+  #   storage_scan_results.reviewed_by, explore_jobs.created_by,
+  #   applicants.user_id
+  #
+  # Policy per table (retain business-critical data; drop user-tied history):
+  #
+  #   EXCLUDED ENTIRELY (historical/user-derived; auto-repopulate via
+  #   handle_new_user trigger or new activity on TARGET):
+  #     - audit_logs           (edge-function deny traces)
+  #     - profiles             (recreated by on_auth_user_created trigger)
+  #     - user_roles           (must be re-granted for new user UUIDs)
+  #     - benchmark_results    (tied to source user_ids; benchmarks re-run)
+  #     - storage_scan_results (historical scanner output)
+  #
+  #   KEPT with FK columns FORCED TO NULL via stream rewrite (business
+  #   content whose author metadata isn't essential):
+  #     - benchmark_tasks.created_by   → NULL
+  #     - explore_jobs.created_by      → NULL
+  #
+  #   KEPT UNCHANGED (already NULL in snapshot):
+  #     - applicants.user_id
+  #
+  # Filtering is streaming so the committed snapshot stays byte-identical.
+  # ============================================================
   if [ "$file" = "$PUBLIC_SQL" ]; then
-    local _skipped
-    _skipped=$(grep -c '^INSERT INTO public\.audit_logs ' "$file" || true)
-    echo "  -- excluding ${_skipped} public.audit_logs row(s) (FK to auth.users; source project deleted)"
-    grep -v '^INSERT INTO public\.audit_logs ' "$file" \
+    local _excluded_tables='audit_logs|profiles|user_roles|benchmark_results|storage_scan_results'
+    local _t _n
+    for _t in audit_logs profiles user_roles benchmark_results storage_scan_results; do
+      _n=$(grep -c "^INSERT INTO public\.${_t} " "$file" || true)
+      echo "  -- excluding ${_n} public.${_t} row(s) (FK to auth.users; source project deleted)"
+    done
+    echo "  -- nulling created_by on public.benchmark_tasks / public.explore_jobs (FK to auth.users)"
+
+    # 1) Drop whole INSERT lines for excluded tables.
+    # 2) Force created_by → NULL for the two kept business tables. The
+    #    snapshot INSERT lines for benchmark_tasks/explore_jobs end with:
+    #       ..., '<uuid>|NULL', '<created_at>', '<updated_at>') ON CONFLICT
+    #    The 3rd-to-last comma-separated field is created_by. Rewriting
+    #    only that position avoids touching UUIDs inside JSON/text bodies.
+    grep -Ev "^INSERT INTO public\.(${_excluded_tables}) " "$file" \
+      | sed -E "s/, '[0-9a-f-]{36}', ('2026-[0-9.:+ -]+', '2026-[0-9.:+ -]+'\) ON CONFLICT)/, NULL, \1/g" \
       | psql -v ON_ERROR_STOP=1 --single-transaction -d "$SUPABASE_DB_URL_TARGET" -f -
   else
     psql -v ON_ERROR_STOP=1 --single-transaction -d "$SUPABASE_DB_URL_TARGET" -f "$file"
