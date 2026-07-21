@@ -27,9 +27,44 @@ if (typeof globalThis.WebSocket === "undefined") {
   }
 }
 
+// Strictly validate that a secret env var is present AND is pure ASCII (<=0x7F).
+// HTTP header values are ByteStrings (chars 0..255); undici rejects >255 outright,
+// and any non-ASCII in a URL/JWT is almost certainly copy-paste corruption
+// (e.g. "smart typography" turning "->" into "→", U+2192 = 8594).
+// We fail fast with the exact variable name, length, offending index, code point,
+// and a MASKED context window — never the raw secret value.
+const mask = (s, i) => {
+  const start = Math.max(0, i - 3);
+  const end = Math.min(s.length, i + 4);
+  const window = s.slice(start, end);
+  const masked = window
+    .split("")
+    .map((ch, idx) => {
+      const abs = start + idx;
+      if (abs === i) return `[U+${ch.codePointAt(0).toString(16).toUpperCase().padStart(4, "0")}]`;
+      const cp = ch.codePointAt(0);
+      return cp > 32 && cp < 127 ? "•" : `\\x${cp.toString(16)}`;
+    })
+    .join("");
+  return `…${masked}… (positions ${start}..${end - 1})`;
+};
+
 const need = (k) => {
   const v = process.env[k];
   if (!v) { console.error(`Missing env: ${k}`); process.exit(1); }
+  for (let i = 0; i < v.length; i++) {
+    const cp = v.charCodeAt(i);
+    if (cp > 0x7f) {
+      console.error(
+        `::error::Secret ${k} contains non-ASCII character at index ${i} ` +
+        `(code point U+${cp.toString(16).toUpperCase().padStart(4, "0")} = ${cp}, "${String.fromCodePoint(cp)}"). ` +
+        `Length=${v.length}. Masked context: ${mask(v, i)}. ` +
+        `This is copy-paste corruption (e.g. smart-typography "->" → "→"). ` +
+        `Re-copy the raw value from the Supabase dashboard into GitHub Actions secrets — do NOT paste through a rich-text editor.`,
+      );
+      process.exit(1);
+    }
+  }
   return v;
 };
 
