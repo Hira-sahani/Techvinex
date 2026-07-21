@@ -588,37 +588,30 @@ jobs:
           supabase migration list --linked || true
 
       # -----------------------------------------------------------------
-      # STAGE D — data-import: one-shot data cutover SOURCE → TARGET.
-      #   Uses pg_dump | psql for public + auth + storage.objects, then a
-      #   Node script for storage bytes. Idempotent: uses
-      #   --on-conflict-do-nothing and skips existing storage objects.
-      #   Never runs unless stage == 'data-import'.
+      # STAGE D — data-import: snapshot-only import into TARGET.
+      #   The original source project has been permanently deleted, so a
+      #   live pg_dump / Storage API pipeline is impossible. This stage
+      #   applies the committed point-in-time snapshot at
+      #   supabase/data-migration/*.sql to the TARGET project only.
+      #   Storage BYTES are unrecoverable (source disk is gone), so
+      #   storage.objects metadata is NOT imported by default.
+      #   Idempotent: rows use ON CONFLICT DO NOTHING.
+      #   NEVER references any *_SOURCE secret.
       # -----------------------------------------------------------------
-      - name: "Stage D · Validate data-migration secrets"
+      - name: "Stage D · Validate TARGET-only data-migration secrets"
         if: ${{ inputs.stage == 'data-import' }}
         env:
-          SUPABASE_DB_URL_SOURCE: ${{ secrets.SUPABASE_DB_URL_SOURCE }}
           SUPABASE_DB_URL_TARGET: ${{ secrets.SUPABASE_DB_URL_TARGET }}
-          SUPABASE_URL_SOURCE: ${{ secrets.SUPABASE_URL_SOURCE }}
-          SUPABASE_URL_TARGET: ${{ secrets.SUPABASE_URL_TARGET }}
-          SUPABASE_SERVICE_ROLE_KEY_SOURCE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_SOURCE }}
-          SUPABASE_SERVICE_ROLE_KEY_TARGET: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_TARGET }}
         run: |
           set -euo pipefail
-          missing=0
-          for k in SUPABASE_DB_URL_SOURCE SUPABASE_DB_URL_TARGET \
-                   SUPABASE_URL_SOURCE SUPABASE_URL_TARGET \
-                   SUPABASE_SERVICE_ROLE_KEY_SOURCE SUPABASE_SERVICE_ROLE_KEY_TARGET; do
-            v="$(eval echo \$$k)"
-            if [ -z "$v" ]; then echo "::error::Missing secret: $k"; missing=1;
-            else echo "  ✓ $k is set"; fi
-          done
-          if [ "$missing" -ne 0 ]; then
-            echo "::error::Add the missing secrets in Settings → Secrets and variables → Actions."
+          if [ -z "${SUPABASE_DB_URL_TARGET:-}" ]; then
+            echo "::error::Missing required secret: SUPABASE_DB_URL_TARGET"
             exit 1
           fi
+          echo "  ✓ SUPABASE_DB_URL_TARGET is set"
+          echo "  ℹ Source project is deleted; no *_SOURCE secrets are read by this stage."
 
-      - name: "Stage D · Install PostgreSQL client (v17 to match pg_dump snapshot format)"
+      - name: "Stage D · Install PostgreSQL client (v17 to match snapshot dump format)"
         if: ${{ inputs.stage == 'data-import' }}
         run: |
           set -euo pipefail
@@ -627,60 +620,16 @@ jobs:
           sudo sh -c 'echo "deb [signed-by=/etc/apt/keyrings/pgdg.gpg] http://apt.postgresql.org/pub/repos/apt jammy-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
           sudo apt-get update -qq
           sudo apt-get install -y -qq postgresql-client-17
-          pg_dump --version
           psql --version
 
-      - name: "Stage D · Setup Node (for storage byte copy)"
-        if: ${{ inputs.stage == 'data-import' }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: "Stage D · Install @supabase/supabase-js + ws for byte copy"
-        if: ${{ inputs.stage == 'data-import' }}
-        run: npm i --no-save @supabase/supabase-js@2 ws@8
-
-
-      # Order matters: copy storage BYTES first. The Node script uses the
-      # Storage API (service_role) and will create any missing buckets on the
-      # target, which initialises storage.buckets/storage.objects rows before
-      # the SQL migration runs. If Storage on the target is still not usable,
-      # migrate-data.sh preflight will auto-skip storage restore.
-      - name: "Stage D · Copy storage bytes (bucket contents, initialises Storage on target)"
-        if: ${{ inputs.stage == 'data-import' }}
-        env:
-          SUPABASE_URL_SOURCE: ${{ secrets.SUPABASE_URL_SOURCE }}
-          SUPABASE_URL_TARGET: ${{ secrets.SUPABASE_URL_TARGET }}
-          SUPABASE_SERVICE_ROLE_KEY_SOURCE: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_SOURCE }}
-          SUPABASE_SERVICE_ROLE_KEY_TARGET: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY_TARGET }}
-        run: node scripts/migrate-storage-bytes.mjs
-
-      - name: "Stage D · Copy public + auth + storage metadata (pg_dump | psql, storage-aware)"
-        if: ${{ inputs.stage == 'data-import' }}
-        env:
-          SUPABASE_DB_URL_SOURCE: ${{ secrets.SUPABASE_DB_URL_SOURCE }}
-          SUPABASE_DB_URL_TARGET: ${{ secrets.SUPABASE_DB_URL_TARGET }}
-        run: bash scripts/migrate-data.sh
-
-      - name: "Stage D · Post-migration proof (4 published explore_jobs)"
+      - name: "Stage D · Import committed snapshot into TARGET"
         if: ${{ inputs.stage == 'data-import' }}
         env:
           SUPABASE_DB_URL_TARGET: ${{ secrets.SUPABASE_DB_URL_TARGET }}
-        run: |
-          set -euo pipefail
-          echo "== Target published explore_jobs =="
-          psql "$SUPABASE_DB_URL_TARGET" -c \
-            "SELECT id, title, status, visibility, created_at FROM public.explore_jobs WHERE status='published' ORDER BY created_at;"
-          echo
-          echo "== Target row counts (public.*) =="
-          psql "$SUPABASE_DB_URL_TARGET" -Atc "
-            SELECT table_name || E'\t' || (xpath('/row/c/text()', xml_count))[1]::text
-            FROM (
-              SELECT table_name,
-                     query_to_xml(format('select count(*) as c from public.%I', table_name), false, true, '') AS xml_count
-              FROM information_schema.tables
-              WHERE table_schema='public' AND table_type='BASE TABLE'
-            ) t ORDER BY table_name;"
+          # Off by default — see script header for rationale.
+          IMPORT_STORAGE_METADATA: "0"
+        run: bash scripts/import-snapshot.sh
+
 
       # -----------------------------------------------------------------
       # STAGE 5 — Deploy all repository Edge Functions
