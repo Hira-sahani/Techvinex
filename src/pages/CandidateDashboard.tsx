@@ -39,6 +39,25 @@ type CandidateData = {
   savedRoles: any[];
 };
 
+type DashboardResponse<T> = {
+  data: T | null;
+  error: { code?: string; message?: string } | null;
+};
+
+const isPermissionDenied = (error: DashboardResponse<unknown>["error"]) =>
+  error?.code === "42501" || error?.message?.toLowerCase().includes("permission denied");
+
+const safeDashboardData = <T,>(label: string, response: DashboardResponse<T>, fallback: T): T => {
+  if (!response.error) return response.data ?? fallback;
+
+  if (isPermissionDenied(response.error)) {
+    console.warn(`[dashboard] ${label} unavailable due to backend permissions`, response.error);
+    return fallback;
+  }
+
+  throw response.error;
+};
+
 const fetchCandidate = async (userId: string): Promise<CandidateData> => {
   const [profileRes, appsRes, notifsRes, offersRes, contractsRes, savedRes] = await Promise.all([
     supabase.from("profiles").select("*").eq("user_id", userId).maybeSingle(),
@@ -49,18 +68,22 @@ const fetchCandidate = async (userId: string): Promise<CandidateData> => {
     supabase.from("saved_roles").select("*").eq("user_id", userId),
   ]);
 
-  const firstError = [profileRes, appsRes, notifsRes, offersRes, contractsRes, savedRes].find((r) => r.error)?.error;
-  if (firstError) throw firstError;
+  const profileData = safeDashboardData("profiles", profileRes, null);
+  const applications = safeDashboardData("applications", appsRes, []);
+  const notifications = safeDashboardData("notifications", notifsRes, []);
+  const offers = safeDashboardData("offers", offersRes, []);
+  const contracts = safeDashboardData("contracts", contractsRes, []);
+  const savedRoles = safeDashboardData("saved_roles", savedRes, []);
 
   let profileStrength = 0;
-  if (profileRes.data) {
+  if (profileData) {
     let filled = 0;
     for (const field of PROFILE_FIELDS) {
       if (field === "linkedin") {
-        if (hasValue(profileRes.data.linkedin) || profileRes.data.no_linkedin) filled++;
+        if (hasValue(profileData.linkedin) || profileData.no_linkedin) filled++;
       } else if (field === "resume_name") {
-        if (hasValue(profileRes.data.resume_name) || profileRes.data.no_resume) filled++;
-      } else if (hasValue(profileRes.data[field])) {
+        if (hasValue(profileData.resume_name) || profileData.no_resume) filled++;
+      } else if (hasValue(profileData[field])) {
         filled++;
       }
     }
@@ -68,13 +91,13 @@ const fetchCandidate = async (userId: string): Promise<CandidateData> => {
   }
 
   return {
-    profileData: profileRes.data,
+    profileData,
     profileStrength,
-    applications: appsRes.data || [],
-    notifications: notifsRes.data || [],
-    offers: offersRes.data || [],
-    contracts: contractsRes.data || [],
-    savedRoles: savedRes.data || [],
+    applications,
+    notifications,
+    offers,
+    contracts,
+    savedRoles,
   };
 };
 
