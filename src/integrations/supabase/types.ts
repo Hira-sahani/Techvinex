@@ -14,6 +14,89 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_2fa_attempts: {
+        Row: {
+          created_at: string
+          details: Json
+          email: string | null
+          event: string
+          id: string
+          ip: string | null
+          session_id: string | null
+          success: boolean
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          details?: Json
+          email?: string | null
+          event: string
+          id?: string
+          ip?: string | null
+          session_id?: string | null
+          success?: boolean
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          details?: Json
+          email?: string | null
+          event?: string
+          id?: string
+          ip?: string | null
+          session_id?: string | null
+          success?: boolean
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_2fa_attempts_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "admin_2fa_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_2fa_sessions: {
+        Row: {
+          attempts: number
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          otp_hash: string
+          updated_at: string
+          user_id: string
+          verified: boolean
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          otp_hash: string
+          updated_at?: string
+          user_id: string
+          verified?: boolean
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          otp_hash?: string
+          updated_at?: string
+          user_id?: string
+          verified?: boolean
+        }
+        Relationships: []
+      }
       ai_approval_requests: {
         Row: {
           action: string
