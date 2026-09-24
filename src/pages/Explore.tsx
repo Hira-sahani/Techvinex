@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useDeferredValue } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, SlidersHorizontal, Users, X, ChevronDown, Share2, Sparkles, Target, Bookmark, BookmarkCheck, Star, MapPin, Briefcase, Clock } from "lucide-react";
-import { useExploreJobs, useUserBookmarks, useBookmarkJob } from "@/hooks/useExploreJobs";
+import { useExploreJobs, useAllPublicExploreJobs, useUserBookmarks, useBookmarkJob } from "@/hooks/useExploreJobs";
 import type { ExploreJob } from "@/hooks/useExploreJobs";
 
 import SidebarNav from "@/components/SidebarNav";
@@ -109,7 +109,7 @@ const Explore = () => {
   });
   const { t } = useLang();
   const { user } = useAuth();
-  const { data: exploreJobs = [], isLoading: exploreLoading } = useExploreJobs(false);
+  const { data: exploreJobs = [], isLoading: exploreLoading } = useAllPublicExploreJobs();
   const { data: legacyRoles = [], isLoading: rolesLoading } = useRoles();
   const { data: bookmarks = [] } = useUserBookmarks(user?.id);
   const bookmarkMutation = useBookmarkJob();
