@@ -112,6 +112,8 @@ const ApplyRole = () => {
   const updateWorkAuth = (key: string, value: any) =>
     setWorkAuthForm((prev) => ({ ...prev, [key]: value }));
 
+  if (rolesLoading && !role) return <TechvinexLoader />;
+
   if (!role) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">

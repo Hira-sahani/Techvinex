@@ -164,6 +164,33 @@ export function useExploreJobsPage(
 
 
 
+/**
+ * Public Explore feed: fetches every published job by walking the cached
+ * edge-function pages (max 50 per page, pageIndex <= 10) using `total`.
+ */
+export function useAllPublicExploreJobs() {
+  return useQuery({
+    queryKey: ["explore-jobs", "all-public"],
+    queryFn: async (): Promise<ExploreJob[]> => {
+      const pageSize = 50;
+      const all: ExploreJob[] = [];
+      for (let pageIndex = 0; pageIndex <= 10; pageIndex++) {
+        const { data, error } = await supabase.functions.invoke<ExploreJobsPage>(
+          "public-explore-jobs",
+          { body: { pageSize, pageIndex } },
+        );
+        if (error) throw error;
+        const jobs = data?.jobs ?? [];
+        all.push(...jobs);
+        if (jobs.length < pageSize || all.length >= (data?.total ?? 0)) break;
+      }
+      return all;
+    },
+    staleTime: 45_000,
+    refetchOnWindowFocus: false,
+  });
+}
+
 export function useExploreJobById(id: string | undefined) {
   return useQuery({
     queryKey: ["explore-job", id],
