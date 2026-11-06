@@ -5,8 +5,8 @@ import { withAiGuard, z } from "../_shared/ai-guard.ts";
 import { guardJson } from "../_shared/guard.ts";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
-const DEFAULT_MODEL = "gpt-4o-mini";
-const SCORING_MODEL = "gpt-4o-mini";
+const DEFAULT_MODEL = "gpt-6-luna";
+const SCORING_MODEL = "gpt-6-luna";
 
 const bodySchema = z.object({
   task_id: z.string().uuid(),
@@ -55,7 +55,7 @@ Deno.serve(withAiGuard("openai-benchmark", {
     const aiResponse = await fetch(OPENAI_URL, {
       method: "POST",
       headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model, messages, temperature: 0.7, max_tokens: 4096 }),
+      body: JSON.stringify({ model, messages, max_completion_tokens: 16384 }),
     });
 
     if (!aiResponse.ok) {
@@ -120,7 +120,7 @@ Score from 0 to ${task.max_score}. Respond with ONLY a JSON object: {"score": <n
       body: JSON.stringify({
         model: SCORING_MODEL,
         messages: [{ role: "user", content: scoringPrompt }],
-        temperature: 0.1, max_tokens: 500,
+        max_completion_tokens: 2500,
         response_format: { type: "json_object" },
       }),
     });

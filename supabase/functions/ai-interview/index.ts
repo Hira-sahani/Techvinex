@@ -3,7 +3,7 @@ import { guardJson } from "../_shared/guard.ts";
 import { withAiGuard, z } from "../_shared/ai-guard.ts";
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
-const MODEL = "gpt-4o-mini";
+const MODEL = "gpt-6-luna";
 
 const SYSTEM_PROMPT = `You are a professional technical interviewer at Techvinex, a top-tier talent platform. You conduct domain expert interviews to evaluate candidates' technical skills.
 

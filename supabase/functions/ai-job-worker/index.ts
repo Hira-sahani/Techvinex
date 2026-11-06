@@ -28,7 +28,7 @@ const CORS = {
 };
 
 const OPENAI_URL = "https://api.openai.com/v1/chat/completions";
-const OPENAI_MODEL = "gpt-4o-mini";
+const OPENAI_MODEL = "gpt-6-luna";
 const ELEVENLABS_VOICE_DEFAULT = "JBFqnCBsd6RMkjVDRZzb";
 
 type Job = {
@@ -74,8 +74,7 @@ async function runInterview(input: Record<string, unknown>, enforcer: PlanEnforc
     body: JSON.stringify({
       model: OPENAI_MODEL,
       messages,
-      temperature: 0.7,
-      max_tokens: 500,
+      max_completion_tokens: 2500,
     }),
   });
   if (!r.ok) throw new Error(`openai_${r.status}`);
